@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { UI } from '../../visual/ui';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 
@@ -107,7 +108,7 @@ export class Pacifier extends PlayerBase {
 
     applyClassStats() {
         super.applyClassStats();
-        this.bloodShieldMax = this.maxHp * 0.25;
+        this.bloodShieldMax = this.maxHp * 0.25 * PassiveKeystoneHooks.getBloodShieldMaxMult();
         this.maxCooldowns.space = 2;
     }
 
@@ -171,7 +172,13 @@ export class Pacifier extends PlayerBase {
 
     heal(amount) {
         const missingHp = this.maxHp - this.hp;
-        if (amount > missingHp) { const excess = amount - missingHp; this.hp = this.maxHp; this.bloodShield = Math.min(this.bloodShieldMax, this.bloodShield + excess); } 
+        if (amount > missingHp) {
+            const excess = amount - missingHp;
+            this.hp = this.maxHp;
+            const overflowRate = PassiveKeystoneHooks.getShieldOverflowRate();
+            const bonus = overflowRate > 0 ? excess * overflowRate : excess;
+            this.bloodShield = Math.min(this.bloodShieldMax, this.bloodShield + bonus);
+        }
         else { this.hp += amount; }
         createDamageText("+" + Math.floor(amount), this.position, '#00ff00');
         UI.updateHUD();
@@ -269,51 +276,59 @@ export class Pacifier extends PlayerBase {
         UI.updateHUD();
         
         const maxDist = 20.0;
-        
-        // FIX: Utiliser dir au lieu de re-calculer avec Raycast
-        const shootVec = dir.clone();
+        const extra = this.bloodPistolActive ? PassiveKeystoneHooks.getFrenzyExtraBullets() : 0;
+        const totalShots = 1 + extra;
 
-        const beamEnd = this.position.clone().add(shootVec.clone().multiplyScalar(maxDist));
-        const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, maxDist, 4);
-        beamGeo.rotateX(-Math.PI/2);
-        const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({color: 0xff0000, transparent:true, opacity:0.8}));
-        beam.position.copy(this.position).add(shootVec.clone().multiplyScalar(maxDist/2)).add(new THREE.Vector3(0,0.6,0));
-        beam.lookAt(beamEnd.clone().add(new THREE.Vector3(0,0.6,0)));
-        this.addLocalVisual(beam, 0.1, (m, t) => m.material.opacity = t*10);
+        for (let s = 0; s < totalShots; s++) {
+            const spread = totalShots > 1 ? (s - (totalShots - 1) / 2) * 0.06 : 0;
+            const shootVec = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
 
-        // La logique de dégâts est locale ou host-authoritative. 
-        // Ici on laisse la logique locale pour feedback immédiat (Host validera/corrigera ou s'appliquera si Host)
-        // Note: Pour un système pur autorité serveur, on ne devrait pas appliquer de dégâts ici pour Remote.
-        // Mais gardons la logique actuelle.
-        if (!this.isLocalPlayer() && !STATE.multiplayer.isHost) return; 
+            const beamEnd = this.position.clone().add(shootVec.clone().multiplyScalar(maxDist));
+            const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, maxDist, 4);
+            beamGeo.rotateX(-Math.PI/2);
+            const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({color: 0xff0000, transparent:true, opacity:0.8}));
+            beam.position.copy(this.position).add(shootVec.clone().multiplyScalar(maxDist/2)).add(new THREE.Vector3(0,0.6,0));
+            beam.lookAt(beamEnd.clone().add(new THREE.Vector3(0,0.6,0)));
+            this.addLocalVisual(beam, 0.1, (m, t) => m.material.opacity = t*10);
+        }
 
-        // Raycast logique pour toucher
-        let closestHit = null;
-        let closestDist = maxDist;
+        if (!this.isLocalPlayer() && !STATE.multiplayer.isHost) return;
 
-        Globals.enemies.forEach(e => {
-            const ex = e.position.x - this.position.x;
-            const ez = e.position.z - this.position.z;
-            const dist = Math.sqrt(ex*ex + ez*ez);
-            
-            if (dist < maxDist) {
-                const projectedDist = ex * shootVec.x + ez * shootVec.z;
-                if (projectedDist > 0) {
-                    const perpDistSq = Math.max(0, (dist * dist) - (projectedDist * projectedDist));
-                    const perpDist = Math.sqrt(perpDistSq);
-                    
-                    if (perpDist < 1.5) {
-                        if (dist < closestDist) { closestDist = dist; closestHit = e; }
+        for (let s = 0; s < totalShots; s++) {
+            const spread = totalShots > 1 ? (s - (totalShots - 1) / 2) * 0.06 : 0;
+            const shootVec = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
+
+            let closestHit = null;
+            let closestDist = maxDist;
+
+            Globals.enemies.forEach(e => {
+                const ex = e.position.x - this.position.x;
+                const ez = e.position.z - this.position.z;
+                const dist = Math.sqrt(ex*ex + ez*ez);
+
+                if (dist < maxDist) {
+                    const projectedDist = ex * shootVec.x + ez * shootVec.z;
+                    if (projectedDist > 0) {
+                        const perpDistSq = Math.max(0, (dist * dist) - (projectedDist * projectedDist));
+                        const perpDist = Math.sqrt(perpDistSq);
+
+                        if (perpDist < 1.5 && dist < closestDist) {
+                            closestDist = dist;
+                            closestHit = e;
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        if (closestHit) {
-            let pDmg = STATE.stats.atk * 1.8;
-            if (closestHit.sanguineInstability) { pDmg *= 1.5; createDamageText("EXECUTE!", closestHit.position, '#e74c3c'); }
-            dealDamageToEnemy(closestHit, pDmg, { pos: closestHit.position });
-            this.spawnHitAura(closestHit.position); 
+            if (closestHit) {
+                const shotIdx = this._frenzyShotIndex || 0;
+                this._frenzyShotIndex = shotIdx + 1;
+                const pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: false });
+                const forceCrit = this.bloodPistolActive && PassiveKeystoneHooks.isFrenzyGuaranteedCrit(shotIdx);
+                if (PassiveKeystoneHooks.isEnemyMarked(closestHit)) createDamageText('EXECUTE!', closestHit.position, '#e74c3c');
+                dealDamageToEnemy(closestHit, pDmg, { pos: closestHit.position, forceCrit });
+                this.spawnHitAura(closestHit.position);
+            }
         }
     }
 
@@ -410,7 +425,8 @@ export class Pacifier extends PlayerBase {
                 createSkillVisual('shockwave', this.position, 10, 0xff0000); createDamageText("VERDICT", this.position, '#f00');
                 Globals.enemies.forEach(e => {
                     if(e.position.distanceTo(this.position) <= 10) {
-                        e.sanguineInstability = true; e.takeDamage(STATE.stats.atk * 0.5); 
+                        e.takeDamage(ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.5, { skill: true, skillKey: 'shift' }));
+                        PassiveKeystoneHooks.markEnemyVerdict(e);
                         const mark = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 8, 16), new THREE.MeshBasicMaterial({color:0xff0000}));
                         mark.position.copy(e.position).add(new THREE.Vector3(0, 2.5, 0));
                         this.addLocalVisual(mark, 5.0, (m) => { m.rotation.y += 0.1; m.scale.setScalar(1 + Math.sin(Date.now()*0.01)*0.2); });
@@ -436,6 +452,7 @@ export class Pacifier extends PlayerBase {
             const aura = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({color:0xff0000, transparent:true, opacity:0.4}));
             this.addLocalVisual(aura, 6.0, (m) => { m.position.copy(this.position).add(new THREE.Vector3(0,1,0)); m.scale.setScalar(1 + Math.sin(Date.now()*0.01)*0.2); });
             createDamageText("FRENESIE", this.position, '#f00');
+            PassiveKeystoneHooks.onFrenzyStart(this);
             this.bloodPistolActive = true; 
             setTimeout(() => this.bloodPistolActive = false, 6000);
         }

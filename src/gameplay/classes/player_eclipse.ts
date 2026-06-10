@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 
 export class Eclipse extends PlayerBase {
@@ -369,6 +370,7 @@ export class Eclipse extends PlayerBase {
         this.faceMouse();
         const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.mesh.quaternion);
         this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
+        ConstellationEngine.onSkillUsed(key);
         
         if(key === 'space') { 
             // --- ÉCLAT SOLAIRE (Ricochet) ---
@@ -381,10 +383,12 @@ export class Eclipse extends PlayerBase {
             const startPos = this.position.clone().add(new THREE.Vector3(0, 1.5, 0));
             spawnParticles(startPos, 0xffffff, 10);
             
-            let bouncesLeft = 5;
+            const solar = PassiveKeystoneHooks.getSolarFlareMods();
+            const maxBounces = 5 + solar.extraBounces;
+            let bouncesLeft = maxBounces;
             let currentPos = startPos.clone();
             let hitEnemies = []; 
-            let damage = STATE.stats.atk * 2.5;
+            let damage = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 2.5, { skill: true, skillKey: 'space' });
 
             const doBounce = (pos, delay) => {
                 if (bouncesLeft <= 0) return;
@@ -418,15 +422,19 @@ export class Eclipse extends PlayerBase {
                             target.takeDamage(damage);
                             createDamageText(Math.floor(damage), target.position, '#ffffff');
                             spawnParticles(target.position, 0xffffff, 5);
-                            if (this.eclipse.active) {
-                                createDamageText("BRÛLURE", target.position, '#ffaa00');
-                                setTimeout(() => { if(!target.dead) target.takeDamage(damage * 0.3); }, 1000);
+                            for (let t = 1; t <= solar.dotTicks; t++) {
+                                setTimeout(() => {
+                                    if (!target.dead) {
+                                        target.takeDamage(damage * solar.dotMult);
+                                        createDamageText('BRÛLURE', target.position, '#ffaa00');
+                                    }
+                                }, t * 1000);
                             }
                             damage *= 0.5; 
                             doBounce(target.position, 0); 
                         }
                     }, 16);
-                } else if (bouncesLeft === 5) {
+                } else if (bouncesLeft === maxBounces) {
                     const p = new Projectile(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({color:0xffffff}), pos, dir, 1.0, damage, 'player', 0xffffff);
                     Globals.projectiles.push(p);
                 }
@@ -457,10 +465,12 @@ export class Eclipse extends PlayerBase {
             rune.position.copy(targetPos).add(new THREE.Vector3(0, 0.1, 0));
             this.addLocalVisual(rune, 1.0, (m, t) => m.scale.multiplyScalar(1.02));
 
+            const lunar = PassiveKeystoneHooks.getLunarSpikeMods();
             Globals.enemies.forEach(e => {
-                if(e.position.distanceTo(targetPos) <= 3.5) {
-                    e.takeDamage(STATE.stats.atk * 3.0);
-                    e.position.y += 2.0; 
+                if(e.position.distanceTo(targetPos) <= lunar.radius) {
+                    e.takeDamage(ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * lunar.dmgMult, { skill: true, skillKey: 'shift' }));
+                    e.position.y += 2.0;
+                    if (e.speed != null) e.speed *= lunar.slowFactor;
                     createDamageText("EMPALE!", e.position, '#aa00ff');
                 }
             });
@@ -618,6 +628,7 @@ export class Eclipse extends PlayerBase {
             // Dégâts différés
             setTimeout(() => {
                 createSkillVisual('shockwave', this.position, 15, 0xffffff);
+                PassiveKeystoneHooks.applyVoidPull(this.position, 14);
                 const explosion = new THREE.Mesh(new THREE.SphereGeometry(15), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.8}));
                 explosion.position.copy(this.position);
                 this.addLocalVisual(explosion, 0.6, (m, t) => { 
@@ -629,7 +640,7 @@ export class Eclipse extends PlayerBase {
 
                 Globals.enemies.forEach(e => {
                     if(e.position.distanceTo(this.position) < 15) {
-                        const baseDmg = STATE.stats.atk * 3.0 * dmgMultiplier;
+                        const baseDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * dmgMultiplier * (1 + PassiveKeystoneHooks.getCataclysmChargeBonus()), { skill: true, skillKey: 'e' });
                         e.takeDamage(baseDmg);
                         e.pushBack(this.position, 15);
                         if (applyEffects) {

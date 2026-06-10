@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { calcSkillBaseDamage } from '../../data/classStatsConfig';
@@ -252,10 +253,9 @@ export class Blade extends PlayerBase {
 
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
-                // FIX: On ne freine plus ici, on rend la main immédiatement
-                // L'inertie naturelle s'arrêtera au prochain update standard si aucune touche n'est pressée
-                this.animState.override = false; // Important pour débloquer l'animation
-                this.body.rotation.x = 0; // Reset pose dash
+                this.animState.override = false;
+                this.body.rotation.x = 0;
+                PassiveKeystoneHooks.onBladeDashEnd(this);
             }
         }
 
@@ -346,17 +346,23 @@ export class Blade extends PlayerBase {
         this.faceMouse();
         const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.mesh.quaternion);
         this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
+        ConstellationEngine.onSkillUsed(key);
         const multiplier = this.getPassiveMultiplier();
 
         if(key === 'space') { 
             // --- TOUPIE LÉTALE ---
             AudioSys.sfx.blade.slash();
             this.animState.override = true;
-            const spinDur = 400;
+            const spinDur = PassiveKeystoneHooks.getCycloneDurationMs();
             const start = Date.now();
+            let lastPull = 0;
 
             const spinAnim = () => {
                 const elapsed = Date.now() - start;
+                if (elapsed - lastPull > 50) {
+                    PassiveKeystoneHooks.applyCyclonePull(this, 0.05);
+                    lastPull = elapsed;
+                }
                 if(elapsed >= spinDur) {
                     this.animState.override = false;
                     this.animState.torsoRot = 0;

@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 
 export class Mage extends PlayerBase {
@@ -345,6 +346,7 @@ export class Mage extends PlayerBase {
         this.faceMouse();
         const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.mesh.quaternion);
         this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
+        ConstellationEngine.onSkillUsed(key);
 
         if(key === 'space') { 
             // --- ARCANE BARRAGE (Balayage Smooth) ---
@@ -388,9 +390,14 @@ export class Mage extends PlayerBase {
             if(isSuperCrit) createDamageText("ARCANE SURGE!", this.position, '#00ffff');
 
             // Tirs en rafale synchronisés avec le balayage
-            for(let i=-1; i<=1; i++) {
+            const spread = PassiveKeystoneHooks.getArcaneBarrageSpread() * 0.15;
+            const extra = PassiveKeystoneHooks.getArcaneBarrageExtraProjectiles();
+            const shots = [];
+            for (let i = -1; i <= 1; i++) shots.push(i);
+            if (extra > 0) shots.push(0);
+            for (const i of shots) {
                 setTimeout(() => {
-                    const d = targetDir.clone().applyAxisAngle(new THREE.Vector3(0,1,0), i*0.15); 
+                    const d = targetDir.clone().applyAxisAngle(new THREE.Vector3(0,1,0), i*spread); 
                     const pGeo = new THREE.DodecahedronGeometry(isSuperCrit ? 0.45 : 0.3); 
                     const pMat = new THREE.MeshStandardMaterial({
                         color: isSuperCrit ? 0xffffff : 0x3498db,
@@ -400,7 +407,7 @@ export class Mage extends PlayerBase {
                     const p = new Projectile(pGeo, pMat, this.position.clone().add(new THREE.Vector3(0,1.8,0)), d, 0.9, skillDmg, 'player', 0x3498db);
                     Globals.projectiles.push(p);
                     spawnParticles(this.position.clone().add(new THREE.Vector3(0,1.5,0)), 0x00ffff, 3);
-                }, (i+2)*60);
+                }, (Math.abs(i)+2)*60);
             }
 
         } else if (key === 'shift') { 
@@ -507,22 +514,28 @@ export class Mage extends PlayerBase {
             appearAnim();
             
             // Dégâts au point de départ
+            const blink = PassiveKeystoneHooks.getBlinkMasteryMods();
+            let killed = false;
             Globals.enemies.forEach(e => { 
-                if(e.position.distanceTo(oldPos) <= 5) {
-                    const dmg = STATE.stats.atk * 2.5;
+                if(e.position.distanceTo(oldPos) <= blink.radius) {
+                    const dmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 2.5 * blink.dmgMult, { skill: true, skillKey: 'e' });
+                    const hpBefore = e.hp;
                     e.takeDamage(dmg);
-                    this.heal(dmg * 0.4); 
+                    if (e.dead || (hpBefore > 0 && e.hp <= 0)) killed = true;
+                    this.heal(dmg * blink.healRatio); 
                     createDamageText("SIPHON", e.position, '#00ff00');
                 }
             });
+            if (killed) PassiveKeystoneHooks.onBlinkExplosionKill(this);
         }
     }
 
     triggerStasisEffect() {
-        createSkillVisual('shockwave', this.position, 15, 0x00ffff); 
+        const stasis = PassiveKeystoneHooks.getDeepStasisMods();
+        createSkillVisual('shockwave', this.position, stasis.radius, 0x00ffff); 
         
-        const rune = new THREE.Mesh(new THREE.RingGeometry(14, 15, 32), new THREE.MeshBasicMaterial({color:0x00ffff, side:THREE.DoubleSide, transparent:true, opacity:0.8}));
-        const innerRune = new THREE.Mesh(new THREE.CircleGeometry(15, 32), new THREE.MeshBasicMaterial({color:0x00ffff, transparent:true, opacity:0.05}));
+        const rune = new THREE.Mesh(new THREE.RingGeometry(stasis.radius - 1, stasis.radius, 32), new THREE.MeshBasicMaterial({color:0x00ffff, side:THREE.DoubleSide, transparent:true, opacity:0.8}));
+        const innerRune = new THREE.Mesh(new THREE.CircleGeometry(stasis.radius, 32), new THREE.MeshBasicMaterial({color:0x00ffff, transparent:true, opacity:0.05}));
         rune.rotation.x = -Math.PI/2; innerRune.rotation.x = -Math.PI/2;
         const pos = this.position.clone().add(new THREE.Vector3(0, 0.05, 0));
         rune.position.copy(pos); innerRune.position.copy(pos);
@@ -536,11 +549,12 @@ export class Mage extends PlayerBase {
         this.addLocalVisual(innerRune, 3.0, (m) => {});
         
         Globals.enemies.forEach(e => {
-            if(e.position.distanceTo(this.position) <= 15) {
-                e.speed *= 0.05; 
-                e.takeDamage(STATE.stats.atk * 1.8); 
+            if(e.position.distanceTo(this.position) <= stasis.radius) {
+                if (e._stasisOrigSpeed == null) e._stasisOrigSpeed = e.speed;
+                e.speed = e._stasisOrigSpeed * stasis.slowFactor;
+                e.takeDamage(ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: true, skillKey: 'shift' })); 
                 spawnParticles(e.position, 0x00ffff, 15); 
-                setTimeout(() => { if(e && !e.dead) e.speed *= 20; }, 2500); 
+                setTimeout(() => { if(e && !e.dead) { e.speed = e._stasisOrigSpeed ?? e.speed; e._stasisOrigSpeed = null; } }, stasis.duration); 
             }
         });
     }

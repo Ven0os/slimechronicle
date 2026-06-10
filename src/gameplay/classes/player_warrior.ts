@@ -30,6 +30,8 @@ export class Warrior extends PlayerBase {
 
         this.parryExplosionCharge = 0;
 
+        this.parryBlockedTotal = 0;
+
         this._hadParryBuff = false;
 
         this.createClassModel();
@@ -250,7 +252,11 @@ export class Warrior extends PlayerBase {
 
     update(dt) {
 
-        if (this.isCasting) { this.speed = 0; this.isMoving = false; } else { this.speed = STATE.stats.speed; }
+        if (this.isCasting) { this.speed = 0; this.isMoving = false; }
+        else {
+            this.speed = STATE.stats.speed;
+            if (this.buffs.find(b => b.name === 'Élan titan')) this.speed *= 1.1;
+        }
 
         super.update(dt);
 
@@ -307,8 +313,8 @@ export class Warrior extends PlayerBase {
             const blocked = amount * 0.75;
 
             ConstellationEngine.onBlock(blocked);
-
-
+            ConstellationEngine.onWarriorParryBlock(this, blocked);
+            this.parryBlockedTotal = (this.parryBlockedTotal || 0) + blocked;
 
             const hasChargePassive = ConstellationEngine.getPassiveRank('parryCharge')
 
@@ -407,37 +413,26 @@ export class Warrior extends PlayerBase {
 
 
         if (hadParry && !parryBuff) {
+            ConstellationEngine.onWarriorParryEnd(this);
 
-            ConstellationEngine.onParryEnd();
-
-
-
-            const explosion = this.parryExplosionCharge || 0;
-
-            if (explosion > 0) {
-
-                const explodeDmg = ConstellationEngine.calcWarriorParryExplosion(explosion);
-
-                createSkillVisual('shockwave', this.position, 8, 0x8e44ad);
-
-                createDamageText("RETOUR DE FORCE!", this.position, '#8e44ad');
-
-                Globals.enemies.forEach(e => {
-
-                    if (e.position.distanceTo(this.position) < 8) {
-
-                        e.takeDamage(explodeDmg);
-
-                        e.pushBack(this.position, 12);
-
-                    }
-
-                });
-
-                this.parryExplosionCharge = 0;
-
+            if (ConstellationEngine.shouldTriggerParrySeismic()) {
+                this.triggerFreeSeismicStrike();
+            } else {
+                const explosion = this.parryExplosionCharge || 0;
+                if (explosion > 0) {
+                    const explodeDmg = ConstellationEngine.calcWarriorParryExplosion(explosion);
+                    createSkillVisual('shockwave', this.position, 8, 0x8e44ad);
+                    createDamageText("RETOUR DE FORCE!", this.position, '#8e44ad');
+                    Globals.enemies.forEach(e => {
+                        if (e.position.distanceTo(this.position) < 8) {
+                            e.takeDamage(explodeDmg);
+                            e.pushBack(this.position, 12);
+                        }
+                    });
+                    this.parryExplosionCharge = 0;
+                }
             }
-
+            this.parryBlockedTotal = 0;
         }
 
     }
@@ -560,6 +555,32 @@ export class Warrior extends PlayerBase {
 
 
 
+    applySeismicImpact(radius, parryBonus = 0, label = 'CRUSH!') {
+        const smashDmg = ConstellationEngine.calcWarriorSkillDamage('space', parryBonus);
+        createSkillVisual('shockwave', this.position, radius, 0x8e44ad);
+        const bonusText = parryBonus > 0 ? `${label} +${Math.floor(parryBonus)}` : label;
+        createDamageText(bonusText, this.position, '#ffffff');
+        if (this.isLocalPlayer() && Globals.camera) {
+            const originalY = Globals.camera.position.y;
+            Globals.camera.position.y -= 0.5;
+            setTimeout(() => { if (Globals.camera) Globals.camera.position.y = originalY; }, 100);
+        }
+        Globals.enemies.forEach(e => {
+            if (e.position.distanceTo(this.position) <= radius) {
+                e.takeDamage(smashDmg);
+                e.pushBack(this.position, radius > 13 ? 20 : 14);
+            }
+        });
+    }
+
+    triggerFreeSeismicStrike() {
+        if (this.isCasting) return;
+        const parryBonus = ConstellationEngine.consumeParryCharge();
+        const radius = ConstellationEngine.getFreeSeismicRadius();
+        AudioSys.sfx.warrior.smash();
+        this.applySeismicImpact(radius, parryBonus, 'CATACLYSME!');
+    }
+
     useSkill(key) {
 
         if(this.cooldowns[key] > 0 || this.isCasting) return;
@@ -630,27 +651,7 @@ export class Warrior extends PlayerBase {
 
                     this.animState.armRightRot = 0; this.animState.torsoTwist = 0; this.animState.weaponRot = 0; this.body.rotation.x = 0;
 
-                    const smashDmg = ConstellationEngine.calcWarriorSkillDamage('space', parryBonus);
-
-                    createSkillVisual('shockwave', this.position, 15, 0x8e44ad);
-
-                    createDamageText(parryBonus > 0 ? `CRUSH! +${Math.floor(parryBonus)}` : "CRUSH!", this.position, '#ffffff');
-
-                    const originalY = Globals.camera.position.y;
-
-                    Globals.camera.position.y -= 0.5; setTimeout(() => Globals.camera.position.y = originalY, 100);
-
-                    Globals.enemies.forEach(e => {
-
-                        if (e.position.distanceTo(this.position) <= 15) {
-
-                            e.takeDamage(smashDmg);
-
-                            e.pushBack(this.position, 20);
-
-                        }
-
-                    });
+                    this.applySeismicImpact(15, parryBonus, 'CRUSH!');
 
                     return;
 
@@ -734,7 +735,9 @@ export class Warrior extends PlayerBase {
 
         } else if (key === 'e') { 
 
-            this.addBuff('Parade', 3, '<i class="fas fa-shield-halved"></i>');
+            const parryDur = ConstellationEngine.getPassiveRank('ironWall') ? 3.5 : 3;
+            this.parryBlockedTotal = 0;
+            this.addBuff('Parade', parryDur, '<i class="fas fa-shield-halved"></i>');
 
             AudioSys.sfx.warrior.block(); 
 

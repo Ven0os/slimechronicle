@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
+import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
 
@@ -12,7 +13,10 @@ export function computeDamageToEnemy(enemy, baseDmg, opts = {}) {
     let dmg = baseDmg;
     let isCrit = false;
 
-    if (!opts.noCrit && !enemyHasCorruptBarrier(enemy) && Math.random() < STATE.stats.crit) {
+    if (opts.forceCrit) {
+        dmg *= STATE.stats.critDmg;
+        isCrit = true;
+    } else if (!opts.noCrit && !enemyHasCorruptBarrier(enemy) && Math.random() < STATE.stats.crit) {
         dmg *= STATE.stats.critDmg;
         isCrit = true;
     }
@@ -23,11 +27,17 @@ export function computeDamageToEnemy(enemy, baseDmg, opts = {}) {
 export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
     if (!enemy || enemy.dead) return { dmg: 0, isCrit: false };
 
-    const { dmg, isCrit } = computeDamageToEnemy(enemy, baseDmg, opts);
+    let scaled = baseDmg;
+    if (PassiveKeystoneHooks.isEnemyMarked(enemy)) {
+        scaled = baseDmg * 1.35;
+    }
+
+    const { dmg, isCrit } = computeDamageToEnemy(enemy, scaled, opts);
     const pos = opts.pos || enemy.position;
 
     if (isCrit) {
         createDamageText('CRIT!', pos, '#ff0');
+        PassiveKeystoneHooks.onCritApplyHemorrhage(enemy, dmg);
         if (opts.onCrit && typeof opts.onCrit === 'function') opts.onCrit();
     }
 

@@ -5,6 +5,7 @@ import { STATE, CONFIG } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, spawnParticles } from '../../visual/effects';
 import { Network } from '../../multiplayer/network';
+import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 
 let enemyIdCounter = 0;
 
@@ -129,6 +130,9 @@ export class BaseEnemy extends THREE.Group {
     }
 
     takeDamage(amount) {
+        if (this._solarLightDebuffUntil && Date.now() < this._solarLightDebuffUntil && this._solarLightDmgTakenMult) {
+            amount *= this._solarLightDmgTakenMult;
+        }
         this.hp -= amount; 
         createDamageText(Math.floor(amount), this.position);
         
@@ -211,6 +215,7 @@ export class BaseEnemy extends THREE.Group {
         if (STATE.multiplayer.active && STATE.multiplayer.isHost) Network.send({ type: 'xp-gain', amount: xpAmount });
         
         STATE.enemiesKilled++;
+        PassiveKeystoneHooks.onEnemyKilledByPlayer();
         removeEnemy(this);
         
         spawnParticles(this.position, 0xffffff, 10);
