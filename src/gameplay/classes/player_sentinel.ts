@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 
 export class Sentinel extends PlayerBase {
@@ -180,13 +181,14 @@ export class Sentinel extends PlayerBase {
         dir.y = 0; dir.normalize();
         
         this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
+        ConstellationEngine.onSkillUsed(key);
 
         if(key === 'space') { 
             // --- RAYON STELLAIRE ---
             this.isCasting = true; 
             createDamageText("CHARGE...", this.position, '#ffffaa');
             
-            const chargeTime = ConstellationEngine.getPassiveRank('solarBeamHaste') ? 750 : 1000;
+            const chargeTime = 1000;
             const startTime = Date.now();
             this.animState.rightArmOverride = true;
 
@@ -233,15 +235,20 @@ export class Sentinel extends PlayerBase {
                 requestAnimationFrame(slamAnim);
             };
             slamAnim();
-            createSkillVisual('vortex', this.position, 10, 0xf1c40f);
+            const fieldRadius = ConstellationEngine.getLightFieldRadius();
+            const healTick = ConstellationEngine.getLightFieldHealTick();
+            ConstellationEngine.registerSolarLightField(this.position.clone(), 5);
+            createSkillVisual('vortex', this.position, fieldRadius, 0xf1c40f);
             const zonePos = this.position.clone();
-            const zone = new THREE.Mesh(new THREE.RingGeometry(9.5, 10, 32), new THREE.MeshBasicMaterial({color:0xf1c40f, side:THREE.DoubleSide, transparent:true, opacity:0.5}));
+            const ringInner = Math.max(0.5, fieldRadius - 0.5);
+            const zone = new THREE.Mesh(new THREE.RingGeometry(ringInner, fieldRadius, 32), new THREE.MeshBasicMaterial({color:0xf1c40f, side:THREE.DoubleSide, transparent:true, opacity:0.5}));
             zone.rotation.x = -Math.PI/2; zone.position.copy(zonePos).add(new THREE.Vector3(0, 0.1, 0));
             this.addLocalVisual(zone, 5.0, (m, t) => { 
                 m.rotation.z -= 0.02; m.scale.setScalar(1 + Math.sin(t*5)*0.05);
                 if (Math.floor(t * 10) !== Math.floor((t + 0.016) * 10)) { 
-                     Globals.enemies.forEach(e => { if(e.position.distanceTo(zonePos) < 10) e.takeDamage(STATE.stats.atk * 0.1); });
-                     if(this.position.distanceTo(zonePos) < 10) this.heal(1);
+                     const fieldDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.1, { skill: true, skillKey: 'shift' });
+                     Globals.enemies.forEach(e => { if(e.position.distanceTo(zonePos) < fieldRadius) e.takeDamage(fieldDmg); });
+                     if(this.position.distanceTo(zonePos) < fieldRadius) this.heal(healTick);
                 }
             });
 
@@ -297,35 +304,51 @@ export class Sentinel extends PlayerBase {
         };
         recoilAnim();
 
-        // Rayon
+        const beamMods = ConstellationEngine.getStellarBeamKeystoneMods();
+        const hitRadius = 4.0 * beamMods.sizeMult;
+        const beamThickness = 0.6 * beamMods.sizeMult;
+        const beamDmg = ConstellationEngine.calcStellarBeamDamage(this);
+
         const startPos = this.position.clone().add(new THREE.Vector3(0, 1.5, 0));
         const dist = startPos.distanceTo(targetPos);
         const midPos = startPos.clone().lerp(targetPos, 0.5);
 
         const beam = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.6, 0.6, dist, 8), 
+            new THREE.CylinderGeometry(beamThickness, beamThickness, dist, 8), 
             new THREE.MeshBasicMaterial({color:0xffffaa, emissive:0xffffff})
         );
         beam.position.copy(midPos);
         beam.lookAt(targetPos);
         beam.rotateX(Math.PI / 2); 
         
-        this.addLocalVisual(beam, 0.4, (m, t) => { 
-            const p = t/0.4; m.scale.x = m.scale.z = p * 1.5; m.material.opacity = p;
+        const beamGrow = beamMods.sizeMult > 1 ? 1.75 : 1.5;
+        const beamDuration = beamMods.sizeMult > 1 ? 0.5 : 0.4;
+        this.addLocalVisual(beam, beamDuration, (m, t) => { 
+            const p = t / beamDuration;
+            m.scale.x = m.scale.z = p * beamGrow;
+            m.material.opacity = p;
         });
 
-        createSkillVisual('shockwave', targetPos, 4.0, 0xffffaa); 
-        const blastRing = new THREE.Mesh(new THREE.RingGeometry(0.5, 4.0, 32), new THREE.MeshBasicMaterial({color: 0xffffaa, transparent: true, opacity: 0.8, side: THREE.DoubleSide}));
+        createSkillVisual('shockwave', targetPos, hitRadius, 0xffffaa); 
+        const blastRing = new THREE.Mesh(
+            new THREE.RingGeometry(0.5 * beamMods.sizeMult, hitRadius, 32),
+            new THREE.MeshBasicMaterial({color: 0xffffaa, transparent: true, opacity: 0.8, side: THREE.DoubleSide})
+        );
         blastRing.rotation.x = -Math.PI / 2;
         blastRing.position.copy(targetPos).add(new THREE.Vector3(0, 0.1, 0));
-        this.addLocalVisual(blastRing, 0.5, (m, t) => { m.scale.setScalar(1 + (0.5 - t) * 4); m.material.opacity = t * 2; });
+        this.addLocalVisual(blastRing, 0.5, (m, t) => { m.scale.setScalar(1 + (0.5 - t) * 4 * beamMods.sizeMult); m.material.opacity = t * 2; });
+        if (beamMods.sizeMult > 1) {
+            createDamageText('SUPERNOVA', targetPos, '#ffcc00');
+            spawnParticles(targetPos, 0xffaa00, 28);
+        }
         
         Globals.enemies.forEach(e => {
-            if(e.position.distanceTo(targetPos) < 4.0) { 
-                e.takeDamage(STATE.stats.atk * 3.0); 
-                spawnParticles(e.position, 0xf1c40f, 15);
-                e.pushBack(targetPos, 5); 
+            if(e.position.distanceTo(targetPos) < hitRadius) { 
+                e.takeDamage(beamDmg); 
+                spawnParticles(e.position, 0xf1c40f, beamMods.sizeMult > 1 ? 22 : 15);
+                e.pushBack(targetPos, 5 * beamMods.sizeMult); 
             }
         });
+        PassiveKeystoneHooks.onSentinelBeamFired(this);
     }
 }

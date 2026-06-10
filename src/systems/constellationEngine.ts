@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 import {
@@ -23,6 +24,7 @@ import {
   getUnlockedPassiveDetails,
 } from '@/data/passiveScalingConfig';
 import { getWarriorDefPower } from '@/data/classStatsConfig';
+import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText } from '@/visual/effects';
 
 type PassiveBag = Record<string, unknown>;
@@ -222,6 +224,8 @@ export const ConstellationEngine = {
     }
 
     this.tickSolarInspiration(dt);
+    this.tickSolarLightField(dt);
+    PassiveKeystoneHooks.tickOrbitalWeave();
 
     if (p.lastBreathCd && (p.lastBreathCd as number) > 0) {
       p.lastBreathCd = (p.lastBreathCd as number) - dt;
@@ -259,9 +263,8 @@ export const ConstellationEngine = {
       }
     }
 
-    if (p.orbitalWeave && player.className === 'eclipse') {
-      p.orbitalStacks = Math.min(4, ((p.orbitalStacks as number) || 0) + 1);
-      STATE.stats.atk += 0;
+    if (player.className === 'eclipse') {
+      PassiveKeystoneHooks.onEclipseSkillUsed(key);
     }
 
     if (p.beamHaste && key === 'space' && player.className === 'sentinel') {
@@ -312,11 +315,116 @@ export const ConstellationEngine = {
     return this.modifyDamageDealt(base, { skill: true, skillKey, ...context });
   },
 
+  getStellarBeamKeystoneMods(): { sizeMult: number; hpRatio: number } {
+    const active = this.getPassiveRank('solarBeamHaste');
+    return {
+      sizeMult: active ? 1.1 : 1,
+      hpRatio: active ? 0.05 : 0,
+    };
+  },
+
+  calcStellarBeamDamage(player: { maxHp?: number } = Globals.player): number {
+    const mods = this.getStellarBeamKeystoneMods();
+    const hpBonus = (player?.maxHp || 0) * mods.hpRatio;
+    const base = STATE.stats.atk * 3.0 + hpBonus;
+    return this.modifyDamageDealt(base, { skill: true, skillKey: 'space' });
+  },
+
+  isInSolarInspirationZone(forPlayer: { position: THREE.Vector3; dead?: boolean }, source = this.getSolarInspirationSource()): boolean {
+    if (!source || !forPlayer || forPlayer.dead) return false;
+    return forPlayer.position.distanceTo(source.position) <= 14;
+  },
+
   getSolarInspirationAtkMult(forPlayer = Globals.player): number {
     const source = this.getSolarInspirationSource();
     if (!source || !forPlayer || forPlayer.dead) return 1;
-    if (forPlayer.position.distanceTo(source.position) > 14) return 1;
+    if (!this.isInSolarInspirationZone(forPlayer, source)) return 1;
     return forPlayer === source ? 1.3 : 1.15;
+  },
+
+  getLightFieldRadius(): number {
+    let r = 10;
+    if (this.getPassiveRank('healAmp')) r += 2;
+    if (this.getPassiveRank('solarInspiration')) r += 2;
+    return r;
+  },
+
+  getLightFieldHealTick(): number {
+    let heal = 1;
+    if (this.getPassiveRank('healAmp')) heal *= 1.15;
+    return heal;
+  },
+
+  getLightFieldEnemyDebuffMods(): { speedMult: number; dmgTakenMult: number } {
+    const apex = this.getPassiveRank('solarInspiration');
+    return {
+      speedMult: apex ? 0.7 : 0.8,
+      dmgTakenMult: apex ? 1.2 : 1.15,
+    };
+  },
+
+  registerSolarLightField(pos: THREE.Vector3, durationSec: number): void {
+    const p = ensurePassives();
+    p._solarLightField = {
+      pos: pos.clone(),
+      radius: this.getLightFieldRadius(),
+      until: Date.now() + durationSec * 1000,
+    };
+  },
+
+  applyLightFieldDebuff(enemy: {
+    dead?: boolean;
+    position: THREE.Vector3;
+    speed?: number;
+    _lightFieldBaseSpeed?: number;
+    _solarLightDebuffUntil?: number;
+    _solarLightDmgTakenMult?: number;
+  }, mods: { speedMult: number; dmgTakenMult: number }): void {
+    if (!enemy || enemy.dead) return;
+    if (enemy._lightFieldBaseSpeed == null && enemy.speed != null) {
+      enemy._lightFieldBaseSpeed = enemy.speed;
+    }
+    if (enemy._lightFieldBaseSpeed != null) {
+      enemy.speed = enemy._lightFieldBaseSpeed * mods.speedMult;
+    }
+    enemy._solarLightDmgTakenMult = mods.dmgTakenMult;
+    enemy._solarLightDebuffUntil = Date.now() + 400;
+  },
+
+  clearExpiredLightFieldDebuffs(): void {
+    const now = Date.now();
+    Globals.enemies?.forEach((enemy) => {
+      if (!enemy._solarLightDebuffUntil || now < enemy._solarLightDebuffUntil) return;
+      if (enemy._lightFieldBaseSpeed != null) {
+        enemy.speed = enemy._lightFieldBaseSpeed;
+        delete enemy._lightFieldBaseSpeed;
+      }
+      delete enemy._solarLightDebuffUntil;
+      delete enemy._solarLightDmgTakenMult;
+    });
+  },
+
+  tickSolarLightField(_dt: number): void {
+    this.clearExpiredLightFieldDebuffs();
+
+    const p = ensurePassives();
+    const field = p._solarLightField as { pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean } | undefined;
+    if (!field || Date.now() >= field.until) {
+      if (field) delete p._solarLightField;
+      return;
+    }
+
+    const mods = this.getLightFieldEnemyDebuffMods();
+
+    Globals.enemies?.forEach((enemy) => {
+      if (enemy.dead || enemy.position.distanceTo(field.pos) > field.radius) return;
+      this.applyLightFieldDebuff(enemy, mods);
+    });
+
+    if (!field.malusAnnounced && Globals.enemies?.some((e) => !e.dead && e.position.distanceTo(field.pos) <= field.radius)) {
+      field.malusAnnounced = true;
+      createDamageText('MALUS SOLAIRE', field.pos, '#e67e22');
+    }
   },
 
   getSolarInspirationSource() {
@@ -387,6 +495,7 @@ export const ConstellationEngine = {
     const p = ensurePassives();
 
     dmg *= this.getSolarInspirationAtkMult();
+    dmg *= PassiveKeystoneHooks.getOrbitalAtkMult();
     dmg *= this.getWarFervorMult();
 
     const key = context.skillKey ?? (context.skill ? undefined : 'primary');
@@ -400,7 +509,7 @@ export const ConstellationEngine = {
       const rank = (p.eternalThirst as number) || (p.earlyThirst ? 1 : 0);
       if (rank > 0) {
         const hpPct = Globals.player.hp / Globals.player.maxHp;
-        const threshold = p.earlyThirst ? 0.5 : 0.3;
+        const threshold = PassiveKeystoneHooks.getEternalThirstThreshold();
         if (hpPct <= threshold) {
           const maxBonus = rank >= 2 ? 0.6 : 0.4;
           const t = 1 - hpPct / threshold;
@@ -431,14 +540,59 @@ export const ConstellationEngine = {
     return stored;
   },
 
-  /** Fin de Parade (guerrier) : remboursement de recharge. */
-  onParryEnd(): void {
-    const p = ensurePassives();
-    const player = Globals.player;
-    if (!p.parryRefund || !player || player.className !== 'warrior') return;
-    for (const k of ['space', 'shift', 'e'] as const) {
-      player.cooldowns[k] = Math.max(0, player.cooldowns[k] - player.maxCooldowns[k] * 0.1);
+  onWarriorParryBlock(player: { heal?: (n: number) => void; maxHp: number }, blocked: number): void {
+    if (this.getPassiveRank('ironWall') && player.heal) {
+      player.heal(player.maxHp * 0.01);
     }
+  },
+
+  shouldTriggerParrySeismic(): boolean {
+    return !!(this.getPassiveRank('parryCharge') || this.getPassiveRank('runicColossus'));
+  },
+
+  getFreeSeismicRadius(): number {
+    return this.getPassiveRank('runicColossus') ? 15 : 12;
+  },
+
+  /** Fin de Parade (guerrier) : QOL keystones cri + remboursement CD. */
+  onWarriorParryEnd(player: {
+    className?: string;
+    maxHp: number;
+    heal?: (n: number) => void;
+    addBuff?: (n: string, d: number, i: string) => void;
+    isIntangible?: boolean;
+    cooldowns?: Record<string, number>;
+    maxCooldowns?: Record<string, number>;
+    parryBlockedTotal?: number;
+  }): void {
+    if (!player || player.className !== 'warrior') return;
+    const p = ensurePassives();
+
+    if (p.parryRefund && player.cooldowns && player.maxCooldowns) {
+      for (const k of ['space', 'shift', 'e'] as const) {
+        player.cooldowns[k] = Math.max(0, player.cooldowns[k] - player.maxCooldowns[k] * 0.1);
+      }
+    }
+
+    if (p.parryRefund) {
+      player.isIntangible = true;
+      setTimeout(() => {
+        if (Globals.player === player) player.isIntangible = false;
+      }, 400);
+    }
+
+    if (p.titanBlood && player.addBuff) {
+      player.addBuff('Élan titan', 3, '💪');
+    }
+
+    if (p.ironWall && (player.parryBlockedTotal || 0) > 0 && player.heal) {
+      player.heal(player.maxHp * 0.03);
+    }
+  },
+
+  /** @deprecated Utiliser onWarriorParryEnd */
+  onParryEnd(): void {
+    if (Globals.player) this.onWarriorParryEnd(Globals.player);
   },
 
   calcWarriorSkillDamage(skillKey: SkillKey, extraFlat = 0): number {

@@ -36,7 +36,7 @@ export const CONFIG = {
         sentinel: {
             passive: { name: "Aura Solaire", desc: "Présence divine qui inspire les alliés." },
             space: { name: "Rayon Stellaire", desc: "Charge (1s) puis tire un laser dévastateur." },
-            shift: { name: "Champ de Lumière", desc: "Plante la lance : Zone de dégâts et de soin." },
+            shift: { name: "Champ de Lumière", desc: "Plante la lance : dégâts continus, soin personnel et malus ennemis (lenteur + vulnérabilité)." },
             e: { name: "Égide Divine", desc: "Moulinet sacré : Soin important + Bouclier." }
         },
         blade: {
