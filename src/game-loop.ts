@@ -24,7 +24,7 @@ import { WorldEvents } from '@/gameplay/events';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { BuffBar } from '@/ui/buffBar';
 import { SafeZoneHub } from '@/visual/ui/safeZoneHub';
-import { createThemedWorldMap } from '@/gameplay/world/worldMap';
+import { createThemedWorldMap, spawnSafeZoneNPCs } from '@/gameplay/world/worldMap';
 import { isInSafeZone, isNoMobZone } from '@/gameplay/world/worldZones';
 import * as THREE from 'three';
 
@@ -87,6 +87,7 @@ window.Debug = {
 
 createBoundaries();
 createThemedWorldMap();
+spawnSafeZoneNPCs();
 createAltars();
 createDecorations();
 createAnimatedSky();
@@ -167,11 +168,10 @@ document.addEventListener(
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') {
-    if (SafeZoneHub.canOpenServices()) {
-      SafeZoneHub.openHub();
-      return;
-    }
     if (!WorldEvents.tryInteract()) GameLogic.tryInteractLocal();
+  }
+  if (e.code === 'KeyB') {
+    SafeZoneHub.startRecallChanneling();
   }
   if (Globals.player && !Globals.player.dead) {
     if (e.code === 'Space') Globals.player.useSkill('space');

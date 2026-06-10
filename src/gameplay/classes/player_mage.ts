@@ -485,8 +485,16 @@ export class Mage extends PlayerBase {
                 const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
                 const intersection = new THREE.Vector3();
                 STATE.raycaster.ray.intersectPlane(plane, intersection);
-                const blinkDir = intersection.clone().sub(this.position).normalize();
-                this.position.add(blinkDir.multiplyScalar(8)); 
+                const blinkDir = intersection.clone().sub(this.position);
+                blinkDir.y = 0;
+                blinkDir.normalize();
+                this.position.add(blinkDir.multiplyScalar(8));
+                
+                // Snap height to the new ground level at this coordinate
+                const dx = this.position.x - 90;
+                const dz = this.position.z - 90;
+                const targetDist = Math.hypot(dx, dz);
+                this.position.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : 0.0;
             }
 
             // Animation sur le mesh (Scale 0 -> 1)
