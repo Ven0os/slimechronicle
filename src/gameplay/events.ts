@@ -18,6 +18,7 @@ const EVENT_LIFETIME = 60;
 
 export const WorldEvents = {
     interactables: [],
+    npcs: [],
     isActive: false,
     pendingTimer: 0,
 
@@ -69,6 +70,9 @@ export const WorldEvents = {
     },
 
     update: function(dt) {
+        this.npcs.forEach(obj => {
+            if (obj.userData.update) obj.userData.update(dt);
+        });
         this.interactables.forEach(obj => {
             if (obj.userData.update) obj.userData.update(dt);
         });
@@ -99,9 +103,23 @@ export const WorldEvents = {
 
     tryInteract: function() {
         if (!Globals.player) return false;
+        
+        // D'abord tester l'interaction avec les PNJ
+        const npc = this.npcs.find(obj => {
+            if (!obj.userData || !obj.userData.interact) return false;
+            const dist = obj.position.distanceTo(Globals.player.position);
+            const radius = obj.userData.interactionRadius !== undefined ? obj.userData.interactionRadius : 6.0;
+            return dist < radius;
+        });
+
+        if (npc) {
+            npc.userData.interact();
+            return true;
+        }
+
         const nearby = this.interactables.find(obj => {
             const dist = obj.position.distanceTo(Globals.player.position);
-            const radius = obj.userData.interactionRadius || 4.0;
+            const radius = obj.userData.interactionRadius !== undefined ? obj.userData.interactionRadius : 6.0;
             return dist < radius;
         });
 

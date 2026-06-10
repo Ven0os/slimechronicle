@@ -30,6 +30,7 @@ export const EventUtils = {
     // Création du label UI flottant
     createLabel: function(titleTxt, subTxt, color) {
         const div = document.createElement('div');
+        div.className = 'floating-game-label';
         div.style.position = 'absolute';
         div.style.pointerEvents = 'none';
         div.style.zIndex = '1000';
@@ -56,8 +57,14 @@ export const EventUtils = {
             label.style.top = y + 'px';
             label.style.transform = 'translate(-50%, -50%)';
             
-            // Afficher seulement si devant la caméra et à distance raisonnable
-            const isVisible = (vec.z < 1 && obj.position.distanceTo(Globals.camera.position) < distMax);
+            // Afficher seulement si devant la caméra, à distance du JOUEUR raisonnable, et aucun menu n'est ouvert
+            const isMenuOpen = !!(window.UI && typeof window.UI.isMenuOpen === 'function' && window.UI.isMenuOpen());
+            const playerDist = Globals.player ? obj.position.distanceTo(Globals.player.position) : 999;
+            const maxInteractDist = obj.userData && obj.userData.interactionRadius !== undefined 
+                ? obj.userData.interactionRadius 
+                : 6.0;
+            
+            const isVisible = (vec.z < 1 && playerDist < maxInteractDist) && !isMenuOpen;
             label.style.display = isVisible ? 'block' : 'none';
         }
     },

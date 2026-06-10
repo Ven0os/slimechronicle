@@ -8,7 +8,7 @@ import { createDamageText, spawnParticles } from '../visual/effects';
 import { Network } from '../multiplayer/network';
 import { NetSkills } from '../multiplayer/net_skills';
 import { ConstellationEngine } from '@/systems/constellationEngine';
-import { isInSafeZone, pushOutOfSafeZone } from './world/worldZones';
+import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt } from './world/worldZones';
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
 import { BuffBar } from '@/ui/buffBar'; 
 
@@ -26,6 +26,7 @@ export class PlayerBase extends THREE.Group {
         this.speed = 15.0; 
         this.dead = false;
         this.radius = 0.6; 
+        this.verticalVelocity = 0; 
         
         this.cooldowns = { space: 0, shift: 0, e: 0 };
         this.maxCooldowns = { space: 5, shift: 8, e: 12 }; 
@@ -264,7 +265,41 @@ export class PlayerBase extends THREE.Group {
             }
         }
 
-        if (this.position.y < 0) { this.position.y = 0; if(this.knockback.y < 0) this.knockback.y = 0; }
+        // Gravity & vertical movement physics update (supporting spawn platform cliff at y = 4.0)
+        const groundLevel = getGroundLevelAt(this.position);
+        this.groundLevel = groundLevel;
+
+        const isRecallChanneling = window.SafeZoneHub && window.SafeZoneHub.channelingTime > 0;
+
+        if (!isRecallChanneling) {
+            if (this.position.y > groundLevel || (this.verticalVelocity && this.verticalVelocity !== 0)) {
+                this.verticalVelocity = (this.verticalVelocity || 0) - 25 * dt;
+                this.position.y += this.verticalVelocity * dt;
+            } else {
+                this.verticalVelocity = 0;
+                this.position.y = groundLevel;
+            }
+            if (this.position.y < groundLevel) {
+                this.position.y = groundLevel;
+                this.verticalVelocity = 0;
+                if(this.knockback.y < 0) this.knockback.y = 0;
+                
+                // Effets de slam d'atterrissage après recall
+                if (this.justRecalled) {
+                    this.justRecalled = false;
+                    AudioSys.play('king_land', 0.85);
+                    spawnParticles(this.position.clone(), 0x00ffff, 30);
+                    // Secousse de caméra légère
+                    if (Globals.camera) {
+                        const origY = Globals.camera.position.y;
+                        Globals.camera.position.y -= 0.6;
+                        setTimeout(() => Globals.camera.position.y = origY, 150);
+                    }
+                }
+            }
+        } else {
+            this.verticalVelocity = 0;
+        }
 
         this.updateCooldowns(dt);
         
@@ -440,7 +475,30 @@ export class PlayerBase extends THREE.Group {
         if (!this.isLocalPlayer()) return;
 
         if (STATE.leftSafeZone) {
-            pushOutOfSafeZone(this.position);
+            const dx = this.position.x - 90;
+            const dz = this.position.z - 90;
+            const dist = Math.hypot(dx, dz);
+            if (dist < 12.1) {
+                const pushDir = new THREE.Vector3(dx, 0, dz);
+                if (pushDir.lengthSq() < 0.001) {
+                    pushDir.set(0, 0, -1);
+                } else {
+                    pushDir.normalize();
+                }
+                // Activer un fort recul
+                this.knockback.copy(pushDir.clone().multiplyScalar(25.0));
+                this.position.x = 90 + pushDir.x * 12.2;
+                this.position.z = 90 + pushDir.z * 12.2;
+                
+                // Léger pop vertical si le joueur est au sol pour marquer l'impact physique
+                if (this.position.y < 1.0) {
+                    this.verticalVelocity = 5.0;
+                }
+                
+                // Effets visuels et sonores de recul
+                spawnParticles(this.position.clone(), 0x00ffff, 8);
+                AudioSys.play('water_slash', 0.5);
+            }
         }
 
         const mapSize = 98; 
@@ -493,6 +551,12 @@ export class PlayerBase extends THREE.Group {
 
         if (amount > 0) {
             this.hp -= amount;
+
+            // Annuler le Rappel si le joueur prend des dégâts
+            if (this.isLocalPlayer() && window.SafeZoneHub) {
+                window.SafeZoneHub.cancelRecallChanneling();
+            }
+
             createDamageText("-" + Math.floor(amount), this.position, '#ff0000');
             this.flashColor(this.bodyGroup, 0xff0000);
             AudioSys.sfx.hit();
@@ -545,9 +609,10 @@ export class PlayerBase extends THREE.Group {
     respawn() {
         this.dead = false; this.visible = true; this.hp = this.maxHp;
         this.buffs = []; this.debuffs = []; this.cooldowns = { space: 0, shift: 0, e: 0 };
-        this.position.set(0, 0, 0);
+        this.position.set(90, 4.0, 90);
         STATE.leftSafeZone = false;
         this.isStunned = false; 
+        this.verticalVelocity = 0;
         if(this.stunVisualGroup) this.stunVisualGroup.visible = false;
         
         if (this.isLocalPlayer()) {
@@ -572,7 +637,12 @@ export class PlayerBase extends THREE.Group {
         if (!this.debuffs) this.debuffs = [];
         this.debuffs = this.debuffs.filter(d => d.name !== name);
         this.debuffs.push({ name, timer: duration, maxTimer: duration, icon, desc });
-        if (this.isLocalPlayer()) this.updateBuffUI();
+        if (this.isLocalPlayer()) {
+            this.updateBuffUI();
+            if (window.SafeZoneHub) {
+                window.SafeZoneHub.cancelRecallChanneling();
+            }
+        }
     }
 
     updateDebuffs(dt) {

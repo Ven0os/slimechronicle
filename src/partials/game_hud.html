@@ -45,9 +45,28 @@
     </div>
 </div>
 
-<div id="safe-hub-hint" class="safe-hub-hint">F — Accéder au menu</div>
+<!-- RECALL HUD (Bottom-Right Popup) -->
+<div id="recall-hud" class="recall-hud pointer-events-auto" title="Rappel — Retourner à la base (Touche B)">
+    <div class="recall-icon-wrapper">
+        <i class="fas fa-undo recall-icon"></i>
+        <div class="recall-key-hint">B</div>
+    </div>
+    <div class="recall-text-block">
+        <div class="recall-title">RAPPEL</div>
+        <div class="recall-subtitle">Retourner à la base</div>
+    </div>
+</div>
 
-<button id="recall-btn" class="recall-btn pointer-events-auto" type="button" title="Retour à la zone sûre">Rappel — Base</button>
+<button id="recall-btn" class="recall-btn pointer-events-auto" type="button" style="display: none;" title="Retour à la zone sûre">Rappel — Base</button>
+
+<!-- Barre de canalisation du Rappel -->
+<div id="channeling-bar-container" class="channeling-bar-container" style="display: none;">
+    <div class="channeling-bar-label">RAPPEL EN COURS... (Ne bougez pas)</div>
+    <div class="channeling-bar-bg">
+        <div id="channeling-bar-fill" class="channeling-bar-fill" style="width: 0%;"></div>
+    </div>
+    <div id="channeling-bar-timer" class="channeling-bar-timer">5.0s</div>
+</div>
 
 <div id="passive-hud" class="pointer-events-auto passive-hud-compact">
     <div class="passive-hud-label">PASSIF STELLAIRE</div>

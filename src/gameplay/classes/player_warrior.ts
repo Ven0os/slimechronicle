@@ -247,12 +247,20 @@ export class Warrior extends PlayerBase {
                 const intersection = new THREE.Vector3();
                 STATE.raycaster.ray.intersectPlane(plane, intersection);
                 const dist = Math.min(this.position.distanceTo(intersection), 25);
-                const jumpDir = intersection.clone().sub(this.position).normalize();
+                const jumpDir = intersection.clone().sub(this.position);
+                jumpDir.y = 0;
+                jumpDir.normalize();
                 targetPos = this.position.clone().add(jumpDir.multiplyScalar(dist));
             } else {
                 // Remote: Saut vers l'avant 20m
                 targetPos = this.position.clone().add(dir.clone().multiplyScalar(20.0));
+                targetPos.y = this.position.y;
             }
+            // Mettre à jour Y de la cible selon la zone
+            const dx = targetPos.x - 90;
+            const dz = targetPos.z - 90;
+            const targetDist = Math.hypot(dx, dz);
+            targetPos.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : 0.0;
             
             const startPos = this.position.clone();
             const jumpDur = 1000; const start = Date.now();

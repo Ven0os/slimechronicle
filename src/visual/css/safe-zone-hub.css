@@ -218,3 +218,57 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.65; }
 }
+
+.channeling-bar-container {
+  position: absolute;
+  bottom: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  font-family: 'Cinzel', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  letter-spacing: 1.5px;
+}
+
+.channeling-bar-label {
+  display: none !important;
+}
+
+.channeling-bar-bg {
+  display: none !important;
+}
+
+.channeling-bar-timer {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 0 5px #000000;
+  margin-top: 0;
+}
+
+/* Cache les UI in-game (labels flottants, Rappel HUD) lorsque les menus UI bloquants sont ouverts */
+body:has(#skill-ui-wrapper.active) .floating-game-label,
+body:has(#screen-forge.active) .floating-game-label,
+body:has(#safe-hub-panel.active) .floating-game-label,
+body:has(#prismatic-modal.active) .floating-game-label,
+body:has(#inventory-screen.active) .floating-game-label,
+body:has(#pause-menu.active) .floating-game-label,
+body:has(#inventory-screen[style*="display: block"]) .floating-game-label,
+body:has(#inventory-screen[style*="display: flex"]) .floating-game-label,
+body:has(#pause-menu[style*="display: block"]) .floating-game-label,
+body:has(#pause-menu[style*="display: flex"]) .floating-game-label,
+body:has(#skill-ui-wrapper.active) #recall-hud,
+body:has(#screen-forge.active) #recall-hud,
+body:has(#safe-hub-panel.active) #recall-hud,
+body:has(#prismatic-modal.active) #recall-hud,
+body:has(#inventory-screen.active) #recall-hud,
+body:has(#pause-menu.active) #recall-hud,
+body:has(#inventory-screen[style*="display: block"]) #recall-hud,
+body:has(#inventory-screen[style*="display: flex"]) #recall-hud,
+body:has(#pause-menu[style*="display: block"]) #recall-hud,
+body:has(#pause-menu[style*="display: flex"]) #recall-hud {
+  display: none !important;
+}
