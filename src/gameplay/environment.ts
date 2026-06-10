@@ -342,13 +342,15 @@ const raycaster = new THREE.Raycaster();
 const fadedObjects = []; 
 
 export function updateOcclusion(camera, player) {
-    // Restauration
+    // Restauration des matériaux d'origine
     for (const obj of fadedObjects) {
         obj.traverse(child => {
             if (child.isMesh && child.material) {
-                const orig = child.material.userData.origOpacity !== undefined ? child.material.userData.origOpacity : 1.0;
-                child.material.opacity = orig;
-                child.material.needsUpdate = true;
+                const origMat = child.userData.origMaterial;
+                if (origMat) {
+                    child.material = origMat;
+                    delete child.userData.origMaterial;
+                }
             }
         });
     }
@@ -373,8 +375,11 @@ export function updateOcclusion(camera, player) {
             fadedObjects.push(target);
             target.traverse(child => {
                 if (child.isMesh && child.material) {
-                    if (child.material.userData.origOpacity === undefined) {
-                        child.material.userData.origOpacity = child.material.opacity;
+                    if (child.userData.origMaterial === undefined) {
+                        // Sauvegarder la référence du matériel d'origine sur le Mesh
+                        child.userData.origMaterial = child.material;
+                        // Cloner le matériel pour modifier uniquement l'opacité de cette instance
+                        child.material = child.material.clone();
                     }
                     child.material.opacity = 0.25; 
                     child.material.transparent = true; 

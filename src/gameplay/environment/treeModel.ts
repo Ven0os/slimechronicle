@@ -1,7 +1,32 @@
 // @ts-nocheck
 import * as THREE from 'three';
 
-export function createTreeModel(scale = 1, type = 'pine') {
+// Cache des géométries et des matériels
+const geometryCache = {};
+const materialCache = {};
+
+function getGeometry(key, creator) {
+    if (!geometryCache[key]) {
+        geometryCache[key] = creator();
+    }
+    return geometryCache[key];
+}
+
+function getMaterial(color, roughness, isLeaves = false) {
+    const key = `${color}_${roughness}_${isLeaves}`;
+    if (!materialCache[key]) {
+        materialCache[key] = new THREE.MeshStandardMaterial({
+            color: color,
+            roughness: roughness,
+            flatShading: true,
+            transparent: true,
+            opacity: 1.0
+        });
+    }
+    return materialCache[key];
+}
+
+export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
     const group = new THREE.Group();
     group.userData.isEnvironment = true; 
     
@@ -13,63 +38,62 @@ export function createTreeModel(scale = 1, type = 'pine') {
     // --- VARIANTES ---
     if (type === 'pine') {
         // === SAPIN (Classique) ===
-        const trunkGeo = new THREE.CylinderGeometry(0.2 * scale, 0.4 * scale, 1.5 * scale, 7);
-        const trunkMat = new THREE.MeshStandardMaterial({ 
-            color: 0x5D4037, roughness: 1.0, flatShading: true, transparent: true, opacity: 1.0 
-        });
+        const trunkGeo = getGeometry('pine_trunk', () => new THREE.CylinderGeometry(0.2, 0.4, 1.5, 7));
+        const trunkMat = getMaterial(0x5D4037, 1.0);
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.y = (1.5 * scale) / 2;
+        trunk.position.y = 1.5 / 2;
         trunk.castShadow = true; trunk.receiveShadow = true;
         group.add(trunk);
 
-        const leavesMat = new THREE.MeshStandardMaterial({ 
-            color: 0x2E7D32, roughness: 0.8, flatShading: true, transparent: true, opacity: 1.0 
-        });
+        const leavesColor = foliageCol || 0x2E7D32;
+        const leavesMat = getMaterial(leavesColor, 0.8, true);
 
         // 3 Étages de feuilles
-        const l1 = new THREE.Mesh(new THREE.ConeGeometry(1.3 * scale, 1.5 * scale, 7), leavesMat);
-        l1.position.y = 1.3 * scale; l1.castShadow = true; l1.receiveShadow = true;
+        const l1Geo = getGeometry('pine_l1', () => new THREE.ConeGeometry(1.3, 1.5, 7));
+        const l1 = new THREE.Mesh(l1Geo, leavesMat);
+        l1.position.y = 1.3; l1.castShadow = true; l1.receiveShadow = true;
         l1.userData.isLeaves = true; // Tag pour animation
         group.add(l1);
 
-        const l2 = new THREE.Mesh(new THREE.ConeGeometry(1.0 * scale, 1.2 * scale, 7), leavesMat);
-        l2.position.y = 2.2 * scale; l2.castShadow = true; l2.receiveShadow = true;
+        const l2Geo = getGeometry('pine_l2', () => new THREE.ConeGeometry(1.0, 1.2, 7));
+        const l2 = new THREE.Mesh(l2Geo, leavesMat);
+        l2.position.y = 2.2; l2.castShadow = true; l2.receiveShadow = true;
         l2.userData.isLeaves = true;
         group.add(l2);
 
-        const l3 = new THREE.Mesh(new THREE.ConeGeometry(0.7 * scale, 1.0 * scale, 7), leavesMat);
-        l3.position.y = 3.0 * scale; l3.castShadow = true; l3.receiveShadow = true;
+        const l3Geo = getGeometry('pine_l3', () => new THREE.ConeGeometry(0.7, 1.0, 7));
+        const l3 = new THREE.Mesh(l3Geo, leavesMat);
+        l3.position.y = 3.0; l3.castShadow = true; l3.receiveShadow = true;
         l3.userData.isLeaves = true;
         group.add(l3);
 
     } else if (type === 'oak') {
         // === CHÊNE (Tronc court, Copa ronde) ===
-        const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.5 * scale, 1.2 * scale, 8);
-        const trunkMat = new THREE.MeshStandardMaterial({ 
-            color: 0x4E342E, roughness: 1.0, flatShading: true, transparent: true, opacity: 1.0 
-        });
+        const trunkGeo = getGeometry('oak_trunk', () => new THREE.CylinderGeometry(0.3, 0.5, 1.2, 8));
+        const trunkMat = getMaterial(0x4E342E, 1.0);
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.y = (1.2 * scale) / 2;
+        trunk.position.y = 1.2 / 2;
         trunk.castShadow = true; trunk.receiveShadow = true;
         group.add(trunk);
 
-        // Couleur de feuilles un peu plus claire/jaune
-        const leavesMat = new THREE.MeshStandardMaterial({ 
-            color: 0x43A047, roughness: 0.9, flatShading: true, transparent: true, opacity: 1.0 
-        });
+        // Couleur de feuilles
+        const leavesColor = foliageCol || 0x43A047;
+        const leavesMat = getMaterial(leavesColor, 0.9, true);
         
         // Un gros icosaèdre principal + quelques petits
-        const main = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2 * scale, 1), leavesMat);
-        main.position.y = 1.8 * scale;
+        const mainGeo = getGeometry('oak_main', () => new THREE.IcosahedronGeometry(1.2, 1));
+        const main = new THREE.Mesh(mainGeo, leavesMat);
+        main.position.y = 1.8;
         main.castShadow = true; main.receiveShadow = true;
         main.userData.isLeaves = true;
         group.add(main);
         
         // Petits clusters
+        const subGeo = getGeometry('oak_sub', () => new THREE.IcosahedronGeometry(0.6, 0));
         for(let i=0; i<4; i++) {
-            const sub = new THREE.Mesh(new THREE.IcosahedronGeometry(0.6 * scale, 0), leavesMat);
+            const sub = new THREE.Mesh(subGeo, leavesMat);
             const ang = (Math.PI/2)*i + Math.random();
-            sub.position.set(Math.cos(ang)*0.8*scale, 1.6*scale + Math.random()*0.5*scale, Math.sin(ang)*0.8*scale);
+            sub.position.set(Math.cos(ang)*0.8, 1.6 + Math.random()*0.5, Math.sin(ang)*0.8);
             sub.castShadow = true; sub.receiveShadow = true;
             sub.userData.isLeaves = true;
             group.add(sub);
@@ -77,27 +101,30 @@ export function createTreeModel(scale = 1, type = 'pine') {
 
     } else if (type === 'dead') {
         // === ARBRE MORT (Juste du bois tordu) ===
-        const woodMat = new THREE.MeshStandardMaterial({ 
-            color: 0x3E2723, roughness: 1.0, flatShading: true, transparent: true, opacity: 1.0 
-        });
+        const woodMat = getMaterial(0x3E2723, 1.0);
         
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2*scale, 0.3*scale, 2*scale, 5), woodMat);
-        trunk.position.y = 1.0 * scale;
+        const trunkGeo = getGeometry('dead_trunk', () => new THREE.CylinderGeometry(0.2, 0.3, 2, 5));
+        const trunk = new THREE.Mesh(trunkGeo, woodMat);
+        trunk.position.y = 1.0;
         trunk.rotation.z = (Math.random()-0.5) * 0.2;
         trunk.castShadow = true; trunk.receiveShadow = true;
         group.add(trunk);
 
         // Branches mortes
-        const b1 = new THREE.Mesh(new THREE.ConeGeometry(0.1*scale, 1*scale, 4), woodMat);
-        b1.position.set(0, 1.8*scale, 0);
+        const b1Geo = getGeometry('dead_b1', () => new THREE.ConeGeometry(0.1, 1, 4));
+        const b1 = new THREE.Mesh(b1Geo, woodMat);
+        b1.position.set(0, 1.8, 0);
         b1.rotation.z = 0.5; b1.rotation.y = Math.random()*Math.PI;
         group.add(b1);
 
-        const b2 = new THREE.Mesh(new THREE.ConeGeometry(0.1*scale, 0.8*scale, 4), woodMat);
-        b2.position.set(0, 1.2*scale, 0);
+        const b2Geo = getGeometry('dead_b2', () => new THREE.ConeGeometry(0.1, 0.8, 4));
+        const b2 = new THREE.Mesh(b2Geo, woodMat);
+        b2.position.set(0, 1.2, 0);
         b2.rotation.z = -0.6; b2.rotation.y = Math.random()*Math.PI;
         group.add(b2);
     }
+
+    group.scale.set(scale, scale, scale);
 
     // Fonction d'animation attachée à l'objet
     group.animate = function(t) {
