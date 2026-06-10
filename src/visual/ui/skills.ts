@@ -112,10 +112,8 @@ export const NewSkillUI = {
     const descEl = document.getElementById('passive-desc');
     if (nameEl) nameEl.innerText = summary.name;
     if (descEl) {
-      const chips = summary.scalingHtml
-        ? `<div class="grimoire-ratio-chips grimoire-passive-chips">${summary.scalingHtml}</div>`
-        : '';
-      descEl.innerHTML = `${chips}<p class="grimoire-passive-desc">${summary.desc}</p>`;
+      const detail = summary.scalingHtml || '';
+      descEl.innerHTML = `${detail}<p class="grimoire-passive-desc">${summary.desc}</p>`;
     }
   },
 

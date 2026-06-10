@@ -10,13 +10,12 @@ import {
 import {
   CONSTELLATION_META,
   formatEffectPills,
-  formatSimpleEffect,
   getNodeRewardKind,
   getRewardBadgeHtml,
   hasStatEffects,
 } from '@/data/constellationMeta';
 import { getPassiveMeta } from '@/data/passiveCatalog';
-import { formatPassiveScalingHtml } from '@/data/passiveScalingConfig';
+import { formatPassiveDetailHtml } from '@/data/passiveScalingConfig';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 
 const SLOT_CLASS = { atk: 'branch-atk', hp: 'branch-hp', spd: 'branch-spd', mst: 'branch-mst' };
@@ -301,19 +300,8 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
   const rewardKind = getNodeRewardKind(node);
   const isStatNode = rewardKind === 'stat';
   const effectPills = formatEffectPills(node.effects, !isStatNode, classId);
-  const simpleEffect = formatSimpleEffect(node, classId);
   const passiveMeta = !isStatNode && node.effects.passive ? getPassiveMeta(node.effects.passive) : null;
   const statPills = isStatNode ? effectPills : (hasStatEffects(node.effects) ? formatEffectPills(node.effects, false, classId) : '');
-
-  let simpleEffectHtml = '';
-  if (!isStatNode && simpleEffect) {
-    if (passiveMeta) {
-      const statHint = hasStatEffects(node.effects) ? 'Inclut aussi un bonus de stats (voir ci-dessous).' : '';
-      if (statHint) simpleEffectHtml = `<p class="detail-simple-effect">${statHint}</p>`;
-    } else {
-      simpleEffectHtml = `<p class="detail-simple-effect">${simpleEffect}</p>`;
-    }
-  }
 
   let reqText = '';
   if (node.requires?.length) {
@@ -341,29 +329,24 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
   const effectSectionHtml = isStatNode
     ? ''
     : (() => {
-        const effectLines = parsePassiveEffectLines(node.desc);
         const accent = passiveMeta?.color || '#d4af37';
         const icon = passiveMeta?.icon || node.icon;
         const apexClass = rewardKind === 'apex' ? ' detail-section-apex-effect' : '';
         const passiveKey = node.effects.passive;
         const passiveRank = node.effects.passiveRank ?? 1;
-        const scalingHtml = passiveKey
-          ? formatPassiveScalingHtml(passiveKey, passiveRank)
-          : '';
-        const scalingSection = scalingHtml
-          ? `<div class="detail-passive-scaling"><div class="detail-section-title detail-scaling-title">Scaling & valeurs</div><div class="grimoire-ratio-chips">${scalingHtml}</div></div>`
-          : '';
+        const detailHtml = passiveKey
+          ? formatPassiveDetailHtml(passiveKey, passiveRank)
+          : `<p class="detail-passive-fallback">${node.desc}</p>`;
+        const passiveTitle = passiveMeta?.name || node.name;
         return `<div class="detail-section detail-section-passive-effect${apexClass}">
-          <div class="detail-section-title">Effet principal</div>
           <div class="detail-passive-effect-card" style="--passive-accent:${accent}">
             <div class="detail-passive-effect-glow"></div>
             <div class="detail-passive-effect-icon"><i class="fas ${icon}"></i></div>
             <div class="detail-passive-effect-body">
-              <div class="detail-passive-effect-lines">${renderPassiveEffectLines(effectLines)}</div>
+              <div class="detail-passive-effect-name">${passiveTitle}</div>
+              ${detailHtml}
             </div>
           </div>
-          ${scalingSection}
-          ${simpleEffectHtml}
         </div>`;
       })();
 

@@ -826,19 +826,36 @@
   letter-spacing: 2.5px;
 }
 
-.detail-passive-scaling {
-  margin-top: 12px;
+.detail-passive-effect-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff3c4;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
 }
 
-.detail-passive-scaling .detail-scaling-title {
-  font-size: 0.62rem;
-  color: #9a8a5a;
-  letter-spacing: 1.5px;
+.detail-passive-mechanics {
+  margin: 0;
+  padding: 0 0 0 16px;
+  list-style: disc;
+}
+
+.detail-passive-mechanics li {
+  font-size: 0.74rem;
+  color: #d8d0b8;
+  line-height: 1.5;
   margin-bottom: 6px;
 }
 
-.detail-passive-scaling .grimoire-ratio-chips {
-  gap: 5px;
+.detail-passive-mechanics li:last-child {
+  margin-bottom: 0;
+}
+
+.detail-passive-fallback {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #d8d0b8;
+  line-height: 1.45;
 }
 
 .detail-passive-effect-card {
