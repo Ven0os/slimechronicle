@@ -119,6 +119,7 @@ export class PlayerBase extends THREE.Group {
         STATE.stats.skillMods = createDefaultSkillMods();
         STATE.stats.skillCdMods = createDefaultSkillCdMods();
         STATE.stats.titanBonus = 0;
+        STATE.stats.titanDefBonus = 0;
         STATE.stats.def = 0;
 
         const classCfg = CLASS_STATS_CONFIG[this.className];
@@ -547,6 +548,7 @@ export class PlayerBase extends THREE.Group {
             return;
         }
 
+        amount = ConstellationEngine.absorbOverhealShield(this, amount);
         amount = ConstellationEngine.modifyDamageTaken(amount);
 
         if (amount > 0) {
@@ -589,6 +591,10 @@ export class PlayerBase extends THREE.Group {
 
     heal(amount) {
         if (this.dead) return;
+        if (this.className === 'sentinel') {
+            amount *= ConstellationEngine.getHealAmpMult();
+            amount = ConstellationEngine.applyOverhealShield(this, amount);
+        }
         this.hp = Math.min(this.maxHp, this.hp + amount); 
         createDamageText("+" + Math.floor(amount), this.position, '#00ff00');
         if (this.isLocalPlayer()) UI.updateHUD();

@@ -309,6 +309,23 @@
   border-color: rgba(255, 255, 255, 0.12);
 }
 
+.grimoire-ratio-chip.chip-passive {
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.35);
+}
+
+.grimoire-passive-chips {
+  margin-bottom: 8px;
+}
+
+.grimoire-passive-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #aaa;
+  line-height: 1.45;
+}
+
 .grimoire-skill-hint {
   font-size: 0.62rem;
   color: #666;

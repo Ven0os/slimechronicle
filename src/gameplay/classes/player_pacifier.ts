@@ -442,19 +442,30 @@ export class Pacifier extends PlayerBase {
     }
 
     triggerImpact() {
-        // ... (Impact inchangé) ...
-        this.mesh.position.y = 0; 
+        this.position.y = 0;
         const originalY = Globals.camera.position.y;
         Globals.camera.position.y -= 1.0;
         setTimeout(() => Globals.camera.position.y = originalY, 150);
-        createSkillVisual('explosion', this.position, 5, 0xff0000); spawnParticles(this.position, 0x8a0b0b, 30); createDamageText("FEAST!", this.position, '#ff0000');
+        const mods = ConstellationEngine.getVampJumpModifiers();
+        createSkillVisual('explosion', this.position, mods.radius, 0xff0000);
+        spawnParticles(this.position, 0x8a0b0b, 30);
+        createDamageText("FEAST!", this.position, '#ff0000');
         let enemiesHit = 0;
+        const impactDmg = ConstellationEngine.modifyDamageDealt(
+            STATE.stats.atk * 1.5 * mods.dmgMult,
+            { skill: true, skillKey: 'space' },
+        );
         Globals.enemies.forEach(e => {
-            if(e.position.distanceTo(this.position) <= 5.0) {
-                e.speed = 0; setTimeout(() => { if(!e.dead) e.speed = 2.0; }, 2000); createDamageText("STUN", e.position, '#ffffff');
-                e.takeDamage(STATE.stats.atk * 1.5); enemiesHit++;
+            if (e.position.distanceTo(this.position) <= mods.radius) {
+                e.speed = 0;
+                setTimeout(() => { if (!e.dead) e.speed = 2.0; }, mods.stunMs);
+                createDamageText("STUN", e.position, '#ffffff');
+                e.takeDamage(impactDmg);
+                enemiesHit++;
             }
         });
-        if (enemiesHit > 0) { this.heal(enemiesHit * (STATE.stats.atk * 0.5)); }
+        if (enemiesHit > 0) {
+            this.heal(enemiesHit * (STATE.stats.atk * mods.healRatio));
+        }
     }
 }

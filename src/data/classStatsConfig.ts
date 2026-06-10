@@ -211,7 +211,8 @@ export function getClassPowerStat(classId: ClassId): number {
 
 export function getWarriorDefPower(): number {
   const base = CLASS_STATS_CONFIG.warrior.base.def ?? 32;
-  return base + (STATE.stats.def || 0);
+  const titan = STATE.stats.titanDefBonus || 0;
+  return base + (STATE.stats.def || 0) + titan;
 }
 
 export function getClassPowerStatKey(classId: ClassId): ScaleStat {

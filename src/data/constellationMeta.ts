@@ -44,7 +44,7 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
     motto: 'Tiens la ligne. Frappe le sol.',
     branches: {
       rempart: { desc: 'PV, défense — keystone : mur impénétrable.', icon: 'fa-shield-halved', focus: 'Défense' },
-      fureur: { desc: 'ATK et dégâts — keystone : sang de titan.', icon: 'fa-fire', focus: 'Offense' },
+      fureur: { desc: 'ATK et dégâts — keystone : Sang de Titan (DEF runique).', icon: 'fa-fire', focus: 'Offense' },
       cri: { desc: 'Sprint et recharge — keystone : parade réactive.', icon: 'fa-bullhorn', focus: 'Contrôle' },
       seisme: { desc: 'Critiques et burst — keystone : charge sismique.', icon: 'fa-mountain', focus: 'Burst' },
     },

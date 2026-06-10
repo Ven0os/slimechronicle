@@ -186,7 +186,7 @@ export class Sentinel extends PlayerBase {
             this.isCasting = true; 
             createDamageText("CHARGE...", this.position, '#ffffaa');
             
-            const chargeTime = 1000;
+            const chargeTime = ConstellationEngine.getPassiveRank('solarBeamHaste') ? 750 : 1000;
             const startTime = Date.now();
             this.animState.rightArmOverride = true;
 

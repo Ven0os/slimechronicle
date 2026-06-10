@@ -107,6 +107,7 @@ export const STATE = {
         skillMods: createDefaultSkillMods(),
         skillCdMods: createDefaultSkillCdMods(),
         titanBonus: 0,
+        titanDefBonus: 0,
     },
     
     multiplayer: {
