@@ -16,6 +16,13 @@ import {
   type ConstellationNode,
   type NodeEffects,
 } from '@/data/constellations';
+import { getPassiveMeta } from '@/data/passiveCatalog';
+import {
+  formatPassiveScalingHtml,
+  formatPassiveScalingText,
+  getUnlockedPassiveDetails,
+} from '@/data/passiveScalingConfig';
+import { getWarriorDefPower } from '@/data/classStatsConfig';
 import { createDamageText } from '@/visual/effects';
 
 type PassiveBag = Record<string, unknown>;
@@ -76,6 +83,9 @@ function registerPassive(effects: NodeEffects): void {
   if (key === 'warFervor' && !p.warFervorStacks) p.warFervorStacks = 0;
   if (key === 'orbitalWeave' && !p.orbitalStacks) p.orbitalStacks = 0;
   if (key === 'lastBreath') p.lastBreathCd = 0;
+  if ((key === 'parryCharge' || key === 'runicColossus') && p.storedParryDamage == null) {
+    p.storedParryDamage = 0;
+  }
 }
 
 function applyNode(node: ConstellationNode, silent = false): string {
@@ -147,6 +157,7 @@ export const ConstellationEngine = {
     STATE.stats.skillMods = createDefaultSkillMods();
     STATE.stats.skillCdMods = createDefaultSkillCdMods();
     STATE.stats.titanBonus = 0;
+    STATE.stats.titanDefBonus = 0;
     STATE.stats.cdMod = 1;
     STATE.stats.attackSpeedMod = 1;
 
@@ -205,9 +216,9 @@ export const ConstellationEngine = {
     }
 
     if (p.titanBlood) {
-      STATE.stats.titanBonus = player.maxHp * 0.02 * (p.titanBlood as number);
-    } else if (STATE.stats.titanBonus) {
-      STATE.stats.titanBonus = 0;
+      STATE.stats.titanDefBonus = player.maxHp * 0.02 * (p.titanBlood as number);
+    } else if (STATE.stats.titanDefBonus) {
+      STATE.stats.titanDefBonus = 0;
     }
 
     if (p.solarInspiration && player.isLocalPlayer?.()) {
@@ -248,12 +259,6 @@ export const ConstellationEngine = {
         if (k !== key && player.cooldowns[k] > 0) {
           player.cooldowns[k] = Math.max(0, player.cooldowns[k] - reduction);
         }
-      }
-    }
-
-    if (p.parryRefund && key === 'e' && player.className === 'warrior') {
-      for (const k of ['space', 'shift', 'e'] as const) {
-        player.cooldowns[k] = Math.max(0, player.cooldowns[k] - player.maxCooldowns[k] * 0.1);
       }
     }
 
@@ -344,9 +349,14 @@ export const ConstellationEngine = {
 
   onBlock(damageBlocked: number): void {
     const p = ensurePassives();
-    if (p.parryCharge || p.runicColossus) {
-      p.storedParryDamage = ((p.storedParryDamage as number) || 0) + damageBlocked * (p.runicColossus ? 0.4 : 0.25);
-    }
+    if (!p.parryCharge && !p.runicColossus) return;
+    const rate = p.runicColossus ? 0.4 : 0.25;
+    p.storedParryDamage = ((p.storedParryDamage as number) || 0) + damageBlocked * rate;
+  },
+
+  getStoredParryCharge(): number {
+    const p = STATE.passives as PassiveBag | undefined;
+    return (p?.storedParryDamage as number) || 0;
   },
 
   consumeParryCharge(): number {
@@ -354,6 +364,28 @@ export const ConstellationEngine = {
     const stored = (p.storedParryDamage as number) || 0;
     p.storedParryDamage = 0;
     return stored;
+  },
+
+  /** Fin de Parade (guerrier) : remboursement de recharge. */
+  onParryEnd(): void {
+    const p = ensurePassives();
+    const player = Globals.player;
+    if (!p.parryRefund || !player || player.className !== 'warrior') return;
+    for (const k of ['space', 'shift', 'e'] as const) {
+      player.cooldowns[k] = Math.max(0, player.cooldowns[k] - player.maxCooldowns[k] * 0.1);
+    }
+  },
+
+  calcWarriorSkillDamage(skillKey: SkillKey, extraFlat = 0): number {
+    let dmg = this.calcSkillDamage(skillKey);
+    if (extraFlat > 0) dmg += extraFlat;
+    return dmg;
+  },
+
+  calcWarriorParryExplosion(blockedTotal: number): number {
+    const base = getWarriorDefPower() * 1.6;
+    const bonus = blockedTotal * 0.5;
+    return this.modifyDamageDealt(base + bonus, { skill: true, skillKey: 'e' });
   },
 
   tryLastBreath(): boolean {
@@ -367,12 +399,46 @@ export const ConstellationEngine = {
     return true;
   },
 
-  getClassPassiveSummary(): { name: string; desc: string } {
-    const c = getConstellationForClass(this.getActiveClass());
+  getUnlockedPassives(): Array<{ key: string; rank: number; name: string }> {
+    return getUnlockedPassiveDetails(this.getActiveClass(), STATE.unlockedNodes);
+  },
+
+  getClassPassiveSummary(): { name: string; desc: string; scalingHtml: string } {
+    const classId = this.getActiveClass();
+    const c = getConstellationForClass(classId);
     const apexUnlocked = this.isNodeUnlocked(c.apex.id);
-    if (apexUnlocked) return { name: c.apex.name, desc: c.apex.desc };
+
+    if (apexUnlocked && c.apex.effects.passive) {
+      const key = c.apex.effects.passive;
+      const rank = c.apex.effects.passiveRank ?? 2;
+      const meta = getPassiveMeta(key);
+      return {
+        name: c.apex.name,
+        desc: meta?.desc || c.apex.desc,
+        scalingHtml: formatPassiveScalingHtml(key, rank),
+      };
+    }
+
+    const passives = this.getUnlockedPassives();
+    if (passives.length > 0) {
+      const desc = passives
+        .map((p) => {
+          const meta = getPassiveMeta(p.key);
+          const label = meta?.name || p.name;
+          return `${label} — ${formatPassiveScalingText(p.key, p.rank)}`;
+        })
+        .join(' · ');
+      const scalingHtml = passives.map((p) => formatPassiveScalingHtml(p.key, p.rank)).join('');
+      return {
+        name: passives.length === 1 ? (getPassiveMeta(passives[0].key)?.name || passives[0].name) : `${passives.length} passifs stellaires`,
+        desc,
+        scalingHtml,
+      };
+    }
+
     const base = (window as unknown as { CONFIG?: { tooltips: Record<string, { passive: { name: string; desc: string } }> } }).CONFIG;
-    const t = base?.tooltips?.[this.getActiveClass()];
-    return t?.passive || { name: 'Passif de classe', desc: c.subtitle };
+    const t = base?.tooltips?.[classId];
+    const fallback = t?.passive || { name: 'Passif de classe', desc: c.subtitle };
+    return { ...fallback, scalingHtml: '' };
   },
 };

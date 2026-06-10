@@ -826,6 +826,21 @@
   letter-spacing: 2.5px;
 }
 
+.detail-passive-scaling {
+  margin-top: 12px;
+}
+
+.detail-passive-scaling .detail-scaling-title {
+  font-size: 0.62rem;
+  color: #9a8a5a;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+
+.detail-passive-scaling .grimoire-ratio-chips {
+  gap: 5px;
+}
+
 .detail-passive-effect-card {
   --passive-accent: #d4af37;
   position: relative;

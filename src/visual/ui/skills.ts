@@ -3,7 +3,7 @@ import { STATE, CONFIG } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { AudioSys } from '@/core/ressources';
 import { getConstellationForClass, type ClassId } from '@/data/constellations';
-import { formatSkillScalingHtml, getSkillLabel, type SkillKey } from '@/data/classStatsConfig';
+import { formatSkillScalingHtml, getSkillLabel, getWarriorDefPower, type SkillKey } from '@/data/classStatsConfig';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { ConstellationUI } from '@/ui/constellationUI';
 
@@ -111,7 +111,12 @@ export const NewSkillUI = {
     const nameEl = document.getElementById('passive-name');
     const descEl = document.getElementById('passive-desc');
     if (nameEl) nameEl.innerText = summary.name;
-    if (descEl) descEl.innerText = summary.desc;
+    if (descEl) {
+      const chips = summary.scalingHtml
+        ? `<div class="grimoire-ratio-chips grimoire-passive-chips">${summary.scalingHtml}</div>`
+        : '';
+      descEl.innerHTML = `${chips}<p class="grimoire-passive-desc">${summary.desc}</p>`;
+    }
   },
 
   buildSkillDetailHtml: function (classId: ClassId, skillKey: SkillKey) {
@@ -127,7 +132,15 @@ export const NewSkillUI = {
     };
 
     set('info-hp', Math.floor(stats.maxHp));
-    set('info-atk', Math.floor(stats.atk + (stats.titanBonus || 0)));
+    const cls = STATE.class || 'warrior';
+    const atkRowLabel = document.querySelector('#view-info #info-atk')?.closest('.grimoire-stat-row')?.querySelector('.stat-label');
+    if (cls === 'warrior') {
+      set('info-atk', Math.floor(getWarriorDefPower()));
+      if (atkRowLabel) atkRowLabel.innerHTML = '<i class="fas fa-shield-halved" style="color:#5dade2"></i> Défense runique';
+    } else {
+      set('info-atk', Math.floor(stats.atk + (stats.titanBonus || 0)));
+      if (atkRowLabel) atkRowLabel.innerHTML = '<i class="fas fa-gavel" style="color:#f1c40f"></i> Attaque';
+    }
     set('info-spd', stats.speed.toFixed(1));
     const atkSpdMod = stats.attackSpeedMod || 1;
     set('info-attack-spd', `${Math.round(100 / atkSpdMod)}%`);
@@ -138,7 +151,6 @@ export const NewSkillUI = {
     set('info-regen', (stats.regen || 0) + '/s');
     set('info-xp', Math.floor((stats.xpMod || 1) * 100) + '%');
 
-    const cls = STATE.class || 'warrior';
     const classId = cls as ClassId;
     const unlocked = ConstellationEngine.getUnlockedCountForClass();
     const data = getConstellationForClass(classId);

@@ -16,6 +16,7 @@ import {
   hasStatEffects,
 } from '@/data/constellationMeta';
 import { getPassiveMeta } from '@/data/passiveCatalog';
+import { formatPassiveScalingHtml } from '@/data/passiveScalingConfig';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 
 const SLOT_CLASS = { atk: 'branch-atk', hp: 'branch-hp', spd: 'branch-spd', mst: 'branch-mst' };
@@ -344,6 +345,14 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
         const accent = passiveMeta?.color || '#d4af37';
         const icon = passiveMeta?.icon || node.icon;
         const apexClass = rewardKind === 'apex' ? ' detail-section-apex-effect' : '';
+        const passiveKey = node.effects.passive;
+        const passiveRank = node.effects.passiveRank ?? 1;
+        const scalingHtml = passiveKey
+          ? formatPassiveScalingHtml(passiveKey, passiveRank)
+          : '';
+        const scalingSection = scalingHtml
+          ? `<div class="detail-passive-scaling"><div class="detail-section-title detail-scaling-title">Scaling & valeurs</div><div class="grimoire-ratio-chips">${scalingHtml}</div></div>`
+          : '';
         return `<div class="detail-section detail-section-passive-effect${apexClass}">
           <div class="detail-section-title">Effet principal</div>
           <div class="detail-passive-effect-card" style="--passive-accent:${accent}">
@@ -353,6 +362,7 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
               <div class="detail-passive-effect-lines">${renderPassiveEffectLines(effectLines)}</div>
             </div>
           </div>
+          ${scalingSection}
           ${simpleEffectHtml}
         </div>`;
       })();
