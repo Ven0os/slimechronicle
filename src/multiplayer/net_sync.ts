@@ -1,0 +1,302 @@
+// @ts-nocheck
+import { STATE, CONFIG } from '../core/config';
+import { Globals, addEnemy, removeEnemy } from '../core/globals';
+import { Network } from './network';
+import { Enemy } from '../gameplay/enemy';
+import { BaseEnemy } from '../gameplay/enemies/base_enemy';
+import { Player } from '../gameplay/player';
+
+export const NetSync = {
+    
+    // --- FONCTION D'ENVOI (HOST) ---
+    sendWorldState: function() {
+        if(!Network.conn || !Network.conn.open) return;
+        const now = Date.now();
+        if (now - Network.lastUpdate < 50) return; // ~20 ticks/s
+        Network.lastUpdate = now;
+
+        if (!Globals.player) return;
+
+        let myRot = 0;
+        if (Globals.player.netRotation !== undefined) {
+            myRot = Globals.player.netRotation;
+        } else if (Globals.player.mesh) {
+            myRot = Globals.player.mesh.rotation.y;
+        }
+
+        const myPos = { 
+            x: parseFloat(Globals.player.position.x.toFixed(2)), 
+            y: parseFloat(Globals.player.position.y.toFixed(2)), 
+            z: parseFloat(Globals.player.position.z.toFixed(2)) 
+        };
+
+        // HOST : Broadcast aux clients
+        if (STATE.multiplayer.isHost) {
+            const playersList = [];
+            
+            // Info Host
+            playersList.push({ 
+                id: STATE.multiplayer.id, 
+                class: STATE.class, 
+                x: myPos.x, y: myPos.y, z: myPos.z, 
+                rot: myRot, 
+                dead: Globals.player.dead,
+                stun: Globals.player.isStunned ? 1 : 0 // Envoi état Stun
+            });
+
+            // Info Clients (Relais)
+            for (let id in STATE.multiplayer.remotePlayers) {
+                const p = STATE.multiplayer.remotePlayers[id];
+                if (p) {
+                    const pRot = (p.netRotation !== undefined) ? p.netRotation : (p.mesh ? p.mesh.rotation.y : 0);
+                    playersList.push({
+                        id: id,
+                        class: p.className || 'warrior', 
+                        x: parseFloat(p.position.x.toFixed(2)),
+                        y: parseFloat(p.position.y.toFixed(2)),
+                        z: parseFloat(p.position.z.toFixed(2)),
+                        rot: pRot, 
+                        dead: !p.visible,
+                        stun: p.isStunned ? 1 : 0 // Relais état Stun
+                    });
+                }
+            }
+
+            const enemiesList = Globals.enemies.map(e => {
+                let atkType = 'none';
+                const s = e.animState || '';
+                // ... (Logique detection attaque inchangée) ...
+                if (s.includes('throw')) atkType = 'throw';
+                else if (s.includes('stab')) atkType = 'stab';
+                else if (s.includes('teleport')) atkType = 'teleport';
+                else if (s.includes('smash')) atkType = 'smash';
+                else if (s.includes('charge')) atkType = 'charge';
+                else if (s.includes('bash')) atkType = 'bash';
+                else if (s.includes('cast_bolt')) atkType = 'bolt';
+                else if (s.includes('cast_zone')) atkType = 'zone';
+                else if (s.includes('cast_beam')) atkType = 'beam';
+                else if (s.includes('slash')) atkType = 'slash';
+                else if (s.includes('stomp')) atkType = 'stomp';
+
+                return {
+                    id: e.netId,
+                    type: e.type,
+                    x: parseFloat(e.position.x.toFixed(2)),
+                    y: parseFloat(e.position.y.toFixed(2)),
+                    z: parseFloat(e.position.z.toFixed(2)),
+                    rot: parseFloat(e.rotation.y.toFixed(2)),
+                    hp: Math.ceil(e.hp),
+                    barrierHp: Math.ceil(e.barrierHp || 0),
+                    maxBarrierHp: Math.ceil(e.maxBarrierHp || 0),
+                    atk: e.isAttacking ? 1 : 0,
+                    anim: e.animState || 'idle',
+                    atkType: atkType
+                };
+            });
+
+            Network.send({
+                type: 'world-update',
+                enemies: enemiesList,
+                players: playersList,
+                bossSpawned: STATE.bossSpawned,
+                kills: STATE.enemiesKilled
+            });
+        } 
+        
+        // CLIENT : Envoi Input vers Host
+        else {
+            Network.send({
+                type: 'client-input',
+                id: STATE.multiplayer.id,
+                class: STATE.class,
+                pos: myPos,
+                rot: myRot,
+                dead: Globals.player.dead,
+                stun: Globals.player.isStunned ? 1 : 0 // Envoi état Stun au Host
+            });
+        }
+    },
+
+    // --- RÉCEPTION CLIENT ---
+    syncEnemies: function(enemiesData) {
+        // ... (Code existant inchangé) ...
+        const serverIds = enemiesData.map(e => e.id);
+        
+        for(let i = Globals.enemies.length - 1; i >= 0; i--) { 
+            const localEnemy = Globals.enemies[i];
+            if(!serverIds.includes(localEnemy.netId)) { 
+                Globals.scene.remove(localEnemy);
+                removeEnemy(localEnemy);
+            } 
+        }
+        
+        enemiesData.forEach(eData => {
+            let enemy = Globals.enemies.find(e => e.netId === eData.id);
+            const targetPos = new THREE.Vector3(eData.x, eData.y, eData.z);
+            
+            if (enemy) { 
+                enemy.networkTargetPos = targetPos;
+                enemy.networkTargetRot = eData.rot;
+                enemy.hp = eData.hp;
+                if (eData.maxBarrierHp > 0) {
+                    enemy.maxBarrierHp = eData.maxBarrierHp;
+                    enemy.barrierHp = eData.barrierHp ?? 0;
+                }
+
+                if (eData.anim) enemy.animState = eData.anim;
+
+                if (eData.atk === 1) {
+                    if (!enemy.isAttacking) {
+                        const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), enemy.rotation.y);
+                        const dummyTargetPos = enemy.position.clone().add(forward.multiplyScalar(5));
+                        const dummyTarget = { position: dummyTargetPos };
+
+                        if (eData.atkType === 'throw' && enemy.attackFanOfKnives) enemy.attackFanOfKnives(dummyTarget);
+                        else if (eData.atkType === 'stab' && enemy.attackStab) enemy.attackStab(dummyTarget);
+                        else if (eData.atkType === 'teleport' && enemy.attackShadowStep) enemy.attackShadowStep(dummyTarget);
+                        else if (eData.atkType === 'smash' && enemy.attackSmash) enemy.attackSmash(dummyTarget);
+                        else if (eData.atkType === 'charge' && enemy.attackCharge) enemy.attackCharge(dummyTarget);
+                        else if (eData.atkType === 'bash' && enemy.attackShieldBash) enemy.attackShieldBash(dummyTarget);
+                        else if (eData.atkType === 'bolt' && enemy.attackWarlockBolt) enemy.attackWarlockBolt(dummyTarget);
+                        else if (eData.atkType === 'zone' && enemy.attackWarlockZone) enemy.attackWarlockZone(dummyTarget);
+                        else if (eData.atkType === 'beam' && enemy.attackWarlockBeam) enemy.attackWarlockBeam(dummyTarget);
+                        else if (eData.atkType === 'slash' && enemy.attackSlash) enemy.attackSlash(dummyTarget);
+                        else if (eData.atkType === 'stomp' && enemy.attackStomp) enemy.attackStomp(dummyTarget);
+                        else {
+                            enemy.isAttacking = true;
+                            enemy.attackTimer = 0; 
+                        }
+                    }
+                } else {
+                    if (enemy.isAttacking) {
+                        enemy.isAttacking = false;
+                        enemy.animState = 'idle';
+                        if (enemy.stopCharge) enemy.stopCharge();
+                    }
+                }
+
+                if (enemy.hp > 0 && !enemy.visible) {
+                    enemy.visible = true;
+                    enemy.dead = false;
+                }
+
+            } else { 
+                enemy = new Enemy(eData.type, targetPos, eData.id);
+                enemy.hp = eData.hp;
+                if (eData.maxBarrierHp > 0) {
+                    enemy.maxBarrierHp = eData.maxBarrierHp;
+                    enemy.barrierHp = eData.barrierHp ?? enemy.maxBarrierHp;
+                }
+                enemy.ai = null; 
+                
+                enemy.networkTargetPos = targetPos;
+                enemy.networkTargetRot = eData.rot;
+                enemy.lastPos = targetPos.clone();
+
+                enemy.update = function(dt) {
+                    if(this.dead) return;
+                    if(this.networkTargetPos) {
+                        const distToTarget = this.position.distanceTo(this.networkTargetPos);
+                        if(distToTarget > 5.0) this.position.copy(this.networkTargetPos);
+                        else this.position.lerp(this.networkTargetPos, 8 * dt);
+                    }
+                    if(this.networkTargetRot !== undefined) {
+                        let rotDiff = this.networkTargetRot - this.rotation.y;
+                        while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+                        while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+                        this.rotation.y += rotDiff * 8 * dt;
+                    }
+                    const moveDist = this.position.distanceTo(this.lastPos || this.position);
+                    const currentSpeed = moveDist / dt;
+                    this.isMoving = currentSpeed > 0.5;
+                    this.moveSpeed = THREE.MathUtils.lerp(this.moveSpeed || 0, currentSpeed, dt * 10);
+                    this.lastPos = this.position.clone();
+                    if(BaseEnemy.prototype.update) BaseEnemy.prototype.update.call(this, dt);
+                    if(this.updateAnim) this.updateAnim(dt);
+                };
+                addEnemy(enemy); 
+            }
+        });
+    },
+
+    syncPlayers: function(playersData) {
+        playersData.forEach(pData => {
+            if (pData.id === STATE.multiplayer.id) return;
+            // Passe l'info 'stun' à updateRemotePlayer
+            this.updateRemotePlayer(pData.id, {x: pData.x, y: pData.y, z: pData.z}, pData.rot, pData.class, pData.dead, pData.stun);
+        });
+    },
+
+    updateRemotePlayer: function(id, pos, rot, className, isDead, isStunned) {
+        let p = STATE.multiplayer.remotePlayers[id];
+        
+        if (!p) { 
+            p = this.createRemotePlayer(className, id); 
+            STATE.multiplayer.remotePlayers[id] = p; 
+        }
+        
+        if (className && p.className !== className) {
+            Globals.scene.remove(p);
+            p = this.createRemotePlayer(className, id);
+            STATE.multiplayer.remotePlayers[id] = p;
+        }
+
+        const targetV = new THREE.Vector3(pos.x, pos.y, pos.z);
+        if (p.position.distanceTo(targetV) > 5) p.position.copy(targetV);
+        else p.position.lerp(targetV, 0.3);
+
+        p.netRotation = rot;
+
+        if(p.mesh) {
+            let r = p.mesh.rotation.y;
+            let diff = rot - r;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            if (Math.abs(diff) > 1.0) p.mesh.rotation.y = rot;
+            else p.mesh.rotation.y += diff * 0.3;
+        }
+        
+        const dist = p.position.distanceTo(p.lastPos || p.position);
+        p.isMoving = dist > 0.01;
+        p.lastPos = p.position.clone();
+        
+        if(isDead !== undefined) p.visible = !isDead;
+
+        // Mise à jour de l'état stun distant
+        if (isStunned === 1) {
+            if (!p.isStunned) p.applyStun(100); // Durée infinie tant que le serveur dit 1
+        } else {
+            p.isStunned = false;
+            if (p.stunVisualGroup) p.stunVisualGroup.visible = false;
+        }
+    },
+
+    createRemotePlayer: function(className, id) {
+        Globals.creatingRemotePlayer = true;
+        let p;
+        try {
+            p = new Player(className);
+            p.isRemote = true; 
+            p.userData.isRemote = true;
+            p.userData.id = id;
+            p.isMoving = false;
+            p.netRotation = 0;
+            p.lastPos = new THREE.Vector3(); 
+        } catch (e) {
+            console.error("[NET] Erreur création joueur distant:", e);
+            p = new THREE.Group(); 
+        }
+        Globals.creatingRemotePlayer = false;
+        return p;
+    },
+
+    update: function(dt) {
+        this.sendWorldState(); 
+        for (let id in STATE.multiplayer.remotePlayers) {
+            const p = STATE.multiplayer.remotePlayers[id];
+            if (p && typeof p.update === 'function') {
+                p.update(dt);
+            }
+        }
+    }
+};

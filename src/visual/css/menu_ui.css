@@ -1,0 +1,48 @@
+/* --- STYLES MENUS (Clair Obscur) --- */
+.menu-screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at center, rgba(20,20,30,0.8) 0%, rgba(0,0,0,1) 90%);
+    backdrop-filter: blur(8px);
+    opacity: 0; visibility: hidden; transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none; z-index: 500;
+}
+.menu-screen.active { opacity: 1; visibility: visible; pointer-events: auto; }
+.original-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
+
+/* TYPOGRAPHIE */
+h1.menu-title { font-family: 'Cinzel', serif; font-size: 4rem; margin: 0; letter-spacing: 5px; color: var(--menu-gold); text-shadow: var(--text-glow); animation: breathe 4s infinite ease-in-out; }
+h2.menu-subtitle { font-family: 'Cinzel', serif; font-size: 1.5rem; color: #888; margin-bottom: 40px; font-weight: 300; letter-spacing: 2px; }
+@keyframes breathe { 0%, 100% { text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); } 50% { text-shadow: 0 0 25px rgba(212, 175, 55, 0.8); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* BOUTONS & INPUTS */
+.btn-group { display: flex; flex-direction: column; gap: 20px; width: 300px; }
+.btn-main {
+    background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.1) 50%, transparent 100%);
+    border: 1px solid var(--menu-glass-border); border-left: none; border-right: none;
+    padding: 15px 0; color: #fff; font-family: 'Cinzel'; font-size: 1.2rem; cursor: pointer;
+    transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 2px;
+    position: relative; overflow: hidden;
+}
+.btn-main::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.4), transparent); transition: 0.5s; }
+.btn-main:hover { border-color: var(--menu-gold); letter-spacing: 4px; color: var(--menu-gold); text-shadow: 0 0 8px var(--menu-gold); background: rgba(0,0,0,0.6); }
+.btn-main:hover::before { left: 100%; }
+.btn-main:disabled { opacity: 0.3; cursor: not-allowed; border-color: #333; color: #555; }
+
+.btn-secondary { background: transparent; border: 1px solid #444; color: #888; padding: 10px 20px; font-family: 'Cinzel'; cursor: pointer; transition: 0.3s; }
+.btn-secondary:hover { border-color: #888; color: #fff; }
+
+.input-code {
+    background: rgba(0,0,0,0.5); border: 1px solid #444; color: var(--menu-gold);
+    padding: 15px; font-family: 'Cinzel'; font-size: 1.5rem; text-align: center;
+    width: 100%; box-sizing: border-box; outline: none; transition: 0.3s;
+    letter-spacing: 5px; text-transform: uppercase; margin-bottom: 20px;
+}
+.input-code:focus { border-color: var(--menu-gold); box-shadow: 0 0 15px rgba(212, 175, 55, 0.2); }
+
+.status-panel { background: rgba(10,10,12,0.9); border: 1px solid var(--menu-glass-border); padding: 30px; width: 400px; text-align: center; border-radius: 4px; position: relative; }
+.loader { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--menu-gold); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Accordéon classes → voir destiny-menu.css */

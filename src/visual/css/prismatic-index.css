@@ -1,0 +1,536 @@
+/* --- Index Prismatic — menu & collection in-game --- */
+
+#screen-compendium {
+  justify-content: flex-start;
+  align-items: stretch;
+  overflow: hidden;
+  padding: 0;
+  background: #08080c;
+}
+
+#screen-compendium.menu-screen {
+  background: #08080c;
+}
+
+.prism-index-page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(155, 89, 182, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(255, 0, 85, 0.08), transparent 50%),
+    #08080c;
+}
+
+.prism-index-hero {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  padding: 32px 32px 0;
+  background:
+    linear-gradient(180deg, rgba(155, 89, 182, 0.08) 0%, transparent 70%),
+    #08080c;
+}
+
+.prism-index-hero-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 22px;
+}
+
+.prism-index-brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-left: 18px;
+  border-left: 3px solid var(--menu-gold);
+}
+
+.prism-index-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 0, 170, 0.25), rgba(20, 10, 30, 0.9) 65%);
+  border: 1px solid rgba(255, 0, 170, 0.45);
+  box-shadow:
+    0 0 24px rgba(255, 0, 170, 0.25),
+    inset 0 0 18px rgba(255, 0, 170, 0.12);
+}
+
+.prism-index-icon-wrap i {
+  font-size: 1.75rem;
+  color: #ff4dc4;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 170, 0.7));
+}
+
+.prism-index-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prism-index-title {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  margin: 0;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--menu-gold);
+  text-shadow: var(--text-glow, 0 0 12px rgba(212, 175, 55, 0.35));
+  animation: breathe 4s infinite ease-in-out;
+}
+
+.prism-index-subtitle {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+  font-weight: 300;
+  font-style: normal;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #777;
+}
+
+.prism-index-hero-line {
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.15) 15%,
+    rgba(212, 175, 55, 0.55) 50%,
+    rgba(212, 175, 55, 0.15) 85%,
+    transparent 100%
+  );
+}
+
+.prism-index-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prism-stat-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  background: rgba(10, 10, 14, 0.85);
+  border: 1px solid var(--menu-glass-border, rgba(255, 255, 255, 0.12));
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.prism-stat-pill:hover {
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.08);
+}
+
+.prism-stat-pill strong {
+  font-family: 'Cinzel', serif;
+  font-size: 1.15rem;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.prism-stat-pill span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #777;
+  margin-top: 3px;
+}
+
+.prism-stat-pill.acquired strong { color: #2ecc71; }
+.prism-stat-pill.favorites strong { color: #e74c3c; }
+
+.prism-index-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 32px 40px;
+  box-sizing: border-box;
+}
+
+#screen-compendium .compendium-header {
+  width: 100%;
+  max-width: none;
+  margin: 0 0 22px 0;
+}
+
+.prism-index-toolbar {
+  margin-bottom: 0;
+}
+
+/* Barre de filtres (injectée par JS) */
+.compendium-controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(12, 12, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.filter-rarity-row,
+.filter-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.filter-bottom-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bonus-filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-rarity-btn,
+.filter-type-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: transparent;
+}
+
+.filter-rarity-btn {
+  border: 1px solid currentColor;
+}
+
+.filter-type-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #888;
+}
+
+.filter-type-btn.is-active {
+  background: #d4af37;
+  color: #000;
+  border-color: #d4af37;
+}
+
+.filter-rarity-btn[data-rarity="all"] { color: #ecf0f1; border-color: #ecf0f1; }
+.filter-rarity-btn[data-rarity="common"] { color: #bdc3c7; border-color: #bdc3c7; }
+.filter-rarity-btn[data-rarity="rare"] { color: #3498db; border-color: #3498db; }
+.filter-rarity-btn[data-rarity="epic"] { color: #9b59b6; border-color: #9b59b6; }
+.filter-rarity-btn[data-rarity="legendary"] { color: #f1c40f; border-color: #f1c40f; }
+.filter-rarity-btn[data-rarity="mythic"] { color: #ff0055; border-color: #ff0055; }
+
+.filter-rarity-btn[data-rarity="all"].is-active { background: #ecf0f1; color: #000; box-shadow: 0 0 12px rgba(236, 240, 241, 0.5); }
+.filter-rarity-btn[data-rarity="common"].is-active { background: #bdc3c7; color: #000; box-shadow: 0 0 12px rgba(189, 195, 199, 0.5); }
+.filter-rarity-btn[data-rarity="rare"].is-active { background: #3498db; color: #fff; box-shadow: 0 0 12px rgba(52, 152, 219, 0.5); }
+.filter-rarity-btn[data-rarity="epic"].is-active { background: #9b59b6; color: #fff; box-shadow: 0 0 12px rgba(155, 89, 182, 0.5); }
+.filter-rarity-btn[data-rarity="legendary"].is-active { background: #f1c40f; color: #000; box-shadow: 0 0 12px rgba(241, 196, 15, 0.5); }
+.filter-rarity-btn[data-rarity="mythic"].is-active { background: #ff0055; color: #fff; box-shadow: 0 0 12px rgba(255, 0, 85, 0.5); }
+
+.filter-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.filter-search-wrap i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.filter-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px 8px 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.45);
+  color: #eee;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.filter-search-input:focus {
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+/* Grille index */
+.compendium-grid,
+.fragments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.prism-index-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 20px;
+  color: #666;
+  font-style: italic;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+/* Carte compacte index */
+.prism-index-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  padding: 14px 14px 12px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(22, 22, 30, 0.95), rgba(10, 10, 14, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+  overflow: hidden;
+  opacity: 1;
+  animation: prismCardIn 0.3s ease both;
+}
+
+@keyframes prismCardIn {
+  from { transform: translateY(10px); opacity: 0.85; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.prism-index-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--prism-accent, #666);
+}
+
+.prism-index-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.prism-index-card.is-owned {
+  border-color: rgba(46, 204, 113, 0.25);
+}
+
+.prism-index-card.shard-common { --prism-accent: var(--rarity-common); }
+.prism-index-card.shard-rare { --prism-accent: var(--rarity-rare); }
+.prism-index-card.shard-epic { --prism-accent: var(--rarity-epic); }
+.prism-index-card.shard-legendary { --prism-accent: var(--rarity-legendary); }
+.prism-index-card.shard-mythic { --prism-accent: var(--rarity-mythic); }
+
+.prism-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.prism-card-rarity {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--prism-accent, #aaa);
+}
+
+.prism-card-fav {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.prism-card-fav.is-fav { color: #e74c3c; }
+.prism-card-fav:hover { transform: scale(1.15); color: #e74c3c; }
+
+.prism-card-icon {
+  text-align: center;
+  margin: 4px 0 10px;
+}
+
+.prism-card-icon i {
+  font-size: 2.2rem;
+  color: var(--prism-accent, #fff);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--prism-accent) 50%, transparent));
+}
+
+.prism-card-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f0f0f0;
+  text-align: center;
+  margin: 0 0 6px;
+  line-height: 1.25;
+}
+
+.prism-card-desc {
+  font-size: 0.7rem;
+  color: #888;
+  text-align: center;
+  line-height: 1.45;
+  margin: 0 0 10px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prism-card-stats {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.prism-stat-pos { color: #2ecc71; font-weight: 800; }
+.prism-stat-neg { color: #e74c3c; font-weight: 800; }
+.prism-stat-label { color: #fff; font-weight: 600; }
+.prism-stat-sep { color: rgba(255, 255, 255, 0.35); font-weight: 400; }
+.prism-stat-enchant { display: block; margin-top: 6px; font-size: 0.65rem; color: #ffd700; font-weight: 700; }
+
+.prism-card-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.prism-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.prism-badge-owned {
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.5);
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.prism-badge-level {
+  color: #000;
+  background: linear-gradient(45deg, #d4af37, #f1c40f);
+}
+
+.prism-index-footer {
+  flex-shrink: 0;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 32px 32px;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0%, transparent 100%), #08080c;
+  border-top: 1px solid var(--menu-glass-border, rgba(255, 255, 255, 0.1));
+}
+
+.prism-index-back {
+  width: 300px;
+  margin: 0 auto;
+}
+
+.prism-index-back .btn-main {
+  width: 100%;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* Vue fragments in-game (onglet K) */
+.prism-collection-panel {
+  padding: 20px 24px 28px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.prism-collection-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.prism-collection-header i {
+  font-size: 1.4rem;
+  color: #ff00aa;
+}
+
+.prism-collection-header h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  margin: 0;
+  color: var(--menu-gold);
+}
+
+.prism-collection-header p {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #777;
+}
+
+@media (max-width: 768px) {
+  .prism-index-hero { padding: 24px 16px 0; }
+  .prism-index-title { font-size: 1.45rem; letter-spacing: 2px; }
+  .prism-index-subtitle { font-size: 0.65rem; letter-spacing: 2px; }
+  .prism-index-icon-wrap { width: 52px; height: 52px; }
+  .prism-index-brand { padding-left: 12px; gap: 14px; }
+  .prism-index-body { padding: 16px; }
+  .prism-index-footer { padding: 16px; }
+  .prism-index-back { width: 100%; max-width: 300px; }
+  .compendium-grid,
+  .fragments-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}

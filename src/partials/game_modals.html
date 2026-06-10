@@ -1,0 +1,13 @@
+<div id="prismatic-modal" class="original-screen">
+    <h1 style="font-size: 2.5rem; color: #ff00ff; text-shadow: 0 0 20px #ff00ff;">CHOIX PRISMATIQUE</h1>
+    <p style="color:white;">Le temps s'est arrêté. Choisissez votre destin.</p>
+    <div class="prism-options" id="prism-container"></div>
+</div>
+
+<div id="death-screen" class="original-screen" style="display: none;">
+    <h1 style="color: var(--danger);">VOUS ÊTES MORT</h1>
+    <p style="color:white;" id="death-msg">Respawn dans la Safe Zone...</p>
+    <div id="spectate-msg" style="display:none; color:var(--gold); margin-top:10px;">MODE SPECTATEUR</div>
+    <button id="btn-respawn" class="btn-main" style="margin-top:20px; pointer-events:auto;"
+        onclick="if(Globals.player) Globals.player.respawn()">RESSUSCITER</button>
+</div>

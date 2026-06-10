@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Ignore assets big files
+assets/songs/musics/*
+assets/songs/sfx/*
+assets/texture/*

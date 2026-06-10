@@ -1,0 +1,97 @@
+<!-- MENU FORGE PRISMATIQUE -->
+<div id="screen-forge" class="menu-screen" style="display:none; z-index: 60; background: rgba(0, 0, 0, 0.95);">
+    
+    <div class="close-ui-btn" onclick="ForgeUI.toggle()" style="top: 30px; right: 30px; font-size: 3rem;">×</div>
+
+    <div class="forge-wrapper">
+        
+        <h1 class="menu-title" style="margin-bottom: 0;">FORGE PRISMATIQUE</h1>
+        <div style="color: #888; margin-bottom: 20px; font-style: italic;">"La matière ne se perd pas, elle s'élève."</div>
+
+        <!-- NAVIGATION -->
+        <div class="ui-tabs" style="margin-bottom: 30px; gap: 20px;">
+            <button class="ui-tab-btn active" onclick="ForgeUI.switchTab('reforge')" id="tab-reforge">REFORGE</button>
+            <button class="ui-tab-btn" onclick="ForgeUI.switchTab('enchant')" id="tab-enchant">ENCHANTEMENT</button>
+        </div>
+
+        <!-- PANEL 1: REFORGE (3 SLOTS) -->
+        <div id="forge-reforge-panel" class="forge-recipes" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+            
+            <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 40px; margin-top: 20px;">
+                <!-- Slot 1 -->
+                <div id="reforge-slot-0" class="forge-slot-big" onclick="ForgeUI.openSelector('reforge', 0)">
+                    <i class="fas fa-plus"></i>
+                </div>
+                
+                <i class="fas fa-plus" style="color: #444;"></i>
+
+                <!-- Slot 2 -->
+                <div id="reforge-slot-1" class="forge-slot-big" onclick="ForgeUI.openSelector('reforge', 1)">
+                    <i class="fas fa-plus"></i>
+                </div>
+
+                <i class="fas fa-plus" style="color: #444;"></i>
+
+                <!-- Slot 3 -->
+                <div id="reforge-slot-2" class="forge-slot-big" onclick="ForgeUI.openSelector('reforge', 2)">
+                    <i class="fas fa-plus"></i>
+                </div>
+            </div>
+
+            <div class="forge-arrow-down" style="margin-bottom: 20px;">
+                <i class="fas fa-arrow-down" style="font-size: 2rem; color: var(--menu-gold); animation: bounce 2s infinite;"></i>
+            </div>
+
+            <button class="btn-main" onclick="ForgeSystem.doReforge()" style="width: 300px; padding: 15px;">FUSIONNER</button>
+            <div style="margin-top: 10px; color: #666; font-size: 0.9rem;">Requiert 3 prismes de même rareté.</div>
+
+        </div>
+
+        <!-- PANEL 2: ENCHANTEMENT (1 CIBLE + 5 SACRIFICES) -->
+        <div id="forge-enchant-panel" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+            
+            <div style="text-align: center; margin-bottom: 30px; color: #aaa;">
+                Sacrifiez 5 prismes pour enchanter le centre.
+            </div>
+
+            <div style="position: relative; width: 400px; height: 350px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                
+                <div class="ritual-circle"></div>
+
+                <!-- 5 Slots de Sacrifice -->
+                <!-- Top -->
+                <div id="enchant-sac-0" class="sacrifice-slot" style="top: 20px; left: 50%; transform: translateX(-50%);" onclick="ForgeUI.openSelector('enchant_sac', 0)"></div>
+                <!-- Top Right -->
+                <div id="enchant-sac-1" class="sacrifice-slot" style="top: 100px; right: 40px;" onclick="ForgeUI.openSelector('enchant_sac', 1)"></div>
+                <!-- Bottom Right -->
+                <div id="enchant-sac-2" class="sacrifice-slot" style="bottom: 40px; right: 65px;" onclick="ForgeUI.openSelector('enchant_sac', 2)"></div>
+                <!-- Bottom Left -->
+                <div id="enchant-sac-3" class="sacrifice-slot" style="bottom: 40px; left: 65px;" onclick="ForgeUI.openSelector('enchant_sac', 3)"></div>
+                <!-- Top Left -->
+                <div id="enchant-sac-4" class="sacrifice-slot" style="top: 100px; left: 40px;" onclick="ForgeUI.openSelector('enchant_sac', 4)"></div>
+
+                <!-- Slot Central (Cible) -->
+                <div id="enchant-target-slot" onclick="ForgeUI.openSelector('enchant_target', 0)" 
+                     style="position: relative; width: 100px; height: 100px; border: 2px solid var(--menu-gold); background: radial-gradient(circle, rgba(50,50,50,0.8), #000); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; z-index: 10; transition: all 0.2s;">
+                    <div id="enchant-target-display" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;"></div>
+                    <i class="fas fa-plus" style="color: var(--menu-gold); font-size: 2rem; opacity: 0.5;"></i>
+                </div>
+
+            </div>
+
+            <button class="btn-main" onclick="ForgeSystem.doEnchant()" style="border-color: #9b59b6; color: #fff;">INCANTATION</button>
+
+        </div>
+
+    </div>
+
+    <!-- POPUP SÉLECTION D'OBJET -->
+    <div id="forge-selector" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
+        <h2 style="color: var(--menu-gold); font-family: 'Cinzel'; margin-bottom: 20px;">CHOISISSEZ UN PRISME</h2>
+        <div id="selector-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; max-height: 60vh; overflow-y: auto; padding: 20px; border: 1px solid #444; background: rgba(20,20,20,0.8); border-radius: 8px;">
+            <!-- Items générés par JS -->
+        </div>
+        <button class="btn-secondary" style="margin-top: 20px;" onclick="ForgeUI.closeSelector()">ANNULER</button>
+    </div>
+
+</div>

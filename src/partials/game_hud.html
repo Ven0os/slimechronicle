@@ -1,0 +1,100 @@
+<!-- HUD EN JEU -->
+<div id="hud" class="pointer-events-auto">
+    <div id="hud-vitals" class="hud-vitals-block">
+        <div class="bar-container bar-hp">
+            <div id="hp-bar" class="bar-fill"></div>
+            <div id="shield-bar"></div>
+            <div class="bar-text"><span id="hp-text">100/100</span></div>
+        </div>
+
+        <div id="chrono-fracture" class="chrono-fracture" style="display:none" title="Jauge de Fracture — surchauffe à 100%">
+            <div class="chrono-fracture-header">
+                <i class="fas fa-bolt chrono-fracture-icon"></i>
+                <span id="chrono-fracture-label" class="chrono-fracture-label">Fracture 0%</span>
+            </div>
+            <div class="chrono-fracture-track">
+                <div id="chrono-fracture-fill" class="chrono-fracture-fill"></div>
+            </div>
+            <span id="chrono-fracture-hint" class="chrono-fracture-hint">Maintenez clic pour canaliser</span>
+        </div>
+
+        <!-- Buffs compacts (masqué si aucun effet actif) -->
+        <div id="buff-strip" class="buff-strip pointer-events-auto">
+            <div id="buffs-container" class="buffs-container"></div>
+        </div>
+        <div id="buff-hover-tooltip" class="buff-hover-tooltip"></div>
+
+        <div class="bar-container bar-xp" style="border-color: var(--xp); height: 8px;">
+            <div id="xp-bar" class="bar-fill"></div>
+        </div>
+        <div class="hud-level-row">
+            <span>LVL <span id="level-text" class="hud-level-val">1</span></span>
+        </div>
+    </div>
+
+    <div id="class-resource" class="class-resource"></div>
+</div>
+
+<!-- HUD BOSS -->
+<div id="boss-hud">
+    <div id="boss-name">LE ROI SLIME <span id="ng-indicator" style="font-size:12px; color:var(--gold);"></span></div>
+    <div id="boss-hp-bar-container">
+        <div class="boss-phase-marker" style="left: 50%;"></div>
+        <div class="boss-phase-marker" style="left: 20%;"></div>
+        <div id="boss-hp-fill"></div>
+    </div>
+</div>
+
+<div id="skill-tree-btn" class="pointer-events-auto" onclick="NewSkillUI.toggle()" title="Constellation (K)">
+    <i class="fas fa-circle-nodes"></i>
+    <div id="skill-point-badge" class="skill-point-badge">0</div>
+</div>
+
+<div id="forge-btn" class="pointer-events-auto" onclick="ForgeUI.toggle()" title="Forge (F)">
+    <i class="fas fa-hammer"></i>
+</div>
+
+<div id="passive-hud" class="pointer-events-auto passive-hud-compact">
+    <div class="passive-hud-label">PASSIF STELLAIRE</div>
+    <div id="passive-container" class="passive-container-mini"></div>
+    <div class="tooltip" id="passive-tooltip">
+        <h4 id="passive-name">Passif</h4>
+        <div id="passive-desc">Description</div>
+        <div class="passive-tooltip-footer">Constellation de classe</div>
+    </div>
+</div>
+
+<div id="prismatic-hud" class="pointer-events-auto">
+    <div id="prismatic-icon"><i class="fas fa-gem"></i></div>
+    <div class="tooltip" id="prismatic-tooltip">
+        <h4 style="color:#ff00ff">Aucun Prisme</h4>
+        <div>Tuez le Roi Slime pour obtenir un Prisme.</div>
+    </div>
+</div>
+
+<div id="skills-hud" class="pointer-events-auto">
+    <div class="skill-group">
+        <div class="skill-icon" id="skill-space">
+            <span id="icon-space"></span>
+            <div class="skill-cd" id="cd-space">0</div>
+            <div class="tooltip" id="tooltip-space"><h4>Compétence 1</h4><div>Description</div></div>
+        </div>
+        <div class="key-hint">ESPACE</div>
+    </div>
+    <div class="skill-group">
+        <div class="skill-icon" id="skill-shift">
+            <span id="icon-shift"></span>
+            <div class="skill-cd" id="cd-shift">0</div>
+            <div class="tooltip" id="tooltip-shift"><h4>Compétence 2</h4><div>Description</div></div>
+        </div>
+        <div class="key-hint">SHIFT</div>
+    </div>
+    <div class="skill-group">
+        <div class="skill-icon" id="skill-e">
+            <span id="icon-e"></span>
+            <div class="skill-cd" id="cd-e">0</div>
+            <div class="tooltip" id="tooltip-e"><h4>Compétence 3</h4><div>Description</div></div>
+        </div>
+        <div class="key-hint">E</div>
+    </div>
+</div>

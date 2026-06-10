@@ -1,0 +1,242 @@
+<!-- UI CONSTELLATIONS — layout avancé -->
+
+<div id="skill-ui-wrapper" class="skill-ui-advanced">
+
+    <div class="close-ui-btn" onclick="NewSkillUI.toggle()">×</div>
+
+
+
+    <header class="skill-ui-topbar">
+
+        <div class="skill-ui-brand">
+
+            <i class="fas fa-circle-nodes"></i>
+
+            <div>
+
+                <h1>Carte Stellaire</h1>
+
+                <p>Constellation unique à votre classe</p>
+
+            </div>
+
+        </div>
+
+        <div class="points-display points-display-inline">
+
+            <div class="points-val" id="ui-skill-points">0</div>
+
+            <div class="points-label">Points stellaires</div>
+
+        </div>
+
+    </header>
+
+
+
+    <div class="ui-header">
+
+        <div class="ui-tabs ui-tabs-wide">
+
+            <button class="ui-tab-btn active" onclick="NewSkillUI.switchTab('tree')"><i class="fas fa-star"></i> Constellation</button>
+
+            <button class="ui-tab-btn" onclick="NewSkillUI.switchTab('info')"><i class="fas fa-book"></i> Grimoire</button>
+
+            <button class="ui-tab-btn" onclick="NewSkillUI.switchTab('fragments')"><i class="fas fa-gem"></i> Fragments</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="ui-content ui-content-tall">
+
+        <div id="view-tree" class="view-section active">
+
+            <div class="constellation-layout"></div>
+
+        </div>
+
+
+
+        <div id="view-info" class="view-section">
+
+            <div class="grimoire-scroll">
+
+                <header class="grimoire-header">
+
+                    <i class="fas fa-book-open"></i>
+
+                    <div>
+
+                        <h2 class="grimoire-title">Grimoire du Slime</h2>
+
+                        <p class="grimoire-subtitle">Statistiques &amp; capacités en combat</p>
+
+                    </div>
+
+                </header>
+
+
+
+                <div class="grimoire-panels infos-container infos-container-wide">
+
+                    <article class="grimoire-panel info-card">
+
+                        <div class="grimoire-panel-head">
+
+                            <span class="grimoire-panel-icon"><i class="fas fa-heart-pulse"></i></span>
+
+                            <h3 class="info-title">Statistiques Vitales</h3>
+
+                        </div>
+
+                        <div class="grimoire-stats-list">
+
+                            <div class="grimoire-stat-row constellation-progress-line">
+
+                                <div class="stat-label"><i class="fas fa-circle-nodes" style="color:#d4af37"></i> Progression</div>
+
+                                <div class="stat-val" id="info-constellation-progress">0 / 16</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-heart" style="color:#e74c3c"></i> Santé</div><div class="stat-val" id="info-hp">100</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-gavel" style="color:#f1c40f"></i> Attaque</div><div class="stat-val" id="info-atk">10</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-person-running" style="color:#3498db"></i> Sprint</div><div class="stat-val" id="info-spd">15</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-gauge-high" style="color:#e67e22"></i> Vitesse d'attaque</div><div class="stat-val" id="info-attack-spd">100%</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-skull-crossbones" style="color:#9b59b6"></i> Critique</div><div class="stat-val"><span id="info-crit">5</span>% / <span id="info-crit-dmg">200</span>%</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-stopwatch" style="color:#9b59b6"></i> Recharge</div><div class="stat-val" id="info-cdr">100%</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-vial" style="color:#c0392b"></i> Vol de vie</div><div class="stat-val" id="info-lifesteal">0%</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-plus-circle" style="color:#2ecc71"></i> Régén.</div><div class="stat-val" id="info-regen">0/s</div></div>
+
+                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-graduation-cap" style="color:#f1c40f"></i> XP</div><div class="stat-val" id="info-xp">100%</div></div>
+
+                        </div>
+
+                    </article>
+
+
+
+                    <article class="grimoire-panel info-card grimoire-panel-combat">
+
+                        <div class="grimoire-panel-head">
+
+                            <span class="grimoire-panel-icon"><i class="fas fa-crosshairs"></i></span>
+
+                            <h3 class="info-title">Analyse de Combat</h3>
+
+                        </div>
+
+                        <div class="grimoire-skills-list">
+
+                            <div class="grimoire-skill-card skill-calc-box" data-skill-key="primary" onclick="NewSkillUI.toggleSkillDetail('primary', this)">
+
+                                <div class="grimoire-skill-top skill-calc-header">
+
+                                    <span class="grimoire-skill-name" id="name-skill-primary">Auto-attaque</span>
+
+                                    <kbd class="grimoire-key skill-calc-key" id="key-skill-primary">LMB</kbd>
+
+                                </div>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-primary"></div>
+
+                            </div>
+
+                            <div class="grimoire-skill-card skill-calc-box" data-skill-key="space" onclick="NewSkillUI.toggleSkillDetail('space', this)">
+
+                                <div class="grimoire-skill-top skill-calc-header">
+
+                                    <span class="grimoire-skill-name" id="name-skill-1">—</span>
+
+                                    <kbd class="grimoire-key skill-calc-key">ESPACE</kbd>
+
+                                </div>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-1"></div>
+
+                                <p class="grimoire-skill-desc formula-desc" id="desc-skill-1"></p>
+
+                            </div>
+
+                            <div class="grimoire-skill-card skill-calc-box" data-skill-key="shift" onclick="NewSkillUI.toggleSkillDetail('shift', this)">
+
+                                <div class="grimoire-skill-top skill-calc-header">
+
+                                    <span class="grimoire-skill-name" id="name-skill-2">—</span>
+
+                                    <kbd class="grimoire-key skill-calc-key">SHIFT</kbd>
+
+                                </div>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-2"></div>
+
+                                <p class="grimoire-skill-desc formula-desc" id="desc-skill-2"></p>
+
+                            </div>
+
+                            <div class="grimoire-skill-card skill-calc-box" data-skill-key="e" onclick="NewSkillUI.toggleSkillDetail('e', this)">
+
+                                <div class="grimoire-skill-top skill-calc-header">
+
+                                    <span class="grimoire-skill-name" id="name-skill-3">—</span>
+
+                                    <kbd class="grimoire-key skill-calc-key">E</kbd>
+
+                                </div>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-3"></div>
+
+                                <p class="grimoire-skill-desc formula-desc" id="desc-skill-3"></p>
+
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div id="view-fragments" class="view-section">
+
+            <div class="prism-collection-panel">
+
+                <header class="prism-collection-header">
+
+                    <i class="fas fa-gem"></i>
+
+                    <div>
+
+                        <h2>Collection Prismatic</h2>
+
+                        <p>Fragments absorbés en run — cliquez pour les détails</p>
+
+                    </div>
+
+                </header>
+
+                <div id="fragments-list" class="fragments-grid"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+

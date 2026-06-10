@@ -1,0 +1,47 @@
+<!-- ÉCRAN D'ACCUEIL -->
+<div id="screen-landing" class="menu-screen active">
+    <h1 class="menu-title">SLIME CHRONICLES</h1>
+    <h2 class="menu-subtitle">R E F O R G E D</h2>
+    <div class="btn-group">
+        <button class="btn-main" onclick="UI.goToModeSelect()">JOUER</button>
+        <button class="btn-main" onclick="UI.goToCompendium()">INDEX PRISMATIQUE</button>
+        <div style="text-align:center; font-size:10px; color:#555; margin-top:10px;">Build v4.3.3 - UI Update</div>
+    </div>
+</div>
+
+<!-- SÉLECTION DU MODE -->
+<div id="screen-mode" class="menu-screen">
+    <h1 class="menu-title">MODE DE JEU</h1>
+    <div class="btn-group">
+        <button class="btn-main" onclick="Network.startSolo()">AVENTURE SOLO</button>
+        <button class="btn-main" onclick="UI.goToLobbyHost()">CRÉER (HOST)</button>
+        <button class="btn-main" onclick="UI.goToLobbyJoin()">REJOINDRE (CLIENT)</button>
+        <button class="btn-secondary" onclick="UI.backToLanding()">RETOUR</button>
+    </div>
+</div>
+
+<!-- LOBBY HÔTE -->
+<div id="screen-host" class="menu-screen">
+    <h1 class="menu-title">SALLE D'ATTENTE</h1>
+    <div class="status-panel">
+        <h3 style="color:var(--menu-gold)">VOTRE CODE DE PARTIE</h3>
+        <div id="host-code-display" class="input-code"
+            style="border:none; background:transparent; font-size: 3rem; color: #fff;">...</div>
+        <div style="color:#aaa; margin-bottom: 20px;">Donnez ce code à votre ami.</div>
+        <div class="loader" id="host-loader"></div>
+        <div id="host-status">En attente d'un joueur...</div>
+        <button class="btn-main" style="margin-top:20px;" onclick="location.reload()">ANNULER</button>
+    </div>
+</div>
+
+<!-- LOBBY REJOINDRE -->
+<div id="screen-join" class="menu-screen">
+    <h1 class="menu-title">REJOINDRE</h1>
+    <div class="status-panel">
+        <h3 style="color:var(--menu-gold)">ENTREZ LE CODE</h3>
+        <input type="text" id="join-code-input" class="input-code" placeholder="EX: A1B2" maxlength="5">
+        <button class="btn-main" onclick="Network.joinGame()">CONNEXION</button>
+        <button class="btn-secondary" style="margin-top:10px;" onclick="UI.goToModeSelect()">RETOUR</button>
+        <div id="join-status" style="margin-top:10px; color: var(--danger);"></div>
+    </div>
+</div>

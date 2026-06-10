@@ -1,0 +1,306 @@
+/* --- BOUTONS D'ACCÈS (Animation & Style uniquement) --- */
+/* NOTE: La position est gérée dans game_base.css */
+#skill-tree-btn, #forge-btn { 
+    transition: 0.2s; 
+    box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+}
+#skill-tree-btn:hover, #forge-btn:hover { 
+    transform: scale(1.1); 
+}
+
+/* --- UI GÉNÉRIQUE (Wrappers) --- */
+#skill-ui-wrapper, .forge-wrapper {
+    background: radial-gradient(circle at center, #1b1b2f 0%, #0a0a12 100%);
+    color: #f0f0f0; font-family: 'Cinzel', serif;
+}
+#skill-ui-wrapper {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 9999; display: none; flex-direction: column;
+    opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+}
+#skill-ui-wrapper.active { opacity: 1; pointer-events: auto; display: flex; }
+
+.ui-header { display: flex; justify-content: center; align-items: center; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.3); backdrop-filter: blur(5px); }
+.ui-tabs { display: flex; gap: 60px; }
+.ui-tab-btn { background: transparent; border: none; color: #666; font-size: 1.4rem; cursor: pointer; font-family: 'Cinzel', serif; letter-spacing: 3px; padding: 10px 20px; transition: 0.3s; position: relative; }
+.ui-tab-btn:hover { color: #aaa; }
+.ui-tab-btn.active { color: #d4af37; text-shadow: 0 0 15px rgba(212, 175, 55, 0.4); }
+.ui-tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 2px; background: #d4af37; box-shadow: 0 0 10px #d4af37; }
+
+.points-display { position: absolute; left: 40px; top: 30px; font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+.points-val { color: #d4af37; font-size: 1.5rem; font-weight: bold; }
+.close-ui-btn { position: absolute; right: 40px; top: 25px; font-size: 3rem; color: #d4af37; cursor: pointer; transition: 0.3s; z-index: 10000; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
+.close-ui-btn:hover { color: #fff; transform: rotate(90deg); text-shadow: 0 0 15px #d4af37; }
+
+body.skill-ui-open #skill-tree-btn,
+body.skill-ui-open #forge-btn {
+  display: none !important;
+}
+
+.ui-content { flex: 1; position: relative; overflow: hidden; }
+.view-section { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: 0.5s ease; transform: scale(0.95); overflow-y: auto; }
+.view-section.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+/* --- CONSTELLATIONS PAR CLASSE --- */
+.constellation-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  --constellation-theme: #d4af37;
+}
+.constellation-header {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+}
+.constellation-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.35rem;
+  letter-spacing: 3px;
+  color: var(--constellation-theme);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--constellation-theme) 50%, transparent);
+  margin: 0;
+}
+.constellation-sub {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #888;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.tree-node.node-learned.keystone,
+.tree-node.unlocked[data-node-id$="-4"] {
+  border-color: var(--constellation-theme);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--constellation-theme) 45%, transparent);
+}
+.center-star.apex-unlocked,
+.center-star:has(.apex-tooltip) {
+  background: radial-gradient(circle, #fff 0%, var(--constellation-theme) 55%, transparent 75%);
+  box-shadow: 0 0 60px color-mix(in srgb, var(--constellation-theme) 60%, transparent);
+}
+.constellation-progress-line { border-bottom: 1px solid color-mix(in srgb, var(--constellation-theme) 30%, transparent) !important; }
+.bg-lines { position: absolute; width: 100%; height: 100%; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 100px 100px; mask-image: radial-gradient(circle, black 40%, transparent 80%); }
+.branch-group { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 40px; }
+.branch-atk { top: 15%; left: 50%; transform: translateX(-50%); }
+.branch-hp  { bottom: 15%; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }
+.branch-spd { left: 15%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.branch-mst { right: 15%; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.branch-spd .tree-node i { transform: rotate(45deg); } 
+.branch-mst .tree-node i { transform: rotate(-135deg); }
+.branch-label { font-size: 1.2rem; letter-spacing: 4px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 20px; text-shadow: 0 0 5px rgba(0,0,0,0.8); }
+.branch-hp .branch-label { margin-bottom: 0; margin-top: 20px; }
+
+.nodes-container { display: flex; gap: 30px; position: relative; }
+.nodes-container::before { content: ''; position: absolute; top: 50%; left: 10px; right: 10px; height: 1px; background: rgba(255,255,255,0.1); z-index: 0; }
+.tree-node { width: 50px; height: 50px; background: #111; border: 1px solid #444; transform: rotate(45deg); display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative; z-index: 1; transition: all 0.3s; box-shadow: 0 0 10px #000; }
+.tree-node i { transform: rotate(-45deg); color: #555; font-size: 1.1rem; transition: 0.3s; }
+.tree-node.unlocked, .tree-node.node-learned { border-color: #d4af37; background: #222; box-shadow: 0 0 15px rgba(212, 175, 55, 0.3); }
+.tree-node.unlocked i, .tree-node.node-learned i { color: #d4af37; text-shadow: 0 0 5px #d4af37; }
+.constellation-nodes-layer .tree-node.keystone.unlocked i,
+.constellation-nodes-layer .tree-node.keystone.node-learned i { color: inherit; text-shadow: inherit; }
+.tree-node.available, .tree-node.node-available { border-color: #888; background: #1a1a1a; cursor: pointer; }
+/* Hover constellation : voir constellation-ui.css (translate + easing) */
+.constellation-nodes-layer .tree-node.available:hover,
+.constellation-nodes-layer .tree-node.node-available:hover {
+  border-color: #fff;
+}
+.tree-node.locked { opacity: 0.5; cursor: not-allowed; border-color: #333; }
+.center-star { width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #d4af37 50%, transparent 70%); box-shadow: 0 0 50px rgba(212, 175, 55, 0.5); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2; opacity: 0.8; animation: pulseStar 4s infinite ease-in-out; display: flex; justify-content: center; align-items: center; }
+.center-icon { font-size: 2rem; color: #000; z-index: 3; opacity: 0.5; }
+@keyframes pulseStar { 0%,100%{opacity:0.6; transform:translate(-50%, -50%) scale(1);} 50%{opacity:1; transform:translate(-50%, -50%) scale(1.1);} }
+
+/* TOOLTIPS NOEUDS */
+.node-tooltip { visibility: hidden; position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%) rotate(-45deg); width: 250px; background: rgba(10,10,15,0.98); border: 1px solid #d4af37; padding: 20px; z-index: 9999; text-align: center; opacity: 0; transition: 0.3s; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,1); }
+.branch-spd .node-tooltip { transform: translateX(-50%) rotate(45deg); }
+.branch-mst .node-tooltip { transform: translateX(-50%) rotate(-135deg); }
+.tree-node:hover .node-tooltip { visibility: visible; opacity: 1; bottom: 80px; }
+.center-star:hover .node-tooltip { visibility: visible; opacity: 1; bottom: 100px; pointer-events: auto; transform: translateX(-50%) rotate(0);}
+.tooltip-title { color: #d4af37; font-weight: bold; margin-bottom: 8px; font-family: 'Cinzel', serif; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 5px; }
+.tooltip-desc { color: #ccc; font-size: 0.85rem; line-height: 1.4; font-family: sans-serif; margin-bottom: 10px; }
+.tooltip-cost { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
+/* ONGLET INFOS (STATS) */
+.infos-container { max-width: 1200px; margin: 40px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 0 40px; }
+.info-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); padding: 30px; position: relative; backdrop-filter: blur(10px); }
+.info-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #d4af37, transparent); }
+.info-title { color: #d4af37; font-size: 1.4rem; margin-bottom: 25px; text-align: center; letter-spacing: 4px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; }
+.stat-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); font-family: 'Lato', sans-serif; font-size: 1rem; color: #ccc; }
+.stat-line:last-child { border-bottom: none; }
+.stat-label { display: flex; align-items: center; gap: 10px; }
+.stat-label i { width: 20px; text-align: center; color: #888; }
+.stat-val-group { text-align: right; }
+.stat-val { color: #fff; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.2); font-size: 1.1rem; }
+.stat-detail { font-size: 0.75rem; color: #666; font-style: italic; margin-top: 2px; }
+.skill-calc-box { background: rgba(0,0,0,0.3); padding: 15px; margin-bottom: 20px; border-left: 2px solid #444; transition: 0.3s; }
+.skill-calc-box:hover { border-left-color: #d4af37; background: rgba(0,0,0,0.5); }
+.skill-calc-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.skill-calc-name { color: #fff; font-weight: bold; font-family: 'Cinzel'; }
+.skill-calc-key { font-size: 0.7rem; color: #888; border: 1px solid #444; padding: 1px 4px; border-radius: 3px; }
+.formula-content { color: #d4af37; font-family: monospace; font-size: 0.9rem; margin-top: 5px; }
+.formula-desc { color: #888; font-size: 0.85rem; margin-top: 5px; line-height: 1.4; }
+
+/* --- FORGE SLOTS & STYLES --- */
+.forge-wrapper { 
+    width: 1200px; 
+    max-width: 50vw; 
+    height: 85vh;
+    display: flex; flex-direction: column; align-items: center; margin: auto; padding-top: 50px; 
+}
+
+.forge-slot-big {
+    width: 100px; height: 140px;
+    border: 2px dashed #444;
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.02);
+    cursor: pointer;
+    transition: 0.2s;
+    text-align: center;
+    padding: 10px;
+}
+.forge-slot-big:hover { border-color: #888; background: rgba(255,255,255,0.05); }
+.forge-slot-big.filled { border-style: solid; background: rgba(0,0,0,0.6); box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+
+.sacrifice-slot { 
+    position: absolute; width: 60px; height: 60px; 
+    border: 2px dashed #444; border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; 
+    background: rgba(0,0,0,0.5); 
+    cursor: pointer; transition: 0.2s;
+}
+.sacrifice-slot:hover { border-color: #888; transform: scale(1.1); }
+
+.ritual-circle {
+    position: absolute; width: 300px; height: 300px;
+    border: 1px dashed rgba(155, 89, 182, 0.3); border-radius: 50%;
+    animation: spin 20s linear infinite;
+    pointer-events: none;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(10px); } }
+
+/* --- SELECTOR POPUP --- */
+.selector-item {
+    width: 70px; height: 70px;
+    background: rgba(30,30,35,0.8);
+    border: 1px solid #444;
+    border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+    position: relative;
+}
+.selector-item:hover { transform: scale(1.1); border-color: #fff; z-index: 10; }
+.selector-item i { font-size: 2rem; margin-bottom: 5px; filter: drop-shadow(0 0 5px rgba(0,0,0,0.5)); }
+
+/* Raretés Bordures Selecteur */
+.selector-item.shard-common { border-bottom: 3px solid var(--rarity-common); }
+.selector-item.shard-rare { border-bottom: 3px solid var(--rarity-rare); }
+.selector-item.shard-epic { border-bottom: 3px solid var(--rarity-epic); }
+.selector-item.shard-legendary { border-bottom: 3px solid var(--rarity-legendary); }
+.selector-item.shard-mythic { border-bottom: 3px solid var(--rarity-mythic); }
+
+/* Filled Slot Helper */
+.slot-filled.shard-common { box-shadow: inset 0 0 20px rgba(160,160,160,0.2); }
+.slot-filled.shard-rare { box-shadow: inset 0 0 20px rgba(52,152,219,0.2); }
+.slot-filled.shard-legendary { box-shadow: inset 0 0 20px rgba(241,196,15,0.2); }
+
+/* --- FORGE PRISMATIQUE (NOUVEAU) --- */
+/* (Déjà défini plus haut via .forge-wrapper, mais gardé ici pour la structure) */
+.forge-recipes { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+.forge-card { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border: 1px solid #333; transition: 0.2s; }
+.forge-card:hover { border-color: #555; background: rgba(255,255,255,0.08); }
+.forge-item { text-align: center; width: 100px; }
+.forge-action { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+#enchant-target-slot { position: relative; width: 100px; height: 100px; border: 2px solid var(--menu-gold); background: radial-gradient(circle, rgba(50,50,50,0.8), #000); box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; z-index: 10; transition: all 0.2s; }
+#enchant-target-slot:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 215, 0, 0.4); }
+
+/* --- INDEX PRISMATIQUE & SHARDS --- */
+#prismatic-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, #2c003e 0%, #000000 80%); z-index: 9999; opacity: 0; transition: opacity 1s ease-in; perspective: 1500px; pointer-events: none; }
+#prismatic-modal.active { display: flex; opacity: 1; pointer-events: auto; }
+.prism-options { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: stretch; max-width: 95vw; padding: 20px 16px 32px; }
+
+/* SHARDS (Cartes de butin) */
+.void-shard { width: 260px; height: 400px; background: rgba(20, 20, 25, 0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; position: relative; cursor: pointer; display: flex; flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(10px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-style: preserve-3d; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+
+/* MODIF : Animation générique pour toutes les cartes, sans délai spécifique */
+.void-shard.reveal { animation: shardReveal 0.5s ease-out forwards; opacity: 0; }
+
+@keyframes shardReveal { 0% { opacity: 0; transform: translateY(100px) rotateX(20deg); } 100% { opacity: 1; transform: translateY(0) rotateX(0deg); } }
+.void-shard:hover { transform: translateY(-20px) scale(1.05); box-shadow: 0 20px 50px rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.5); background: rgba(40, 40, 50, 0.6); }
+
+/* RARETÉS SHARDS */
+.shard-common { border-top: 4px solid var(--rarity-common); box-shadow: 0 -5px 20px rgba(160,160,160,0.1); }
+.shard-rare { border-top: 4px solid var(--rarity-rare); box-shadow: 0 -5px 20px rgba(52,152,219,0.2); }
+.shard-epic { border-top: 4px solid var(--rarity-epic); box-shadow: 0 -5px 20px rgba(155,89,182,0.3); }
+.shard-legendary { border-top: 4px solid var(--rarity-legendary); box-shadow: 0 -5px 20px rgba(241,196,15,0.4); animation: legendaryPulse 3s infinite; }
+.shard-mythic { border-top: 4px solid var(--rarity-mythic); box-shadow: 0 -5px 20px rgba(255,0,85,0.4); animation: legendaryPulse 2s infinite; }
+@keyframes legendaryPulse { 0%, 100% { box-shadow: 0 -5px 20px inherit; } 50% { box-shadow: 0 -5px 30px inherit; } }
+
+.shard-icon { font-size: 3rem; margin-top: 30px; margin-bottom: 20px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); transition: 0.3s; }
+.void-shard:hover .shard-icon { transform: scale(1.2); filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
+.shard-type { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; color: #888; }
+.shard-name { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: bold; text-align: center; margin-bottom: 20px; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; width: 100%; }
+.shard-desc { font-size: 0.95rem; color: #ccc; text-align: center; line-height: 1.5; flex-grow: 1; padding: 0 10px; }
+.shard-stat-bonus { margin-top: 15px; font-weight: bold; color: var(--rarity-legendary); text-shadow: 0 0 5px rgba(0,0,0,0.5); }
+.shard-bg-effect { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.1), transparent 70%); z-index: -1; opacity: 0.5; }
+
+/* --- COMPENDIUM INDEX --- */
+.compendium-header { width: 100%; max-width: 1200px; margin: 0 auto 30px auto; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.compendium-filters { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.filter-btn { background: rgba(20,20,25,0.8); border: 1px solid #444; color: #888; padding: 8px 16px; font-family: 'Cinzel', serif; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; text-transform: uppercase; position: relative; overflow: hidden; }
+.filter-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+.filter-btn.active { color: #fff; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.2); font-weight: bold; }
+/* Couleurs filtres */
+.filter-btn.common.active { border-color: var(--rarity-common); box-shadow: 0 0 10px rgba(160,160,160,0.3); color: var(--rarity-common); }
+.filter-btn.rare.active { border-color: var(--rarity-rare); box-shadow: 0 0 10px rgba(52,152,219,0.3); color: var(--rarity-rare); }
+.filter-btn.epic.active { border-color: var(--rarity-epic); box-shadow: 0 0 10px rgba(155,89,182,0.3); color: var(--rarity-epic); }
+.filter-btn.legendary.active { border-color: var(--rarity-legendary); box-shadow: 0 0 15px rgba(241,196,15,0.3); color: var(--rarity-legendary); }
+.filter-btn.mythic.active { border-color: var(--rarity-mythic); box-shadow: 0 0 15px rgba(255,0,85,0.3); color: var(--rarity-mythic); }
+
+.compendium-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 25px; padding: 20px; width: 100%; max-width: 1400px; margin: 0 auto; }
+.compendium-card { background: linear-gradient(135deg, rgba(20, 20, 25, 0.9) 0%, rgba(10, 10, 12, 0.95) 100%); border: 1px solid #333; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); min-height: 280px; position: relative; overflow: hidden; animation: fadeInCard 0.5s ease backwards; }
+@keyframes fadeInCard { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.compendium-card:hover { transform: translateY(-8px); z-index: 10; box-shadow: 0 10px 25px rgba(0,0,0,0.7); }
+.compendium-card::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #444; }
+
+/* Styles spécifiques par rareté pour les cartes compendium */
+.compendium-card.common::after { background: var(--rarity-common); }
+.compendium-card.common:hover { border-color: var(--rarity-common); }
+.compendium-card.rare::after { background: var(--rarity-rare); }
+.compendium-card.rare:hover { border-color: var(--rarity-rare); }
+.compendium-card.epic::after { background: var(--rarity-epic); }
+.compendium-card.epic:hover { border-color: var(--rarity-epic); }
+.compendium-card.legendary::after { background: var(--rarity-legendary); }
+.compendium-card.legendary:hover { border-color: var(--rarity-legendary); box-shadow: 0 0 20px rgba(241,196,15,0.2); }
+.compendium-card.mythic::after { background: var(--rarity-mythic); }
+.compendium-card.mythic:hover { border-color: var(--rarity-mythic); box-shadow: 0 0 25px rgba(255,0,85,0.3); }
+
+.card-icon-wrapper { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 50%; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+.compendium-card:hover .card-icon-wrapper { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+.card-name { font-family: 'Cinzel'; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; color: #eee; }
+.card-desc { font-size: 0.85rem; color: #aaa; margin-bottom: 15px; flex-grow: 1; line-height: 1.4; font-style: italic; }
+.card-stat { background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; color: #fff; width: 100%; border: 1px solid transparent; }
+.compendium-card:hover .card-stat { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); }
+.card-footer { margin-top: 15px; width: 100%; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; font-size: 0.7rem; color: #666; text-transform: uppercase; }
+
+/* MINI FRAGMENTS */
+.fragments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 20px; width: 100%; }
+.fragment-mini { background: rgba(30, 30, 35, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: 0.3s; position: relative; overflow: hidden; cursor: default; }
+.fragment-mini:hover { transform: translateY(-5px); background: rgba(40, 40, 50, 0.8); }
+.fragment-mini i { font-size: 2rem; margin-bottom: 15px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); }
+.fragment-mini .frag-name { font-family: 'Cinzel', serif; font-weight: bold; font-size: 1rem; margin-bottom: 5px; color: #fff; }
+.fragment-mini .frag-stats { font-size: 0.8rem; color: #aaa; }
+.fragment-mini.shard-common { border-top: 3px solid var(--rarity-common); }
+.fragment-mini.shard-rare { border-top: 3px solid var(--rarity-rare); }
+.fragment-mini.shard-epic { border-top: 3px solid var(--rarity-epic); }
+.fragment-mini.shard-legendary { border-top: 3px solid var(--rarity-legendary); box-shadow: 0 0 10px rgba(241,196,15,0.2); }
+.fragment-mini.shard-mythic { border-top: 3px solid var(--rarity-mythic); box-shadow: 0 0 15px rgba(255,0,85,0.3); }

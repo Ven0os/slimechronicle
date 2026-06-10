@@ -1,0 +1,321 @@
+﻿<!-- SÉLECTION DE CLASSE -->
+<div id="screen-class" class="menu-screen">
+    <div class="destiny-page">
+        <header class="destiny-hero">
+            <div class="destiny-hero-inner">
+                <div class="destiny-brand">
+                    <div class="destiny-icon-wrap" aria-hidden="true">
+                        <i class="fas fa-compass"></i>
+                    </div>
+                    <div class="destiny-titles">
+                        <h2 class="destiny-title">Choisissez votre destin</h2>
+                        <p class="destiny-subtitle">Sept voies &mdash; une seule signature</p>
+                    </div>
+                </div>
+                <p class="destiny-hint">Sélectionnez une classe pour révéler ses capacités, puis lancez l'expédition.</p>
+            </div>
+            <div class="destiny-hero-line" aria-hidden="true"></div>
+        </header>
+
+        <main class="destiny-body">
+            <div id="waiting-host-msg" class="destiny-wait-msg">En attente de l'hôte&hellip;</div>
+
+            <div class="class-container-accordion">
+                <!-- GUERRIER -->
+                <div class="class-card-accordion" data-accent="warrior" onclick="UI.selectClass('warrior', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-shield-halved"></i></div>
+                        <div class="class-name-vertical">Guerrier</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-shield-halved"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Guerrier Runique</h3>
+                                <span class="role-tag">Tank / Mêlée</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Un combattant lourd qui utilise la puissance des runes pour encaisser les coups.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Frappe Sismique</span>
+                                    <span class="skill-desc">Inflige de lourds dégâts de zone autour de vous.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Cri de Garde</span>
+                                    <span class="skill-desc">Provoque les ennemis et vous soigne.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Parade Runique</span>
+                                    <span class="skill-desc">Vous rend invulnérable quelques instants.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAGE -->
+                <div class="class-card-accordion" data-accent="mage" onclick="UI.selectClass('mage', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-hat-wizard"></i></div>
+                        <div class="class-name-vertical">Mage</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-hat-wizard"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Mage Paradoxe</h3>
+                                <span class="role-tag">DPS / Contrôle</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Maître du temps et de l'espace, il inflige d'énormes dégâts magiques.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Éclat Chronique</span>
+                                    <span class="skill-desc">Lance un projectile arcanique rapide.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Faille de Gel</span>
+                                    <span class="skill-desc">Crée une zone gelée qui ralentit les cibles.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Rémanence</span>
+                                    <span class="skill-desc">Une distorsion temporelle qui explose.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SENTINELLE -->
+                <div class="class-card-accordion" data-accent="sentinel" onclick="UI.selectClass('sentinel', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-sun"></i></div>
+                        <div class="class-name-vertical">Sentinelle</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-sun"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Sentinelle</h3>
+                                <span class="role-tag">Support / Distance</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Un gardien solaire qui soigne ses alliés et incinère ses ennemis.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Rayon Stellaire</span>
+                                    <span class="skill-desc">Canalise un rayon de lumière pure.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Poussière d'Astre</span>
+                                    <span class="skill-desc">Libère une poudre curative sur la zone.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Voile Astral</span>
+                                    <span class="skill-desc">Confère un bouclier divin temporaire.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BRISE-LAME -->
+                <div class="class-card-accordion" data-accent="blade" onclick="UI.selectClass('blade', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-water"></i></div>
+                        <div class="class-name-vertical">Brise-lame</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-water"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Brise-lame</h3>
+                                <span class="role-tag">Mobile / Off-Tank</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Un épéiste agile qui utilise la fluidité de l'eau pour esquiver.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Tranchant</span>
+                                    <span class="skill-desc">Un coup d'épée précis et mortel.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Courant</span>
+                                    <span class="skill-desc">Dash fluide à travers les ennemis.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Écume</span>
+                                    <span class="skill-desc">Tourbillon d'eau protecteur.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PACIFIEUR -->
+                <div class="class-card-accordion" data-accent="pacifier" onclick="UI.selectClass('pacifier', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-skull"></i></div>
+                        <div class="class-name-vertical">Pacifieur</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-skull"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Pacifieur</h3>
+                                <span class="role-tag">Hybride / Risque</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Un tireur maudit qui sacrifie sa vitalité pour dévaster.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Drain de Zone</span>
+                                    <span class="skill-desc">Vole la vie des ennemis proches.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Marque Sanguine</span>
+                                    <span class="skill-desc">Marque une cible pour dégâts accrus.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Blood Pistol</span>
+                                    <span class="skill-desc">Tir rapide coûtant de la santé.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHRONORÉGISSEUR -->
+                <div class="class-card-accordion" data-accent="chrono" onclick="UI.selectClass('chronoregulator', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-clock-rotate-left"></i></div>
+                        <div class="class-name-vertical">Chrono</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-clock-rotate-left"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Chronorégisseur</h3>
+                                <span class="role-tag">DPS / Malus</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Arcaniste du temps : rayon continu, gestion de la Fracture et pics de dégâts au bon moment.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Lentille de Focalisation</span>
+                                    <span class="skill-desc">Triple le rayon en cône, ralentit la surchauffe.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Déphasage Moléculaire</span>
+                                    <span class="skill-desc">Grenade en arc : explosion de zone, Instabilité Chronologique — le rayon consomme moins de Fracture.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Convergence Temporelle</span>
+                                    <span class="skill-desc">6&nbsp;s de Convergence : +10&nbsp;% vitesse, rayon illimité. CD&nbsp;17&nbsp;s — réactive&nbsp;E pour l'explosion finale.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHEVALIER ÉCLIPSE -->
+                <div class="class-card-accordion" data-accent="eclipse" onclick="UI.selectClass('eclipse', this)">
+                    <div class="accordion-header">
+                        <div class="class-icon-menu"><i class="fas fa-moon"></i></div>
+                        <div class="class-name-vertical">Éclipse</div>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="destiny-detail-head">
+                            <div class="destiny-detail-icon"><i class="fas fa-moon"></i></div>
+                            <div>
+                                <h3 class="destiny-class-title">Chevalier Éclipse</h3>
+                                <span class="role-tag">DPS / Burst</span>
+                            </div>
+                        </div>
+                        <p class="class-desc">Un guerrier astral alternant entre la puissance du Soleil et de la Lune.</p>
+                        <div class="skill-list">
+                            <div class="skill-item">
+                                <span class="skill-key">Espace</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Traversée Astrale</span>
+                                    <span class="skill-desc">Dash rapide laissant une traînée d'énergie.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">Shift</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Singularité</span>
+                                    <span class="skill-desc">Attire les ennemis dans un puits de gravité.</span>
+                                </div>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-key">E</span>
+                                <div class="skill-body">
+                                    <span class="skill-name">Cataclysme</span>
+                                    <span class="skill-desc">Explosion dévastatrice (Mode Éclipse&nbsp;: &times;2).</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="destiny-footer">
+            <div class="btn-group">
+                <button id="btn-start-game" class="btn-main" type="button" onclick="GameLauncher.launchHost()">Lancer l'expédition</button>
+                <button id="btn-ready-game" class="btn-main" type="button" onclick="GameLauncher.clientReady()">Prêt à combattre</button>
+                <button class="btn-secondary" type="button" onclick="UI.backToLanding()">Retour</button>
+            </div>
+        </footer>
+    </div>
+</div>

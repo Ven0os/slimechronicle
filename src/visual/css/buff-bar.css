@@ -1,0 +1,306 @@
+/* --- Buffs compacts sous la vie (visible uniquement si actifs) --- */
+.hud-vitals-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+.buff-strip {
+  display: none;
+  position: relative;
+  padding: 0;
+  margin: 1px 0 0;
+  background: none;
+  border: none;
+  min-height: 0;
+}
+
+.buff-strip.buff-strip-visible {
+  display: block;
+}
+
+.buffs-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+  max-width: 220px;
+}
+
+.buff-chip {
+  --buff-color: #d4af37;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 18px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid color-mix(in srgb, var(--buff-color) 55%, #333);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--buff-color) 25%, transparent);
+  cursor: help;
+  overflow: visible;
+  flex-shrink: 0;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.buff-chip:hover {
+  transform: translateY(-1px);
+  z-index: 10;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--buff-color) 45%, transparent);
+}
+
+.buff-chip-malusr {
+  --buff-color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.75);
+  background: rgba(40, 8, 8, 0.85);
+  box-shadow: 0 0 5px rgba(231, 76, 60, 0.35);
+}
+
+.buff-chip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--buff-color);
+  pointer-events: none;
+}
+
+.buff-chip-icon i {
+  font-size: 10px;
+}
+
+.buff-chip-stack {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 11px;
+  height: 11px;
+  padding: 0 2px;
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 11px;
+  text-align: center;
+  background: #111;
+  border: 1px solid var(--buff-color);
+  border-radius: 2px;
+  color: #fff;
+  z-index: 2;
+}
+
+.buff-chip-timer-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 0 0 2px 2px;
+  overflow: hidden;
+}
+
+.buff-chip-timer-fill {
+  height: 100%;
+  background: var(--buff-color);
+  opacity: 0.9;
+  transition: width 0.15s linear;
+}
+
+.buff-hover-tooltip {
+  position: fixed;
+  z-index: 10000;
+  min-width: 180px;
+  max-width: 260px;
+  padding: 10px 12px;
+  background: rgba(8, 10, 18, 0.98);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.buff-hover-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.buff-hover-tooltip.buff-tip-malusr {
+  border-color: rgba(231, 76, 60, 0.55);
+}
+
+.buff-tip-header {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.buff-tip-icon {
+  font-size: 1rem;
+  width: 22px;
+  text-align: center;
+}
+
+.buff-tip-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.buff-tip-type {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-top: 1px;
+}
+
+.buff-tip-type.tip-malusr {
+  color: #e74c3c;
+}
+
+.buff-tip-desc {
+  font-size: 0.75rem;
+  color: #bbb;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.buff-tip-stat {
+  font-size: 0.7rem;
+  color: #d4af37;
+}
+
+.hud-level-row {
+  font-size: 10px;
+  color: #aaa;
+}
+
+.hud-level-val {
+  color: var(--gold);
+}
+
+.skill-point-badge {
+  display: none;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 22px;
+  height: 22px;
+  background: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px #e74c3c;
+  z-index: 21;
+}
+
+.passive-hud-compact {
+  bottom: 40px;
+  left: 30px;
+  padding: 8px 12px;
+}
+
+.passive-hud-label {
+  color: var(--gold);
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.passive-tooltip-footer {
+  margin-top: 5px;
+  color: #aaa;
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+/* Jauge de Fracture — Chronorégisseur */
+.chrono-fracture {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  max-width: 240px;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(8, 16, 24, 0.75);
+  border: 1px solid rgba(72, 201, 176, 0.35);
+  border-radius: 6px;
+}
+
+.chrono-fracture-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chrono-fracture-icon {
+  font-size: 10px;
+  color: #48c9b0;
+}
+
+.chrono-fracture-track {
+  position: relative;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(72, 201, 176, 0.45);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chrono-fracture-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #48c9b0, #7df9ff);
+  transition: width 0.08s linear, background 0.2s;
+}
+
+.chrono-fracture-danger .chrono-fracture-fill {
+  background: linear-gradient(90deg, #f39c12, #ffd93d);
+}
+
+.chrono-fracture-critical .chrono-fracture-fill {
+  background: linear-gradient(90deg, #e74c3c, #ff6b6b);
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.6);
+}
+
+.chrono-fracture-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7df9ff;
+  letter-spacing: 0.5px;
+}
+
+.chrono-fracture-hint {
+  font-size: 8px;
+  color: #88a8a0;
+  line-height: 1.2;
+}
+
+.chrono-fracture-danger .chrono-fracture-label,
+.chrono-fracture-danger .chrono-fracture-hint {
+  color: #ffd93d;
+}
+
+.chrono-fracture-critical .chrono-fracture-label,
+.chrono-fracture-critical .chrono-fracture-hint {
+  color: #ff8888;
+}

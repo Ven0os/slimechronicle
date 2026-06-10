@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400;700&display=swap');
+
+/* --- VARIABLES GLOBALES --- */
+:root {
+    --gold: #c19d6d;
+    --dark-bg: rgba(10, 10, 12, 0.95);
+    --danger: #e74c3c;
+    --mana: #3498db;
+    --xp: #f1c40f;
+    --blood: #8a0b0b;
+    --shield: #5dade2;
+    
+    /* UI Menus */
+    --menu-gold: #d4af37;
+    --menu-glass: rgba(20, 20, 20, 0.8);
+    --menu-glass-border: rgba(255, 255, 255, 0.1);
+    --text-glow: 0 0 10px rgba(212, 175, 55, 0.5);
+
+    /* Raretés */
+    --rarity-common: #a0a0a0;
+    --rarity-rare: #3498db;
+    --rarity-epic: #9b59b6;
+    --rarity-legendary: #f1c40f;
+    --rarity-mythic: #ff0055;
+}
+
+* { box-sizing: border-box; }
+
+body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Lato', sans-serif; color: white; user-select: none; }
+
+#game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+#ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+.pointer-events-auto { pointer-events: auto; }
+
+/* --- HUD PRINCIPAL --- */
+#hud { position: absolute; top: 16px; left: 16px; display: none; }
+.bar-container { width: 240px; height: 16px; background: rgba(0,0,0,0.5); margin-bottom: 0; border: 1px solid #555; position: relative; border-radius: 4px; }
+.bar-fill { height: 100%; transition: width 0.2s; border-radius: 3px; }
+
+#hp-bar { background: var(--danger); width: 100%; z-index: 1; position: relative; }
+#shield-bar { background: var(--shield); width: 0%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; opacity: 0.7; pointer-events: none; transition: width 0.2s; border-radius: 3px; mix-blend-mode: lighten; }
+#xp-bar { background: var(--xp); width: 0%; }
+.bar-text { position: absolute; top: -2px; left: 0; width: 100%; text-align: center; font-size: 10px; text-shadow: 1px 1px 1px black; line-height: 15px; font-weight: bold; z-index: 5; }
+
+/* HUD BOSS */
+#boss-hud { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 400px; display: none; flex-direction: column; align-items: center; }
+#boss-name { font-family: 'Cinzel'; color: var(--danger); font-size: 18px; margin-bottom: 5px; text-shadow: 0 0 10px #000; }
+#boss-hp-bar-container { width: 100%; height: 20px; background: rgba(0,0,0,0.8); border: 2px solid var(--gold); border-radius: 10px; overflow: hidden; position: relative; }
+#boss-hp-fill { height: 100%; background: linear-gradient(90deg, #8a0b0b, #e74c3c); width: 100%; transition: width 0.1s; }
+.boss-phase-marker { position: absolute; top:0; bottom:0; width: 2px; background: rgba(255,255,255,0.5); z-index: 2; }
+
+/* TEXTES FLOTTANTS & NOTIFICATIONS */
+#menhir-hud { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center; text-align: center; }
+#menhir-text { font-family: 'Cinzel'; font-size: 1.5rem; color: var(--danger); text-shadow: 0 0 10px black; margin-bottom: 10px; animation: pulseText 1s infinite; }
+@keyframes pulseText { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+#kill-counter { position: absolute; top: 60px; left: 20px; font-family: 'Cinzel'; font-size: 14px; color: #888; display: none; }
+#toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: var(--gold); padding: 10px 20px; border-radius: 5px; border: 1px solid var(--gold); font-family: 'Cinzel'; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000; }
+#toast.show { opacity: 1; }
+
+/* Buffs : voir buff-bar.css (sous la barre de vie) */
+
+/* TOOLTIPS */
+.tooltip {
+  visibility: hidden; width: 240px; max-width: 90vw; background-color: rgba(6, 8, 14, 0.97);
+  color: #ccc; text-align: left; border-radius: 6px; padding: 10px 12px; position: absolute;
+  z-index: 100; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  opacity: 0; transition: opacity 0.15s, transform 0.15s; border: 1px solid rgba(193, 157, 109, 0.5);
+  font-size: 11px; font-family: 'Lato', sans-serif; pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.65); line-height: 1.45;
+}
+.tooltip h4 { color: var(--gold); margin: 0 0 6px 0; font-family: 'Cinzel'; font-size: 12px; }
+.skill-icon:hover .tooltip, #passive-hud:hover .tooltip, #prismatic-hud:hover .tooltip {
+  visibility: visible; opacity: 1; transform: translateX(-50%) translateY(-2px);
+}
+
+/* BARRE DE SKILLS */
+#skills-hud {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: none; align-items: flex-end; gap: 14px;
+  padding: 10px 18px;
+  background: rgba(8, 8, 12, 0.72);
+  border: 1px solid rgba(193, 157, 109, 0.35);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.skill-group { display: flex; flex-direction: column; align-items: center; position: relative; gap: 4px; }
+.skill-icon {
+  width: 56px; height: 56px; background: rgba(0,0,0,0.65); border: 2px solid var(--gold);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-family: 'Cinzel'; position: relative; transition: transform 0.12s, border-color 0.12s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45); cursor: help; font-size: 22px;
+}
+.skill-icon:hover { transform: translateY(-3px); border-color: #fff; }
+.skill-icon.active { border-color: #fff; box-shadow: 0 0 15px var(--mana); }
+.skill-cd {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center;
+  font-size: 18px; color: white; border-radius: 8px; font-weight: 700;
+}
+.key-hint {
+  font-size: 9px; color: var(--gold); font-weight: 700; text-shadow: 1px 1px 2px black;
+  letter-spacing: 0.5px; opacity: 0.9;
+}
+
+/* PASSIFS & ICONES FLOTTANTS */
+#passive-hud { position: absolute; bottom: 40px; left: 30px; display: none; font-family: 'Cinzel'; cursor: help; padding: 10px; border: 1px solid transparent; background: rgba(0,0,0,0.2); border-radius: 8px; }
+#passive-hud:hover { border-color: #333; background: rgba(0,0,0,0.5); }
+#passive-hud .tooltip, #prismatic-hud .tooltip { left: 0; transform: none; bottom: 110%; text-align: left; }
+
+#prismatic-hud { position: absolute; bottom: 40px; left: 180px; display: none; font-family: 'Cinzel'; cursor: help; padding: 5px; border: 1px solid transparent; background: rgba(0,0,0,0.2); border-radius: 8px; align-items: center; justify-content: center; }
+#prismatic-hud:hover { border-color: #ffd700; background: rgba(40,30,0,0.6); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+#prismatic-icon { font-size: 24px; filter: drop-shadow(0 0 5px #ffd700); }
+
+/* BOUTON ARBRE DE TALENTS (Positionné en haut à droite) */
+#skill-tree-btn { 
+    position: absolute; top: 20px; right: 20px; width: 50px; height: 50px; 
+    background: #222; border: 2px solid var(--gold); color: var(--gold); 
+    font-weight: bold; cursor: pointer; 
+    display: flex; 
+    border-radius: 50%; align-items: center; justify-content: center; 
+    font-size: 22px; z-index: 20; transition: 0.2s; box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+}
+#skill-tree-btn > i {
+    color: var(--gold);
+    line-height: 1;
+    pointer-events: none;
+}
+#skill-tree-btn:hover { background: var(--gold); color: #000; transform: scale(1.1); }
+
+/* BOUTON FORGE (Positionné juste en dessous du bouton talents) */
+#forge-btn {
+    position: absolute; top: 85px; right: 20px; width: 50px; height: 50px;
+    background: #222; border: 2px solid #e67e22; color: #e67e22;
+    font-weight: bold; cursor: pointer;
+    display: flex;
+    border-radius: 50%; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 20; transition: 0.2s; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+#forge-btn:hover { background: #e67e22; color: #000; transform: scale(1.1); }
+
+/* ÉCRAN DE MORT */
+#death-screen { background: radial-gradient(circle, rgba(138, 11, 11, 0.2) 0%, rgba(0,0,0,0.6) 90%); z-index: 1000; }
