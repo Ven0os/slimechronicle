@@ -16,9 +16,9 @@ export class RogueSkills {
         if (this.enemy.attackCooldown > 0) return;
         const dist = this.enemy.position.distanceTo(target.position);
         
-        if (dist < 2.5) this.attackStab(target);
-        else if (dist > 6.0 && dist < 12.0 && Math.random() < 0.3) this.attackShadowStep(target);
-        else if (dist > 4.0 && Math.random() < 0.1) this.attackFanOfKnives(target);
+        if (dist < 2.2) this.attackStab(target);
+        else if (dist > 7.0 && dist < 11.0 && Math.random() < 0.12) this.attackShadowStep(target);
+        else if (dist > 5.0 && Math.random() < 0.05) this.attackFanOfKnives(target);
     }
 
     attackStab(target) {

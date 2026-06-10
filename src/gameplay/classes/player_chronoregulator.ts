@@ -735,9 +735,34 @@ export class Chronoregulator extends PlayerBase {
     this.fractureGauge = Math.max(0, this.fractureGauge - this.getSkillFractureCost());
   }
 
+  updateConvergenceSkillVisual(active = true) {
+    if (!this.isLocalPlayer()) return;
+    const btn = document.getElementById('skill-e');
+    const cd = document.getElementById('cd-e');
+    if (!btn) return;
+    if (active && this.isConverging) {
+      btn.classList.add('skill-ready-finale');
+      if (cd) {
+        cd.style.display = 'flex';
+        cd.innerText = 'E';
+        cd.style.background = 'rgba(255, 217, 61, 0.85)';
+        cd.style.color = '#111';
+      }
+      const overlay = btn.querySelector('.cooldown-overlay');
+      if (overlay) overlay.style.height = '0%';
+    } else {
+      btn.classList.remove('skill-ready-finale');
+      if (cd) {
+        cd.style.background = '';
+        cd.style.color = '';
+      }
+    }
+  }
+
   useSkill(key) {
     if (key === 'e' && this.isConverging) {
       this.endConvergence(true);
+      this.updateConvergenceSkillVisual(false);
       return;
     }
 
@@ -827,6 +852,7 @@ export class Chronoregulator extends PlayerBase {
     createDamageText('CONVERGENCE', this.position, '#aee8ff');
     AudioSys.sfx.chrono?.convergenceStart?.();
     this.beginConvergence();
+    this.updateConvergenceSkillVisual();
   }
 
   beginConvergence() {
@@ -909,6 +935,9 @@ export class Chronoregulator extends PlayerBase {
       this.updateConvergencePull(dt);
       this.convergenceTimer -= dt;
       if (this.convergenceTimer <= 0) this.endConvergence(false);
+      this.updateConvergenceSkillVisual();
+    } else {
+      this.updateConvergenceSkillVisual(false);
     }
 
     const resourceEl = document.getElementById('class-resource');

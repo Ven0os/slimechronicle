@@ -15,10 +15,10 @@ export class WarlockSkills {
     checkAttackTrigger(target, dt) {
         if (this.enemy.attackCooldown > 0 || !target) return;
         const dist = this.enemy.position.distanceTo(target.position);
-        if (dist < 6.0 && Math.random() < 0.3) this.attackWarlockTeleport(target);
-        else if (dist < 10.0 && Math.random() < 0.3) this.attackWarlockZone(target);
-        else if (dist < 15.0 && Math.random() < 0.3) this.attackWarlockBeam(target);
-        else if (dist < 20.0) this.attackWarlockBolt(target);
+        if (dist < 6.0 && Math.random() < 0.12) this.attackWarlockTeleport(target);
+        else if (dist < 10.0 && Math.random() < 0.14) this.attackWarlockZone(target);
+        else if (dist < 14.0 && Math.random() < 0.12) this.attackWarlockBeam(target);
+        else if (dist < 16.0 && Math.random() < 0.22) this.attackWarlockBolt(target);
     }
 
     attackWarlockBolt(target) {

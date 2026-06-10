@@ -15,8 +15,8 @@ export class CorruptedSkills {
         if (this.enemy.attackCooldown > 0) return;
         const dist = this.enemy.position.distanceTo(target.position);
 
-        if (dist < 3.0) this.attackCorruptSlash(target);
-        else if (dist > 4.0 && dist < 11.0 && Math.random() < 0.22) this.attackCorruptPulse(target);
+        if (dist < 2.8) this.attackCorruptSlash(target);
+        else if (dist > 5.0 && dist < 10.0 && Math.random() < 0.1) this.attackCorruptPulse(target);
     }
 
     attackCorruptSlash(target) {

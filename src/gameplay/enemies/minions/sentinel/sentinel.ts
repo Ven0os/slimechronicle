@@ -15,7 +15,7 @@ export class Sentinel extends BaseEnemy {
         super('sentinel', position, id);
         this.hp *= 2.5; 
         this.maxHp = this.hp;
-        this.speed = 3.5; 
+        this.speed = 2.8; 
         this.scaleVal = 1.4;
         this.radius = 1.2; 
         this.ai = new AIBrain(this);

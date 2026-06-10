@@ -15,9 +15,9 @@ export class RogueModel {
         this.enemy.mesh.castShadow = true;
         this.enemy.mesh.scale.setScalar(this.enemy.scaleVal);
 
-        const matCloth = new THREE.MeshStandardMaterial({ color: 0x8e44ad, roughness: 0.9, flatShading: true });
-        const matArmor = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.5, metalness: 0.5 });
-        const matMetal = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 1.0 });
+        const matCloth = new THREE.MeshStandardMaterial({ color: 0x1e5631, roughness: 0.9, flatShading: true });
+        const matArmor = new THREE.MeshStandardMaterial({ color: 0x2d6a32, roughness: 0.55, metalness: 0.35 });
+        const matMetal = new THREE.MeshStandardMaterial({ color: 0x7fff00, roughness: 0.25, metalness: 0.85, emissive: 0x1e5631, emissiveIntensity: 0.25 });
 
         this.parts.torso = new THREE.Group();
         this.parts.torso.position.y = 0.75;
@@ -41,7 +41,7 @@ export class RogueModel {
         const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.15, 6), matArmor);
         scarf.position.y = -0.1;
         this.parts.head.add(scarf);
-        const eyes = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.04), new THREE.MeshBasicMaterial({color: 0xff0000}));
+        const eyes = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.04), new THREE.MeshBasicMaterial({color: 0x7fff00}));
         eyes.position.set(0, 0, 0.18);
         this.parts.head.add(eyes);
 

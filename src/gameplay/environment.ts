@@ -9,7 +9,8 @@ import { createBushModel } from './environment/bushModel';
 import { createRuinsModel } from './environment/ruinsModel';
 import { createCliffModel } from './environment/cliffModel';
 
-import * as THREE from 'three'; 
+import * as THREE from 'three';
+import { BOSS_ZONE } from './world/worldZones';
 
 const animatedObjects = []; 
 
@@ -118,9 +119,11 @@ export function createBoundaries() {
 }
 
 export function createAltars() {
-    const sealPosition = new THREE.Vector3(0, 0, -15);
+    const sealPosition = new THREE.Vector3(BOSS_ZONE.cx, 0, BOSS_ZONE.cz + 6);
     const seal = new RoyalSeal(sealPosition);
+    seal.userData.bossType = 'king';
     addEnemy(seal);
+    Globals.menhirs.push(seal);
 }
 
 export function updateMenhirVisuals() {

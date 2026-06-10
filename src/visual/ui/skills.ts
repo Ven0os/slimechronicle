@@ -73,8 +73,9 @@ export const NewSkillUI = {
   },
 
   switchTab: function (tabName: string) {
-    document.querySelectorAll('.ui-tab-btn').forEach((b) => b.classList.remove('active'));
-    if (event?.target) event.target.classList.add('active');
+    document.querySelectorAll('#skill-ui-wrapper .ui-tab-btn').forEach((b) => b.classList.remove('active'));
+    const tabBtn = document.querySelector(`#skill-ui-wrapper .ui-tab-btn[data-tab="${tabName}"]`);
+    if (tabBtn) tabBtn.classList.add('active');
 
     document.querySelectorAll('.view-section').forEach((v) => v.classList.remove('active'));
     const target = document.getElementById(`view-${tabName}`);
@@ -191,7 +192,6 @@ export const NewSkillUI = {
 };
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyK') NewSkillUI.toggle();
   if (e.code === 'Escape') {
     const wrapper = document.getElementById('skill-ui-wrapper');
     if (wrapper?.classList.contains('active')) NewSkillUI.toggle();

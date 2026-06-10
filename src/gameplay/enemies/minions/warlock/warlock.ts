@@ -14,7 +14,7 @@ export class Warlock extends BaseEnemy {
         super('warlock', position, id);
         this.hp *= 1.2;
         this.maxHp = this.hp;
-        this.speed = 4.5;
+        this.speed = 3.6;
         this.scaleVal = 1.1;
         this.radius = 1.0; 
         this.ai = new AIBrain(this);

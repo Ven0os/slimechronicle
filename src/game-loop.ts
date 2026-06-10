@@ -23,6 +23,9 @@ import { HUDEnchant } from '@/visual/ui/hud_enchant';
 import { WorldEvents } from '@/gameplay/events';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { BuffBar } from '@/ui/buffBar';
+import { SafeZoneHub } from '@/visual/ui/safeZoneHub';
+import { createThemedWorldMap } from '@/gameplay/world/worldMap';
+import { isInSafeZone, isNoMobZone } from '@/gameplay/world/worldZones';
 import * as THREE from 'three';
 
 initScene();
@@ -83,9 +86,11 @@ window.Debug = {
 };
 
 createBoundaries();
+createThemedWorldMap();
 createAltars();
 createDecorations();
 createAnimatedSky();
+SafeZoneHub.init();
 
 let questArrow: THREE.Group | null = null;
 
@@ -162,6 +167,10 @@ document.addEventListener(
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') {
+    if (SafeZoneHub.canOpenServices()) {
+      SafeZoneHub.openHub();
+      return;
+    }
     if (!WorldEvents.tryInteract()) GameLogic.tryInteractLocal();
   }
   if (Globals.player && !Globals.player.dead) {
@@ -184,6 +193,7 @@ function animate(): void {
 
   handlePassives(dt);
   HUDEnchant.updateLoop(dt);
+  SafeZoneHub.tick(dt);
   WorldEvents.update(dt);
   updateQuestIndicator();
 
@@ -196,13 +206,8 @@ function animate(): void {
     if (STATE.multiplayer.isHost) {
       Network.sendWorldState();
       enemySpawnTimer += dt * STATE.timeScale;
-      if (
-        !STATE.bossSpawned &&
-        Globals.enemies.length < 12 &&
-        enemySpawnTimer > 2.0 &&
-        !WorldEvents.isActive
-      ) {
-        if (Globals.player && Globals.player.position.length() > 20) {
+      if (!STATE.bossSpawned && Globals.enemies.length < 12 && enemySpawnTimer > 2.0) {
+        if (Globals.player && !isInSafeZone(Globals.player.position) && !isNoMobZone(Globals.player.position)) {
           GameLogic.spawnEnemy();
           enemySpawnTimer = 0;
         }
@@ -219,8 +224,10 @@ function animate(): void {
     }
   } else if (!STATE.multiplayer.active && Globals.player && !Globals.player.dead) {
     enemySpawnTimer += dt * STATE.timeScale;
-    if (enemySpawnTimer > 2.0 && Globals.enemies.length < 25 && !WorldEvents.isActive) {
-      if (Globals.player.position.length() > 20) GameLogic.spawnEnemy();
+    if (enemySpawnTimer > 2.0 && Globals.enemies.length < 25) {
+      if (!isInSafeZone(Globals.player.position) && !isNoMobZone(Globals.player.position)) {
+        GameLogic.spawnEnemy();
+      }
       enemySpawnTimer = 0;
     }
   }

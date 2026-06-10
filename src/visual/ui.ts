@@ -17,11 +17,12 @@ export const UI = {
     isMenuOpen: function() {
         // Liste des IDs des interfaces qui doivent bloquer le joueur
         const blockingMenus = [
-            'skill-ui-wrapper',  // Arbre de talents
-            'screen-forge',      // Forge
-            'prismatic-modal',   // Compendium / Choix de récompense
-            'inventory-screen',  // Inventaire (si présent)
-            'pause-menu'         // Menu Pause
+            'skill-ui-wrapper',
+            'screen-forge',
+            'safe-hub-panel',
+            'prismatic-modal',
+            'inventory-screen',
+            'pause-menu'
         ];
 
         for (const id of blockingMenus) {

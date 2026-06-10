@@ -7,7 +7,7 @@ export const ENEMY_ATTACKS = {
         stab: {
             damage: 25,
             range: 3.0,
-            cooldown: 1.2,
+            cooldown: 1.7,
             pushForce: 10,
             sound: 'sword_swing',
             telegraph: { type: 'rect', size: {x: 1, y: 3}, duration: 0.5, color: 0xff0000 }
@@ -17,14 +17,14 @@ export const ENEMY_ATTACKS = {
             count: 3,
             spread: 0.3,
             speed: 0.6,
-            cooldown: 3.0,
+            cooldown: 4.2,
             windup: 0.4,
             sound: 'shoot'
         },
         shadowStep: {
             damage: 35,
             range: 3.0,
-            cooldown: 5.0,
+            cooldown: 7.0,
             castTime: 0.6,
             reappearDelay: 0.3,
             stunDuration: 0.8,
@@ -40,7 +40,7 @@ export const ENEMY_ATTACKS = {
             damage: 45,
             radius: 5.0,
             pushForce: 20,
-            cooldown: 2.0,
+            cooldown: 2.8,
             sound: 'war_cry',
             soundImpact: 'earth_smash',
             telegraph: { type: 'circle', size: 5.0, duration: 1.0, color: 0xe74c3c }
@@ -50,7 +50,7 @@ export const ENEMY_ATTACKS = {
             speedStart: 40.0,
             speedEnd: 5.0,
             pushForce: 15,
-            cooldown: 4.0,
+            cooldown: 5.5,
             hitRadius: 2.5,
             stunDuration: 0.75,
             sound: 'sentinel_charge',
@@ -60,7 +60,7 @@ export const ENEMY_ATTACKS = {
             damage: 20,
             range: 4.5,
             pushForce: 25,
-            cooldown: 1.5,
+            cooldown: 2.1,
             stunDuration: 0.5,
             sound: 'sentinel_bash',
             telegraph: { type: 'cone', size: 4.0, duration: 0.5, color: 0x3498db }
@@ -73,7 +73,7 @@ export const ENEMY_ATTACKS = {
         bolt: {
             damage: 12,
             speed: 0.5,
-            cooldown: 1.5,
+            cooldown: 2.2,
             castTime: 0.5,
             sound: 'warlock_bolt'
         },
@@ -81,7 +81,7 @@ export const ENEMY_ATTACKS = {
             damage: 30,
             radius: 6.0,
             pullForce: 8,
-            cooldown: 4.0,
+            cooldown: 5.5,
             stunDuration: 1.5,
             sound: 'warlock_curse',
             telegraph: { type: 'circle', size: 6.0, duration: 1.5, color: 0x550055 }
@@ -90,13 +90,13 @@ export const ENEMY_ATTACKS = {
             damage: 40,
             length: 15,
             width: 2,
-            cooldown: 4.5,
+            cooldown: 6.0,
             sound: 'warlock_beam', 
             telegraph: { type: 'rect', size: {x: 2, y: 15}, duration: 1.2, color: 0x4b0082 }
         },
         teleport: {
             dist: 8.0,
-            cooldown: 5.0,
+            cooldown: 7.0,
             castTime: 0.5,
             sound: 'warlock_teleport'
         }
@@ -108,7 +108,7 @@ export const ENEMY_ATTACKS = {
         slash: {
             damage: 22,
             range: 3.2,
-            cooldown: 1.4,
+            cooldown: 2.0,
             pushForce: 8,
             sound: 'sword_swing',
             telegraph: { type: 'rect', size: { x: 1.1, y: 3 }, duration: 0.55, color: 0xa855f7 },
@@ -116,7 +116,7 @@ export const ENEMY_ATTACKS = {
         corruptPulse: {
             damage: 18,
             radius: 5.0,
-            cooldown: 3.5,
+            cooldown: 5.0,
             sound: 'warlock_curse',
             telegraph: { type: 'circle', size: 5.0, duration: 1.0, color: 0x6b21a8 },
         },

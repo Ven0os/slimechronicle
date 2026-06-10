@@ -16,7 +16,7 @@ export class Rogue extends BaseEnemy {
 
         this.hp *= 0.9;
         this.maxHp = this.hp;
-        this.speed = 7.5;
+        this.speed = 6.0;
         this.scaleVal = 1.0;
         this.radius = 0.8; 
 

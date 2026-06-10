@@ -2,6 +2,7 @@
 import { Globals } from '@/core/globals';
 import { STATE } from '@/core/config';
 import { Network } from '@/multiplayer/network';
+import { isValidEventPos } from '../world/worldZones';
 
 export const EventUtils = {
     // Génère un ID unique pour le réseau
@@ -74,7 +75,8 @@ export const EventUtils = {
             
             // Vérif distance joueur stricte
             if (Globals.player && Globals.player.position.distanceTo(candPos) < 25) continue;
-            
+            if (!isValidEventPos(candPos)) continue;
+
             // Vérif obstacles
             let safe = true;
             if(Globals.obstacles) {

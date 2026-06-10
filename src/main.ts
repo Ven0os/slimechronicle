@@ -7,6 +7,8 @@ import '@/visual/css/constellation-ui.css';
 import '@/visual/css/grimoire-ui.css';
 import '@/visual/css/prismatic-index.css';
 import '@/visual/css/destiny-menu.css';
+import '@/visual/css/safe-zone-hub.css';
+import '@/visual/ui/safeZoneHub';
 import { BuffBar } from '@/ui/buffBar';
 import { loadComponents } from './bootstrap/loadComponents';
 import { AudioSys, TextureManager } from '@/core/ressources';

@@ -8,6 +8,7 @@ import { createDamageText, spawnParticles } from '../visual/effects';
 import { Network } from '../multiplayer/network';
 import { NetSkills } from '../multiplayer/net_skills';
 import { ConstellationEngine } from '@/systems/constellationEngine';
+import { isInSafeZone, pushOutOfSafeZone } from './world/worldZones';
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
 import { BuffBar } from '@/ui/buffBar'; 
 
@@ -53,8 +54,11 @@ export class PlayerBase extends THREE.Group {
                 const childUseSkill = this.useSkill.bind(this);
                 this.useSkill = (key) => {
                     if (UI.isMenuOpen()) return;
-                    if (this.isStunned) return; 
-                    if (this.cooldowns[key] > 0) return;
+                    if (this.isStunned) return;
+                    const chronoFinale = key === 'e'
+                        && this.className === 'chronoregulator'
+                        && this.isConverging;
+                    if (!chronoFinale && this.cooldowns[key] > 0) return;
                     const wasCasting = this.isCasting || false;
                     childUseSkill(key);
                     
@@ -433,7 +437,12 @@ export class PlayerBase extends THREE.Group {
     }
 
     resolveCollisions() {
-        if (!this.isLocalPlayer()) return; 
+        if (!this.isLocalPlayer()) return;
+
+        if (STATE.leftSafeZone) {
+            pushOutOfSafeZone(this.position);
+        }
+
         const mapSize = 98; 
         if (this.position.x < -mapSize) this.position.x = -mapSize;
         if (this.position.x > mapSize) this.position.x = mapSize;
@@ -471,6 +480,8 @@ export class PlayerBase extends THREE.Group {
 
     takeDamage(amount) {
         if(this.dead) return;
+
+        if (this.isLocalPlayer() && isInSafeZone(this.position)) return;
         
         // --- IMMUNITÉ INTANGIBLE (Pas Éthéré) ---
         if(this.isIntangible) {
@@ -535,6 +546,7 @@ export class PlayerBase extends THREE.Group {
         this.dead = false; this.visible = true; this.hp = this.maxHp;
         this.buffs = []; this.debuffs = []; this.cooldowns = { space: 0, shift: 0, e: 0 };
         this.position.set(0, 0, 0);
+        STATE.leftSafeZone = false;
         this.isStunned = false; 
         if(this.stunVisualGroup) this.stunVisualGroup.visible = false;
         

@@ -40,15 +40,6 @@ export function initScene() {
     ground.receiveShadow = false;
     Globals.scene.add(ground);
 
-    // Safe Zone
-    const safeZone = new THREE.Mesh(
-        new THREE.CircleGeometry(15, 32), 
-        new THREE.MeshBasicMaterial({ color: CONFIG.colors.safeZone, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
-    );
-    safeZone.rotation.x = -Math.PI / 2; 
-    safeZone.position.y = 0.05; 
-    Globals.scene.add(safeZone);
-    
     // Exposition globale pour debug si besoin
     window.Globals = Globals;
 }

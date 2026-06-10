@@ -9,6 +9,10 @@ import { Enemy } from './enemy';
 import { createDamageText } from '../visual/effects';
 import { createAltars } from './environment';
 import { ConstellationEngine } from '@/systems/constellationEngine';
+import { pickMobSpawnType, randomWildSpawnPos, BOSS_ZONE } from './world/worldZones';
+
+const MINI_BOSS_SPAWN_CHANCE = 0.03;
+import { applyMiniBossVariant } from './enemies/minions/mini_boss';
 
 export const GameLogic = {
     
@@ -70,20 +74,14 @@ export const GameLogic = {
 
     spawnEnemy: function() {
         if (STATE.bossSpawned) return;
-        
-        const r = 25 + Math.random() * 20;
-        const t = Math.random() * Math.PI * 2;
-        
-        const rand = Math.random();
-        let type = 'rogue'; 
-        
-        if (rand < 0.32) type = 'rogue';
-        else if (rand < 0.62) type = 'sentinel';
-        else if (rand < 0.88) type = 'warlock';
-        else if (STATE.level >= 2) type = 'corrupted';
-        else type = 'rogue';
 
-        const e = new Enemy(type, new THREE.Vector3(r * Math.cos(t), 1, r * Math.sin(t)));
+        const spawnType = pickMobSpawnType(STATE.level);
+        const pos = randomWildSpawnPos();
+
+        const type = spawnType.mobs[Math.floor(Math.random() * spawnType.mobs.length)];
+        const spawnMini = Math.random() < MINI_BOSS_SPAWN_CHANCE && spawnType.miniBoss;
+        const e = new Enemy(type, pos);
+        if (spawnMini && spawnType.miniBoss) applyMiniBossVariant(e, spawnType.miniBoss);
         addEnemy(e);
     },
 
@@ -116,12 +114,12 @@ export const GameLogic = {
             }
         }
 
-        if (Globals.player) Globals.player.position.set(0, 0, 0);
+        if (Globals.player) Globals.player.position.set(BOSS_ZONE.cx, 0, BOSS_ZONE.cz + 14);
         if (STATE.multiplayer.active && STATE.multiplayer.isHost) {
             Network.send({ type: 'boss-teleport' });
         }
 
-        const pos = new THREE.Vector3(0, 0, -25);
+        const pos = new THREE.Vector3(BOSS_ZONE.cx, 0, BOSS_ZONE.cz - 6);
         const e = new Enemy(type, pos);
         addEnemy(e);
 
@@ -140,6 +138,7 @@ export const GameLogic = {
             if (Globals.player) {
                 Globals.player.respawn();
                 Globals.player.position.set(0, 0, 0);
+                STATE.leftSafeZone = false;
             }
 
             Globals.enemies.forEach(e => { Globals.scene.remove(e); });
@@ -199,8 +198,10 @@ export const GameLogic = {
 
         AudioSys.playBgm('explore'); 
 
+        STATE.leftSafeZone = false;
         const p = new Player(STATE.class);
         setPlayer(p);
+        p.position.set(0, 0, 0);
         this.reapplyAllSkillBonuses();
 
         Globals.camera.position.set(0, 20, 10);

@@ -1,11 +1,14 @@
 // @ts-nocheck
 import { Globals, removeEnemy, GameActions } from '../../core/globals';
+import { pushOutOfSafeZone, BOSS_ZONE, pushOutOfCircle } from '../world/worldZones';
 import { STATE, CONFIG } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, spawnParticles } from '../../visual/effects';
 import { Network } from '../../multiplayer/network';
 
 let enemyIdCounter = 0;
+
+export const ENEMY_AGGRO_RANGE = 18;
 
 export class BaseEnemy extends THREE.Group {
     constructor(type, position, id = null) {
@@ -17,7 +20,7 @@ export class BaseEnemy extends THREE.Group {
         this.maxHp = this.hp;
         this.barrierHp = 0;
         this.maxBarrierHp = 0;
-        this.speed = 6.0;
+        this.speed = 4.8;
         this.attackRange = 1.5;
         this.isRanged = false;
         this.isBoss = false;
@@ -52,7 +55,14 @@ export class BaseEnemy extends THREE.Group {
 
     update(dt) {
         if(this.dead) return;
-        this.position.y = 0; 
+        this.position.y = 0;
+
+        if (!this.isBoss && !this.isPlayer && this.type !== 'royal_seal') {
+            pushOutOfSafeZone(this.position);
+            if (!STATE.isBossFight && !STATE.bossSpawned) {
+                pushOutOfCircle(this.position, BOSS_ZONE.cx, BOSS_ZONE.cz, BOSS_ZONE.radius);
+            }
+        }
         
         if (!this.isBoss && this.hudGroup && Globals.camera) {
             if (this.barrierBar && this.maxBarrierHp > 0) {
@@ -166,11 +176,16 @@ export class BaseEnemy extends THREE.Group {
             let p = STATE.multiplayer.remotePlayers[id];
             if (p && p.visible) targets.push(p);
         }
-        let closest = null; let minD = 9999;
-        targets.forEach(t => { 
-            const d = this.position.distanceTo(t.position); 
-            if(d < minD) { minD = d; closest = t; } 
+        let closest = null;
+        let minD = Infinity;
+        targets.forEach((t) => {
+            const d = this.position.distanceTo(t.position);
+            if (d < minD) {
+                minD = d;
+                closest = t;
+            }
         });
+        if (!closest || minD > ENEMY_AGGRO_RANGE) return null;
         return closest;
     }
 
@@ -191,7 +206,7 @@ export class BaseEnemy extends THREE.Group {
         this.dead = true; 
         Globals.scene.remove(this); 
         
-        const xpAmount = 35;
+        const xpAmount = this._overrideXp ?? 35;
         if(GameActions.gainXp) GameActions.gainXp(xpAmount);
         if (STATE.multiplayer.active && STATE.multiplayer.isHost) Network.send({ type: 'xp-gain', amount: xpAmount });
         

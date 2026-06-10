@@ -16,10 +16,10 @@ export class WarlockModel {
         this.enemy.mesh.scale.setScalar(this.enemy.scaleVal);
 
         // --- PALETTE MAGIQUE ---
-        const matRobeDark = new THREE.MeshStandardMaterial({ color: 0x2c003e, roughness: 0.9, flatShading: true }); 
-        const matRobeLight = new THREE.MeshStandardMaterial({ color: 0x5e2a84, roughness: 0.8 }); 
-        const matGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.3 }); 
-        const matGlow = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 }); 
+        const matRobeDark = new THREE.MeshStandardMaterial({ color: 0x4a235a, roughness: 0.9, flatShading: true }); 
+        const matRobeLight = new THREE.MeshStandardMaterial({ color: 0x7d3c98, roughness: 0.75, emissive: 0x2e1065, emissiveIntensity: 0.15 }); 
+        const matGold = new THREE.MeshStandardMaterial({ color: 0xff9f43, metalness: 0.8, roughness: 0.3, emissive: 0x663300, emissiveIntensity: 0.2 }); 
+        const matGlow = new THREE.MeshBasicMaterial({ color: 0xbb8fce, transparent: true, opacity: 0.85 }); 
         const matSkinShadow = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
 
         // --- 1. BAS (Robe Flottante) ---

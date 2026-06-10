@@ -85,6 +85,7 @@ export const STATE = {
     timeScale: 1.0,
     isPaused: false,
     mouseDown: false,
+    leftSafeZone: false,
     mouse: { x: 0, y: 0 },
     raycaster: null, 
     

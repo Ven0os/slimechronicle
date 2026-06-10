@@ -30,37 +30,41 @@ export class AIBrain {
             return dirToTarget;
         }
 
-        // Comportement Sentinelle (Tank - Fonce droit)
+        // Comportement Sentinelle (Tank — approche lente)
         if (this.enemy.type === 'sentinel') {
-            if (dist > 2.0) return dirToTarget;
+            if (dist > 3.5) return dirToTarget.multiplyScalar(0.85);
             return new THREE.Vector3();
-        } 
-        // Comportement Assassin (Flank - Spirale)
+        }
+        // Comportement Assassin (Flank — moins rush)
         else if (this.enemy.type === 'rogue') {
             if (this.strafeTimer <= 0) {
                 this.strafeDir *= -1;
-                this.strafeTimer = 1.0 + Math.random() * 2.0;
+                this.strafeTimer = 1.5 + Math.random() * 2.5;
             }
-            if (dist > 8.0) return dirToTarget;
-            else if (dist > 2.5) {
+            if (dist > 11.0) return dirToTarget.multiplyScalar(0.75);
+            if (dist > 3.5) {
                 const side = new THREE.Vector3(-dirToTarget.z, 0, dirToTarget.x).multiplyScalar(this.strafeDir);
-                return side.add(dirToTarget.multiplyScalar(0.5)).normalize();
-            } else {
-                return dirToTarget;
+                return side.add(dirToTarget.multiplyScalar(0.35)).normalize();
             }
-        } 
-        // Comportement Sorcier (Kiting - Distance)
+            if (dist > 2.2) return dirToTarget.multiplyScalar(0.6);
+            return new THREE.Vector3();
+        }
+        // Comportement Sorcier (Kiting — garde la distance)
         else if (this.enemy.type === 'warlock') {
-            const idealRange = 12.0;
-            if (dist < 6.0) return dirToTarget.negate(); // Fuite
-            else if (dist > idealRange) return dirToTarget;
-            else {
-                // Strafe autour
-                return new THREE.Vector3(-dirToTarget.z, 0, dirToTarget.x).multiplyScalar(this.strafeDir * 0.5);
-            }
+            const idealRange = 14.0;
+            if (dist < 8.0) return dirToTarget.negate().multiplyScalar(0.7);
+            if (dist > idealRange) return dirToTarget.multiplyScalar(0.65);
+            return new THREE.Vector3(-dirToTarget.z, 0, dirToTarget.x).multiplyScalar(this.strafeDir * 0.35);
+        }
+        // Comportement Corrompu (pression modérée)
+        else if (this.enemy.type === 'corrupted') {
+            if (dist > 10.0) return dirToTarget.multiplyScalar(0.7);
+            if (dist > 4.0) return new THREE.Vector3(-dirToTarget.z, 0, dirToTarget.x).multiplyScalar(this.strafeDir * 0.4);
+            if (dist > 2.8) return dirToTarget.multiplyScalar(0.5);
+            return new THREE.Vector3();
         }
 
-        return dirToTarget;
+        return dirToTarget.multiplyScalar(0.7);
     }
 
     avoidance(velocity) {

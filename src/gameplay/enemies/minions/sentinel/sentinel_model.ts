@@ -15,10 +15,10 @@ export class SentinelModel {
         this.enemy.mesh.castShadow = true;
         this.enemy.mesh.scale.setScalar(this.enemy.scaleVal);
 
-        const matArmor = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.4, metalness: 0.8 });
-        const matDetail = new THREE.MeshStandardMaterial({ color: 0x95a5a6, roughness: 0.5, metalness: 0.9 });
-        const matCore = new THREE.MeshBasicMaterial({ color: 0xe74c3c });
-        const matDark = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const matArmor = new THREE.MeshStandardMaterial({ color: 0x5d6d7e, roughness: 0.35, metalness: 0.85 });
+        const matDetail = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.45, metalness: 0.92 });
+        const matCore = new THREE.MeshBasicMaterial({ color: 0xe67e22 });
+        const matDark = new THREE.MeshStandardMaterial({ color: 0x1c2833, roughness: 0.9 });
 
         this.parts.torso = new THREE.Group();
         this.parts.torso.position.y = 1.0;

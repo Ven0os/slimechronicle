@@ -14,11 +14,11 @@ export class SentinelSkills {
     checkAttackTrigger(target, dt) {
         if (this.enemy.attackCooldown > 0) return;
         const dist = this.enemy.position.distanceTo(target.position);
-        if (dist < 3.5) {
-            if (Math.random() < 0.5) this.attackSmash(target);
-            else this.attackShieldBash(target);
+        if (dist < 3.0) {
+            if (Math.random() < 0.35) this.attackSmash(target);
+            else if (Math.random() < 0.35) this.attackShieldBash(target);
         }
-        else if (dist > 6.0 && dist < 15.0 && Math.random() < 0.4) {
+        else if (dist > 7.0 && dist < 13.0 && Math.random() < 0.18) {
             this.attackCharge(target);
         }
     }
