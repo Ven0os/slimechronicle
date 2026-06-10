@@ -201,11 +201,11 @@ export const GameLogic = {
         STATE.leftSafeZone = false;
         const p = new Player(STATE.class);
         setPlayer(p);
-        p.position.set(0, 0, 0);
+        p.position.set(90, 0, 90);
         this.reapplyAllSkillBonuses();
 
-        Globals.camera.position.set(0, 20, 10);
-        Globals.camera.lookAt(0, 0, 0);
+        Globals.camera.position.set(90, 20, 100);
+        Globals.camera.lookAt(90, 0, 90);
 
         setTimeout(() => {
             UI.toast("Choisissez un Fragment de depart !");

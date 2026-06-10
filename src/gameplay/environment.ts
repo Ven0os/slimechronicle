@@ -75,7 +75,9 @@ export function createBoundaries() {
     const cliffColor = currentSeasonPalette.cliff;
 
     const placeCliff = (x, z, rotationY) => {
-        // Taille massive
+        // Ne pas faire spawner de falaises près de la plateforme de spawn (coin en haut à droite)
+        if (x > 70 && z > 70) return;
+
         const s = 6 + Math.random() * 2;
         const cliff = createCliffModel(s, cliffColor);
         
@@ -186,7 +188,7 @@ export function clearDecorations() {
         Globals.decoGroup = null;
     }
     if(Globals.obstacles) {
-        Globals.obstacles = Globals.obstacles.filter(o => o.radius >= 2.5); // Garde les autels importants
+        Globals.obstacles = Globals.obstacles.filter(o => o.radius >= 2.5 || o.isPersistent); // Garde les autels importants et les roches persistantes du spawn
     }
     animatedObjects.length = 0;
 }
@@ -289,6 +291,7 @@ export function createDecorations(importedData = null) {
         for(let i=0; i<15; i++) {
             const x = (Math.random() - 0.5) * 160;
             const z = (Math.random() - 0.5) * 160;
+            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
             if(x*x + z*z < 900) continue; 
             const type = 'ruins'; 
             const s = 2 + Math.random();
@@ -301,6 +304,7 @@ export function createDecorations(importedData = null) {
         for(let i=0; i<60; i++) {
             const x = (Math.random() - 0.5) * 180;
             const z = (Math.random() - 0.5) * 180;
+            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
             if(x*x + z*z < 600) continue; 
             const s = 1.0 + Math.random() * 1.0; 
             const ry = Math.random() * Math.PI * 2;
@@ -312,6 +316,7 @@ export function createDecorations(importedData = null) {
         for(let i=0; i<20; i++) {
             const x = (Math.random() - 0.5) * 170;
             const z = (Math.random() - 0.5) * 170;
+            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
             if(x*x + z*z < 400) continue;
             const s = 1 + Math.random() * 2; 
             const ry = Math.random() * Math.PI;
@@ -323,6 +328,7 @@ export function createDecorations(importedData = null) {
         for(let i=0; i<80; i++) {
             const x = (Math.random() - 0.5) * 180;
             const z = (Math.random() - 0.5) * 180;
+            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
             if(x*x + z*z < 300) continue;
             const s = 0.8 + Math.random();
             const ry = Math.random() * Math.PI * 2;

@@ -148,9 +148,6 @@ export class Pacifier extends PlayerBase {
     update(dt) {
         if (this.isCasting) { this.speed = 0; this.isMoving = false; } else { this.speed = STATE.stats.speed; }
         super.update(dt);
-        if (!this.isCasting && Math.abs(this.position.y) > 0.05) {
-            this.position.y = THREE.MathUtils.lerp(this.position.y, 0, dt * 10);
-        }
     }
 
     updateClassPassives(dt) {
@@ -345,12 +342,20 @@ export class Pacifier extends PlayerBase {
                 const intersection = new THREE.Vector3();
                 STATE.raycaster.ray.intersectPlane(plane, intersection);
                 const dist = Math.min(this.position.distanceTo(intersection), 20.0);
-                const jumpDir = intersection.clone().sub(this.position).normalize();
+                const jumpDir = intersection.clone().sub(this.position);
+                jumpDir.y = 0;
+                jumpDir.normalize();
                 targetPos = this.position.clone().add(jumpDir.multiplyScalar(dist));
             } else {
                 // Remote: Saut fixe vers l'avant
                 targetPos = this.position.clone().add(dir.clone().multiplyScalar(15.0));
+                targetPos.y = this.position.y;
             }
+            // Mettre à jour Y de la cible selon la zone
+            const dx = targetPos.x - 90;
+            const dz = targetPos.z - 90;
+            const targetDist = Math.hypot(dx, dz);
+            targetPos.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : 0.0;
             
             const startPos = this.position.clone();
             createSkillVisual('explosion', this.position, 1, 0x000000); 
@@ -368,20 +373,20 @@ export class Pacifier extends PlayerBase {
                     this.isCasting = false; this.animState.override = false; this.animState.armR_Rot = {x:0, y:0, z:0}; this.animState.armL_Rot = {x:0, y:0, z:0}; this.body.rotation.x = 0;
                     if(this.bloodWings) this.bloodWings.visible = false;
                     Globals.camera.position.y = originalCamY;
+                    this.mesh.position.y = 0;
                     return;
                 }
                 this.speed = 0;
                 const p = elapsed / jumpDur;
                 this.position.lerpVectors(startPos, targetPos, p);
+                this.mesh.position.y = Math.sin(p * Math.PI) * 8.0; 
                 if (p < 0.5) {
-                    this.position.y = Math.sin(p * Math.PI) * 8.0; 
                     this.animState.armR_Rot.z = 1.0; this.animState.armL_Rot.z = -1.0; this.body.rotation.x = -0.5; 
                 } else {
-                    this.position.y = Math.sin(p * Math.PI) * 8.0;
                     this.animState.armR_Rot.z = 0.2; this.animState.armL_Rot.z = -0.2; this.body.rotation.x = 1.0; 
                 }
                 if (this.isLocalPlayer()) {
-                    if (p < 0.5) Globals.camera.position.y = originalCamY + (this.position.y * 0.5);
+                    if (p < 0.5) Globals.camera.position.y = originalCamY + (this.mesh.position.y * 0.5);
                     else Globals.camera.position.y = THREE.MathUtils.lerp(Globals.camera.position.y, originalCamY, 0.2);
                 }
                 requestAnimationFrame(diveAnim);
