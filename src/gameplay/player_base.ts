@@ -490,6 +490,7 @@ export class PlayerBase extends THREE.Group {
             return;
         }
 
+        amount = ConstellationEngine.absorbOverhealShield(this, amount);
         amount = ConstellationEngine.modifyDamageTaken(amount);
 
         if (amount > 0) {
@@ -526,6 +527,10 @@ export class PlayerBase extends THREE.Group {
 
     heal(amount) {
         if (this.dead) return;
+        if (this.className === 'sentinel') {
+            amount *= ConstellationEngine.getHealAmpMult();
+            amount = ConstellationEngine.applyOverhealShield(this, amount);
+        }
         this.hp = Math.min(this.maxHp, this.hp + amount); 
         createDamageText("+" + Math.floor(amount), this.position, '#00ff00');
         if (this.isLocalPlayer()) UI.updateHUD();

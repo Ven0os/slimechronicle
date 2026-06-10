@@ -18,7 +18,7 @@ import {
 } from '@/data/constellations';
 import { getPassiveMeta } from '@/data/passiveCatalog';
 import {
-  formatPassiveScalingHtml,
+  formatPassiveDetailHtml,
   formatPassiveScalingText,
   getUnlockedPassiveDetails,
 } from '@/data/passiveScalingConfig';
@@ -221,10 +221,7 @@ export const ConstellationEngine = {
       STATE.stats.titanDefBonus = 0;
     }
 
-    if (p.solarInspiration && player.isLocalPlayer?.()) {
-      const heal = player.maxHp * 0.01 * dt * (p.solarInspiration as number);
-      player.hp = Math.min(player.maxHp, player.hp + heal);
-    }
+    this.tickSolarInspiration(dt);
 
     if (p.lastBreathCd && (p.lastBreathCd as number) > 0) {
       p.lastBreathCd = (p.lastBreathCd as number) - dt;
@@ -315,6 +312,73 @@ export const ConstellationEngine = {
     return this.modifyDamageDealt(base, { skill: true, skillKey, ...context });
   },
 
+  getSolarInspirationAtkMult(forPlayer = Globals.player): number {
+    const source = this.getSolarInspirationSource();
+    if (!source || !forPlayer || forPlayer.dead) return 1;
+    if (forPlayer.position.distanceTo(source.position) > 14) return 1;
+    return forPlayer === source ? 1.3 : 1.15;
+  },
+
+  getSolarInspirationSource() {
+    const local = Globals.player;
+    if (local?.className === 'sentinel' && this.getPassiveRank('solarInspiration')) {
+      return local;
+    }
+    return null;
+  },
+
+  tickSolarInspiration(dt: number): void {
+    const source = this.getSolarInspirationSource();
+    if (!source || source.dead) return;
+
+    const healRate = 0.01;
+    const applyHeal = (target: { hp: number; maxHp: number }) => {
+      if (!target || target.maxHp <= 0) return;
+      target.hp = Math.min(target.maxHp, target.hp + target.maxHp * healRate * dt);
+    };
+
+    applyHeal(source);
+    if (STATE.multiplayer?.remotePlayers) {
+      for (const id of Object.keys(STATE.multiplayer.remotePlayers)) {
+        const ally = STATE.multiplayer.remotePlayers[id];
+        if (!ally || ally.dead || ally === source) continue;
+        if (ally.position.distanceTo(source.position) <= 14) {
+          applyHeal(ally);
+        }
+      }
+    }
+  },
+
+  getVampJumpModifiers(): { radius: number; dmgMult: number; stunMs: number; healRatio: number } {
+    const rank = this.getPassiveRank('vampJumpAmp');
+    if (!rank) {
+      return { radius: 5, dmgMult: 1, stunMs: 2000, healRatio: 0.5 };
+    }
+    return { radius: 6.75, dmgMult: 1.25, stunMs: 2500, healRatio: 0.65 };
+  },
+
+  getHealAmpMult(): number {
+    return this.getPassiveRank('healAmp') ? 1.15 : 1;
+  },
+
+  applyOverhealShield(player: { hp: number; maxHp: number; overhealShield?: number; className?: string }, amount: number): number {
+    if (!this.getPassiveRank('overhealShield') || player.className !== 'sentinel') return amount;
+    const cap = player.maxHp * 0.25;
+    const room = player.maxHp - player.hp;
+    if (room >= amount) return amount;
+    const overflow = amount - Math.max(0, room);
+    player.overhealShield = Math.min(cap, (player.overhealShield || 0) + overflow * 0.5);
+    return Math.max(0, room);
+  },
+
+  absorbOverhealShield(player: { overhealShield?: number }, amount: number): number {
+    const shield = player.overhealShield || 0;
+    if (shield <= 0) return amount;
+    const absorbed = Math.min(shield, amount);
+    player.overhealShield = shield - absorbed;
+    return amount - absorbed;
+  },
+
   modifyDamageDealt(
     base: number,
     context: { skill?: boolean; skillKey?: SkillKey; targetHpPct?: number; marked?: boolean } = {},
@@ -322,6 +386,7 @@ export const ConstellationEngine = {
     let dmg = base;
     const p = ensurePassives();
 
+    dmg *= this.getSolarInspirationAtkMult();
     dmg *= this.getWarFervorMult();
 
     const key = context.skillKey ?? (context.skill ? undefined : 'primary');
@@ -415,7 +480,7 @@ export const ConstellationEngine = {
       return {
         name: c.apex.name,
         desc: meta?.desc || c.apex.desc,
-        scalingHtml: formatPassiveScalingHtml(key, rank),
+        scalingHtml: formatPassiveDetailHtml(key, rank),
       };
     }
 
@@ -428,7 +493,7 @@ export const ConstellationEngine = {
           return `${label} — ${formatPassiveScalingText(p.key, p.rank)}`;
         })
         .join(' · ');
-      const scalingHtml = passives.map((p) => formatPassiveScalingHtml(p.key, p.rank)).join('');
+      const scalingHtml = passives.map((p) => formatPassiveDetailHtml(p.key, p.rank)).join('');
       return {
         name: passives.length === 1 ? (getPassiveMeta(passives[0].key)?.name || passives[0].name) : `${passives.length} passifs stellaires`,
         desc,
