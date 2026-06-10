@@ -23,8 +23,8 @@ export const AudioSys = {
         music: 0.25
     },
 
-    // Modifié pour supporter le préchargement avec barre de progression
-    init: function(onProgress) {
+    // Modifié pour supporter le préchargement partiel + chargement paresseux (lazy loading)
+    init: function(onProgress?: any) {
         return new Promise((resolve, reject) => {
             if (this.initialized) {
                 if(onProgress) onProgress(1.0);
@@ -36,57 +36,72 @@ export const AudioSys = {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             this.initialized = true;
 
-            // --- CHARGEMENT DES SFX ---
-            const sfxFiles = [
-                'ui_hover', 'ui_click', 'ui_error', 'levelup', 'toast',
-                'hit', 'crit', 'die', 'dash', 'step',
-                'sword_swing', 'shield_bash', 'war_cry', 'earth_smash',
-                'magic_cast', 'ice_freeze', 'teleport',
-                'pistol_shot', 'reload', 'blood_drain', 'mark_apply',
-                'water_slash', 'water_dash', 'wave_push',
-                'solar_beam', 'moon_strike', 'eclipse_burst',
-                'rogue_spawn', 'rogue_stab', 'rogue_throw', 'rogue_vanish', 'rogue_backstab',
-                'sentinel_spawn', 'sentinel_aggro', 'sentinel_smash', 'sentinel_charge', 'sentinel_impact', 'sentinel_bash',
-                'warlock_spawn', 'warlock_bolt', 'warlock_curse', 'warlock_beam', 'warlock_teleport',
-                'guard_spawn', 'guard_slash', 'guard_stomp',
-                'boss_spawn', 'boss_roar', 'king_laugh', 'king_jump_start', 'king_land', 'king_laser',
-                'telegraph'
+            // --- SFX ESSENTIELS À PRÉCHARGER ---
+            // On ne précharge que les sons de base requis au démarrage pour accélérer le chargement
+            const essentialSfx = [
+                'ui_hover', 'ui_click', 'ui_error', 'levelup', 'toast', 'step'
             ];
 
             let loadedCount = 0;
-            const total = sfxFiles.length;
+            const total = essentialSfx.length;
 
             if (total === 0) {
                 resolve();
                 return;
             }
 
-            const promises = sfxFiles.map(name => {
-                return fetch(`/songs/sfx/${name}.mp3`)
-                    .then(response => {
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        return response.arrayBuffer();
-                    })
-                    .then(arrayBuffer => this.ctx.decodeAudioData(arrayBuffer))
-                    .then(audioBuffer => {
-                        this.sounds[name] = audioBuffer;
+            const promises = essentialSfx.map(name => {
+                return this.loadSound(name)
+                    .then(() => {
                         loadedCount++;
                         if (onProgress) onProgress(loadedCount / total);
                     })
-                    .catch(e => {
-                        console.warn(`SFX ignoré: ${name} (${e.message})`);
+                    .catch(() => {
                         // On compte quand même les erreurs pour ne pas bloquer la barre de chargement
                         loadedCount++; 
                         if (onProgress) onProgress(loadedCount / total);
                     });
             });
 
-            // On attend que TOUS les sons soient chargés (ou échoués)
+            // On attend que les sons essentiels soient chargés (ou échoués)
             Promise.all(promises).then(() => {
-                console.log(`AudioSys: ${loadedCount}/${total} sons chargés.`);
+                console.log(`AudioSys: ${loadedCount}/${total} sons essentiels préchargés.`);
                 resolve();
             });
         });
+    },
+
+    // Méthode pour charger un son à la demande de manière asynchrone
+    loadSound: function(name) {
+        if (this.sounds[name]) return Promise.resolve(this.sounds[name]);
+        if (!this._loadingPromises) this._loadingPromises = {};
+        if (this._loadingPromises[name]) {
+            return this._loadingPromises[name];
+        }
+
+        this._loadingPromises[name] = fetch(`/songs/sfx/${name}.mp3`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                return this.ctx.decodeAudioData(arrayBuffer);
+            })
+            .then(audioBuffer => {
+                this.sounds[name] = audioBuffer;
+                delete this._loadingPromises[name];
+                return audioBuffer;
+            })
+            .catch(e => {
+                console.warn(`SFX ignoré ou introuvable : ${name} (${e.message})`);
+                delete this._loadingPromises[name];
+                throw e;
+            });
+
+        return this._loadingPromises[name];
     },
 
     stopLoop: function(key) {
@@ -150,14 +165,8 @@ export const AudioSys = {
         this.activeLoops[key] = { source, gain, bandpass, highpass, crackleTimer, nodes: [source, bandpass, highpass, gain] };
     },
 
-    play: function(name, volume = 1.0, pitchVar = 0.0) {
-        if (!this.ctx || !this.sounds[name]) return;
-        
-        // Tentative de reprise automatique si suspendu (peut échouer sans gesture)
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(() => {});
-        }
-
+    _playBuffer: function(name, volume, pitchVar) {
+        if (!this.sounds[name]) return;
         const source = this.ctx.createBufferSource();
         source.buffer = this.sounds[name];
         
@@ -171,6 +180,25 @@ export const AudioSys = {
         source.connect(gainNode);
         gainNode.connect(this.ctx.destination);
         source.start(0);
+    },
+
+    play: function(name, volume = 1.0, pitchVar = 0.0) {
+        if (!this.ctx) return;
+        
+        // Tentative de reprise automatique si suspendu (peut échouer sans gesture)
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
+
+        if (this.sounds[name]) {
+            this._playBuffer(name, volume, pitchVar);
+        } else {
+            this.loadSound(name)
+                .then(() => {
+                    this._playBuffer(name, volume, pitchVar);
+                })
+                .catch(() => {}); // Déjà warné dans loadSound
+        }
     },
 
     playBgm: function(trackKey) {

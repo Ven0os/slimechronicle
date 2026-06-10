@@ -24,15 +24,15 @@ export const WorldEvents = {
     findSafeSpawnPos: () => EventUtils.findSafeSpawnPos(),
     broadcast: (data) => EventUtils.broadcast(data),
 
-    spawnBloodAltar: function(pos, netId) { spawnBloodAltar(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
-    spawnGeode: function(pos, netId) { GeodeLogic.spawnGeode(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
-    spawnCrystalDefense: function(pos, netId) { CrystalDefenseLogic.spawnCrystalDefense(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnBloodAltar: function(pos, netId?: any) { spawnBloodAltar(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnGeode: function(pos, netId?: any) { GeodeLogic.spawnGeode(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnCrystalDefense: function(pos, netId?: any) { CrystalDefenseLogic.spawnCrystalDefense(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
     spawnRunePuzzle: function(pos) { spawnRunePuzzle(this, pos); this.pendingTimer = EVENT_LIFETIME; },
-    spawnElementalPillars: function(pos, netId) { ElementalPillarsLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
-    spawnAncientGong: function(pos, netId) { AncientGongLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
-    spawnLaserMirrors: function(pos, netId) { LaserMirrorsLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
-    spawnLightRitual: function(pos, netId) { LightRitualLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
-    spawnGliderRun: function(pos, netId) { GliderRunLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnElementalPillars: function(pos, netId?: any) { ElementalPillarsLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnAncientGong: function(pos, netId?: any) { AncientGongLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnLaserMirrors: function(pos, netId?: any) { LaserMirrorsLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnLightRitual: function(pos, netId?: any) { LightRitualLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
+    spawnGliderRun: function(pos, netId?: any) { GliderRunLogic.spawn(this, pos, netId); this.pendingTimer = EVENT_LIFETIME; },
 
     handleGeodeHit: function(geode, core, label, eventId) {
         GeodeLogic.handleGeodeHit(this, geode, core, label, eventId);
