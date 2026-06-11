@@ -6,6 +6,7 @@ import { ENEMY_ATTACKS } from '../../../core/enemy_attacks_config';
 import { AudioSys } from '../../../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual, createTelegraph } from '../../../visual/effects';
 import { Network } from '../../../multiplayer/network';
+import { damagePlayer, getAllLivingPlayers } from '../../../multiplayer/net_combat';
 import { Projectile } from '../../entities';
 import { UI } from '../../../visual/ui';
 import { RoyalGuard } from '../minions/royal_guard/royal_guard';
@@ -483,14 +484,13 @@ export class KingSlime extends BaseEnemy {
                 createSkillVisual('explosion', m.position, radius, impactColor);
                 spawnParticles(m.position, particleColor, 30);
                 if (AudioSys.play) AudioSys.play('earth_smash', isVoid ? 1.0 : 0.8);
-                if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
-                    const dist = Globals.player.position.distanceTo(m.position);
-                    if (dist < radius) {
-                        Globals.player.takeDamage(dmg);
-                        Globals.player.knockback.add(new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize().multiplyScalar(knockback));
-                        createDamageText(dmg, Globals.player.position, impactColor);
+                getAllLivingPlayers().forEach((t) => {
+                    if (t.position.distanceTo(m.position) < radius) {
+                        const kb = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize().multiplyScalar(knockback);
+                        damagePlayer(t, dmg, { knockback: kb });
+                        createDamageText(dmg, t.position, impactColor);
                     }
-                }
+                });
                 Globals.scene.remove(m); if (m.geometry) m.geometry.dispose(); this.activeMeteors.splice(i, 1);
             }
         }
@@ -533,29 +533,25 @@ export class KingSlime extends BaseEnemy {
     }
 
     applyDamageCone(dir, range, angleThreshold, damage) {
-        if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
-            const pPos = Globals.player.position;
-            const dist = pPos.distanceTo(this.position);
-            const toPlayer = pPos.clone().sub(this.position).normalize();
+        const scaled = damage * (1 + this.bossPhase * 0.2);
+        getAllLivingPlayers().forEach((t) => {
+            const dist = t.position.distanceTo(this.position);
+            const toPlayer = t.position.clone().sub(this.position).normalize();
             if (dist < range && toPlayer.dot(dir) > angleThreshold) {
-                Globals.player.takeDamage(damage * (1 + this.bossPhase * 0.2));
-                Globals.player.knockback.add(dir.multiplyScalar(20));
-                Globals.player.applyStun(0.8);
-                createDamageText("SLASH!", pPos, '#ff0000');
+                damagePlayer(t, scaled, { knockback: dir.clone().multiplyScalar(20), stunDuration: 0.8 });
+                createDamageText("SLASH!", t.position, '#ff0000');
             }
-        }
+        });
     }
 
     applyAreaDamage(center, radius, damage, pushForce) {
-        if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
-            const dist = Globals.player.position.distanceTo(center);
-            if (dist < radius) {
-                Globals.player.takeDamage(damage);
-                const dir = Globals.player.position.clone().sub(center).normalize();
-                if (dir.length() === 0) dir.set(1, 0, 0);
-                Globals.player.knockback.add(dir.multiplyScalar(pushForce));
+        getAllLivingPlayers().forEach((t) => {
+            if (t.position.distanceTo(center) < radius) {
+                const kbDir = t.position.clone().sub(center).normalize();
+                if (kbDir.length() === 0) kbDir.set(1, 0, 0);
+                damagePlayer(t, damage, { knockback: kbDir.multiplyScalar(pushForce) });
             }
-        }
+        });
     }
 
     spawnTelegraph(pos, shape, size, duration, color, onComplete, rotY = 0) {

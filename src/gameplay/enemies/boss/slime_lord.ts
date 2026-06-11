@@ -5,6 +5,7 @@ import { STATE } from '../../../core/config';
 import { AudioSys } from '../../../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual, createTelegraph } from '../../../visual/effects';
 import { Network } from '../../../multiplayer/network';
+import { damagePlayer, getAllLivingPlayers, damagePlayersInBeam } from '../../../multiplayer/net_combat';
 import { buildSlimeLordModel } from './slime_lord_model';
 import { SlimeLordAnimator } from './slime_lord_animations';
 
@@ -213,11 +214,12 @@ export class SlimeLord extends BaseEnemy {
         
         this.spawnTelegraph(impactPos, 'circle', 8.0, 1.5, 0x000000, () => {
             createSkillVisual('explosion', impactPos, 8.0, 0x4b0082); 
-            if(Globals.player.position.distanceTo(impactPos) < 8.0) {
-                Globals.player.takeDamage(40);
-                const pull = impactPos.clone().sub(Globals.player.position).normalize().multiplyScalar(15);
-                Globals.player.knockback.add(pull); 
-            }
+            getAllLivingPlayers().forEach((t) => {
+                if (t.position.distanceTo(impactPos) < 8.0) {
+                    const pull = impactPos.clone().sub(t.position).normalize().multiplyScalar(15);
+                    damagePlayer(t, 40, { knockback: pull });
+                }
+            });
             this.isAttacking = false;
             this.animState = 'idle';
         });
@@ -248,12 +250,13 @@ export class SlimeLord extends BaseEnemy {
             const angle = laser.rotation.y; 
             const laserDir = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)).applyQuaternion(this.quaternion);
             
-            const toPlayer = Globals.player.position.clone().sub(this.position).normalize();
-            const angleDiff = laserDir.angleTo(toPlayer); 
-
-            if (angleDiff < 0.2 && Globals.player.position.distanceTo(this.position) < 40) {
-                Globals.player.takeDamage(2); 
-            }
+            getAllLivingPlayers().forEach((t) => {
+                const toPlayer = t.position.clone().sub(this.position).normalize();
+                const angleDiff = laserDir.angleTo(toPlayer);
+                if (angleDiff < 0.2 && t.position.distanceTo(this.position) < 40) {
+                    damagePlayer(t, 2);
+                }
+            });
 
             if(elapsed >= duration) {
                 clearInterval(sweepInt);
@@ -273,10 +276,12 @@ export class SlimeLord extends BaseEnemy {
         
         this.spawnTelegraph(center, 'circle', 20.0, 3.0, 0x000000, () => {
             createSkillVisual('explosion', center, 20.0, 0x000000);
-            if(Globals.player.position.distanceTo(center) < 20.0) {
-                Globals.player.takeDamage(100); 
-                Globals.player.knockback.add(Globals.player.position.clone().normalize().multiplyScalar(30)); 
-            }
+            getAllLivingPlayers().forEach((t) => {
+                if (t.position.distanceTo(center) < 20.0) {
+                    const kb = t.position.clone().normalize().multiplyScalar(30);
+                    damagePlayer(t, 100, { knockback: kb });
+                }
+            });
             this.isAttacking = false;
             this.animState = 'idle';
         });
@@ -298,8 +303,14 @@ export class SlimeLord extends BaseEnemy {
             o.position.add(o.userData.velocity.clone().multiplyScalar(dt));
             o.userData.life -= dt;
             
-            if (Globals.player.position.distanceTo(o.position) < 1.5) {
-                Globals.player.takeDamage(25);
+            let orbHit = false;
+            getAllLivingPlayers().forEach((t) => {
+                if (t.position.distanceTo(o.position) < 1.5) {
+                    damagePlayer(t, 25);
+                    orbHit = true;
+                }
+            });
+            if (orbHit) {
                 createSkillVisual('explosion', o.position, 2.0, 0x9400d3);
                 Globals.scene.remove(o);
                 this.activeOrbs.splice(i, 1);
@@ -388,11 +399,12 @@ export class SlimeLord extends BaseEnemy {
             
             // Repousse le joueur à la fin de la transition
             createSkillVisual('explosion', this.position, 20.0, colorHex);
-            if (Globals.player && Globals.player.position.distanceTo(this.position) < 20) {
-                const dir = Globals.player.position.clone().sub(this.position).normalize();
-                Globals.player.knockback.add(dir.multiplyScalar(20));
-                Globals.player.takeDamage(10); // Petit dégât de souffle
-            }
+            getAllLivingPlayers().forEach((t) => {
+                if (t.position.distanceTo(this.position) < 20) {
+                    const dir = t.position.clone().sub(this.position).normalize();
+                    damagePlayer(t, 10, { knockback: dir.multiplyScalar(20) });
+                }
+            });
 
             // Changement visuel permanent pour la phase
             if (newPhase === 3 && this.materials.neonViolet) {

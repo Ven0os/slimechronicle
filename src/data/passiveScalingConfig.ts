@@ -482,11 +482,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     paragraphs: () => [
 
-      'Prismes Affinés : maximum 3.\nChaque prisme −20 % dégâts · duplication de rayons.',
+      'Prismes Affinés : maximum 3.\nDurée initiale 5 s + 3,5 s Apex = 8,5 s par prisme.',
+
+      'Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.\nChaque prisme −20 % dégâts · duplication de rayons.',
 
       'Rayon via prisme : +100 % critique.\n−25 % dégâts critiques.',
 
-      'Fracture max : 150 %.\n+0,33 % dégâts infligés par point de Fracture.',
+      'Fracture max : 150 % (au lieu de 100 %).\n+0,33 % dégâts infligés par point de Fracture (jusqu\'à +49,5 % à 150 %).',
 
     ],
 

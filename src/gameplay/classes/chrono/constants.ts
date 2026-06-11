@@ -10,7 +10,12 @@ export const CHRONO_BEAM = {
 } as const;
 
 export const CHRONO_FRACTURE = {
+  /** Plafond Fracture sans Apex. */
   max: 100,
+  /** Plafond Fracture avec Apex Architecte de la Fracture. */
+  apexMax: 150,
+  /** +0,33 % dégâts infligés par point de Fracture (Apex). */
+  apexDmgPerPoint: 0.0033,
   fillTime: 4.33,
   skillCost: 30,
   silence: 1.5,
@@ -24,7 +29,18 @@ export const CHRONO_ASCENDANT = {
 } as const;
 
 export const CHRONO_SKILLS = {
-  lens: { duration: 8, radius: 1.4, cone: 0.14, placeDist: 5 },
+  lens: {
+    baseDuration: 5,
+    radius: 1.4,
+    cone: 0.14,
+    placeDist: 5,
+  },
+  /** Prismes affinés (Apex Architecte de la Fracture uniquement). */
+  refinedLens: {
+    /** Bonus Apex ajouté à la durée de base (nouveau prisme = base + bonus). */
+    apexExtension: 3.5,
+    maxActive: 3,
+  },
   dephasing: {
     range: 9,
     halfAngleDot: 0.5,

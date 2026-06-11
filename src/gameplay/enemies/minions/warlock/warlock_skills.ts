@@ -5,6 +5,7 @@ import { STATE } from '@/core/config';
 import { AudioSys } from '@/core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual, createTelegraph } from '../../../../visual/effects';
 import { Network } from '@/multiplayer/network';
+import { damagePlayer, damagePlayersInBeam, getAllLivingPlayers } from '@/multiplayer/net_combat';
 import { Projectile } from '../../../entities';
 
 export class WarlockSkills {
@@ -51,12 +52,13 @@ export class WarlockSkills {
         this.spawnTelegraphNetwork(zonePos, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
             createSkillVisual('vortex', zonePos, cfg.radius, 0x8e44ad);
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
-            if (Globals.player.position.distanceTo(zonePos) < cfg.radius) {
-                Globals.player.takeDamage(cfg.damage);
-                const pull = zonePos.clone().sub(Globals.player.position).normalize().multiplyScalar(cfg.pullForce);
-                Globals.player.knockback.add(pull); 
-                if(cfg.stunDuration && Globals.player.applyStun) Globals.player.applyStun(cfg.stunDuration);
-            }
+            getAllLivingPlayers().forEach((t) => {
+                if (zonePos.distanceTo(t.position) < cfg.radius) {
+                    const pull = zonePos.clone().sub(t.position).normalize().multiplyScalar(cfg.pullForce || 0);
+                    pull.y = 0;
+                    damagePlayer(t, cfg.damage, { knockback: pull, stunDuration: cfg.stunDuration });
+                }
+            });
             this.enemy.isAttacking = false;
             this.enemy.animState = 'idle';
         });
@@ -75,10 +77,7 @@ export class WarlockSkills {
         this.spawnTelegraphNetwork(offsetPos, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
             createSkillVisual('beam', this.enemy.position.clone().add(new THREE.Vector3(0,1,0)), cfg.length, 0xff00ff, dir);
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
-            if (Globals.player) {
-                const toP = Globals.player.position.clone().sub(this.enemy.position); toP.y = 0;
-                if(toP.length() < cfg.length && toP.normalize().dot(dir) > 0.9) Globals.player.takeDamage(cfg.damage);
-            }
+            damagePlayersInBeam(this.enemy.position, dir, cfg.length, cfg.damage, 0.9);
             this.enemy.isAttacking = false;
             this.enemy.animState = 'idle';
         }, Math.atan2(dir.x, dir.z));

@@ -9,6 +9,8 @@ import { ConstellationEngine } from '../../systems/constellationEngine';
 import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
+import { dealDamageToEnemy } from '../combat/damage_helpers';
+import { canApplyGameplay, canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
 
 export class Eclipse extends PlayerBase {
     // ... (Reste du code inchangé) ...
@@ -307,19 +309,19 @@ export class Eclipse extends PlayerBase {
         }, 150);
 
         const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
-        
-        // --- FIX CRITIQUE : NE PAS ENVOYER SI REMOTE ---
-        if(STATE.multiplayer.active && this.isLocalPlayer()) {
+        dir.y = 0; dir.normalize();
+
+        if (shouldSendSkillIntent()) {
+            sendSkillIntent({ intent: 'eclipse-attack', dir, pos: this.position.clone() });
+        } else if (STATE.multiplayer.active && this.isLocalPlayer()) {
             Network.send({ type: 'net-action', action: 'attack-range', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.eclipse, class: 'eclipse' });
         }
 
-        const empowered = (this._empoweredAttacksLeft || 0) > 0;
-        if (empowered) {
-            this._empoweredAttacksLeft -= 1;
-            createDamageText('DUALITÉ+', this.position, '#ffcc00');
-        }
+        const empowered = canDealDamageDirectly() && ConvergenceEffects.consumeEmpoweredAttack(this);
+        const empPreview = !canDealDamageDirectly() && (this._empoweredAttacksLeft || 0) > 0;
+        if (empowered || empPreview) createDamageText('DUALITÉ+', this.position, '#ffcc00');
 
-        const empMult = empowered ? 1.3 : 1;
+        const empMult = (empowered || empPreview) ? 1.3 : 1;
 
         const fireSun = empowered || this.eclipse.nextIsSun;
         const fireMoon = empowered || !this.eclipse.nextIsSun;
@@ -337,10 +339,11 @@ export class Eclipse extends PlayerBase {
             proj.update = (dt) => {
                 originalUpdate(dt);
                 if (!Globals.scene.children.includes(proj.mesh)) { 
+                     if (!canApplyGameplay()) return;
                      Globals.enemies.forEach(e => {
                          if(e.position.distanceTo(proj.mesh.position) < 2.5) {
                              const burnDmg = STATE.stats.atk * 0.2 * empMult;
-                             setTimeout(() => { if(!e.dead) { e.takeDamage(burnDmg); createDamageText("FEU", e.position, '#ffa500'); ConvergenceEffects.applyCataclysmVulnerability(e); } }, 500);
+                             setTimeout(() => { if(!e.dead && canApplyGameplay()) { dealDamageToEnemy(e, burnDmg, { pos: e.position, noCrit: true, skillKey: 'primary' }); createDamageText("FEU", e.position, '#ffa500'); ConvergenceEffects.applyCataclysmVulnerability(e); } }, 500);
                          }
                     });
                 }
@@ -430,13 +433,13 @@ export class Eclipse extends PlayerBase {
                         if(t >= 1) {
                             clearInterval(animInterval);
                             Globals.scene.remove(orb);
-                            target.takeDamage(damage);
+                            dealDamageToEnemy(target, damage, { pos: target.position });
                             createDamageText(Math.floor(damage), target.position, '#ffffff');
                             spawnParticles(target.position, 0xffffff, 5);
                             for (let t = 1; t <= solar.dotTicks; t++) {
                                 setTimeout(() => {
                                     if (!target.dead) {
-                                        target.takeDamage(damage * solar.dotMult);
+                                        dealDamageToEnemy(target, damage * solar.dotMult, { pos: target.position, noCrit: true });
                                         createDamageText('BRÛLURE', target.position, '#ffaa00');
                                     }
                                 }, t * 1000);
@@ -479,7 +482,7 @@ export class Eclipse extends PlayerBase {
             const lunar = PassiveKeystoneHooks.getLunarSpikeMods();
             Globals.enemies.forEach(e => {
                 if(e.position.distanceTo(targetPos) <= lunar.radius) {
-                    e.takeDamage(ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * lunar.dmgMult, { skill: true, skillKey: 'shift' }));
+                    dealDamageToEnemy(e, ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * lunar.dmgMult, { skill: true, skillKey: 'shift' }), { pos: e.position });
                     e.position.y += 2.0;
                     if (e.speed != null) e.speed *= lunar.slowFactor;
                     createDamageText("EMPALE!", e.position, '#aa00ff');
@@ -655,11 +658,11 @@ export class Eclipse extends PlayerBase {
                     if(e.position.distanceTo(this.position) < 15) {
                         const vuln = ConvergenceEffects.getCataclysmVulnMult(e);
                         const baseDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * dmgMultiplier * vuln * (1 + PassiveKeystoneHooks.getCataclysmChargeBonus()), { skill: true, skillKey: 'e' });
-                        e.takeDamage(baseDmg);
+                        dealDamageToEnemy(e, baseDmg, { pos: e.position });
                         e.pushBack(this.position, 15);
                         if (applyEffects) {
-                            setTimeout(() => { if(!e.dead) { e.takeDamage(baseDmg*0.2); createDamageText("BRÛLURE", e.position, '#ffa500'); } }, 500);
-                            setTimeout(() => { if(!e.dead) { e.takeDamage(baseDmg*0.2); createDamageText("NÉCROSE", e.position, '#aa00ff'); } }, 1500);
+                            setTimeout(() => { if(!e.dead) { dealDamageToEnemy(e, baseDmg * 0.2, { pos: e.position, noCrit: true }); createDamageText("BRÛLURE", e.position, '#ffa500'); } }, 500);
+                            setTimeout(() => { if(!e.dead) { dealDamageToEnemy(e, baseDmg * 0.2, { pos: e.position, noCrit: true }); createDamageText("NÉCROSE", e.position, '#aa00ff'); } }, 1500);
                             e.speed *= 0.2;
                             setTimeout(() => { if(e && !e.dead) e.speed *= 5.0; }, 4000);
                         }

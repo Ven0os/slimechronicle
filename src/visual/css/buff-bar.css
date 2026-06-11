@@ -304,3 +304,127 @@
 .chrono-fracture-critical .chrono-fracture-hint {
   color: #ff8888;
 }
+
+.chrono-fracture-apex {
+  border-color: rgba(255, 217, 61, 0.45);
+}
+
+.chrono-fracture-apex .chrono-fracture-fill {
+  background: linear-gradient(90deg, #48c9b0, #7df9ff 60%, #ffd93d);
+}
+
+/* Prismes / Lentilles — Chronorégisseur */
+.chrono-lens-stacks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 240px;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(8, 16, 28, 0.78);
+  border: 1px solid rgba(125, 249, 255, 0.28);
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chrono-lens-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chrono-lens-icon {
+  font-size: 10px;
+  color: #7df9ff;
+}
+
+.chrono-lens-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #aee8ff;
+  letter-spacing: 0.4px;
+}
+
+.chrono-lens-orbs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 18px;
+}
+
+.chrono-lens-orb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(125, 249, 255, 0.35);
+  background: rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.chrono-lens-orb::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: var(--lens-fill, 0%);
+  background: linear-gradient(180deg, #48c9b0, #7df9ff);
+  transition: height 0.12s linear;
+}
+
+.chrono-lens-orb-active {
+  border-color: rgba(125, 249, 255, 0.75);
+  box-shadow: 0 0 6px rgba(125, 249, 255, 0.35);
+}
+
+.chrono-lens-orb-empty {
+  opacity: 0.45;
+}
+
+.chrono-lens-hint {
+  font-size: 8px;
+  color: #88a8b8;
+  line-height: 1.2;
+}
+
+.chrono-lens-capped.chrono-lens-full {
+  border-color: rgba(255, 217, 61, 0.65);
+  box-shadow: 0 0 10px rgba(255, 217, 61, 0.2);
+}
+
+.chrono-lens-capped.chrono-lens-full .chrono-lens-label {
+  color: #ffd93d;
+}
+
+.chrono-lens-pulse-gain {
+  animation: chrono-lens-gain 0.45s ease-out;
+}
+
+.chrono-lens-pulse-full {
+  animation: chrono-lens-full 0.5s ease-out;
+}
+
+.chrono-lens-pulse-expire {
+  animation: chrono-lens-expire 0.4s ease-out;
+}
+
+@keyframes chrono-lens-gain {
+  0% { box-shadow: 0 0 0 rgba(125, 249, 255, 0); }
+  40% { box-shadow: 0 0 14px rgba(125, 249, 255, 0.55); }
+  100% { box-shadow: none; }
+}
+
+@keyframes chrono-lens-full {
+  0% { border-color: rgba(255, 217, 61, 0.3); }
+  50% { border-color: rgba(255, 217, 61, 1); box-shadow: 0 0 16px rgba(255, 217, 61, 0.45); }
+  100% { border-color: rgba(255, 217, 61, 0.65); }
+}
+
+@keyframes chrono-lens-expire {
+  0% { opacity: 1; }
+  50% { opacity: 0.55; }
+  100% { opacity: 1; }
+}

@@ -212,15 +212,6 @@ function animate(): void {
           enemySpawnTimer = 0;
         }
       }
-    } else if (Globals.player) {
-      Network.send({
-        type: 'client-input',
-        pos: Globals.player.position,
-        rot: Globals.player.mesh.rotation.y,
-        dead: Globals.player.dead,
-        class: STATE.class,
-        id: STATE.multiplayer.id,
-      });
     }
   } else if (!STATE.multiplayer.active && Globals.player && !Globals.player.dead) {
     enemySpawnTimer += dt * STATE.timeScale;

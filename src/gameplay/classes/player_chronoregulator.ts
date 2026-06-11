@@ -8,9 +8,18 @@ import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { CHRONO_ASCENDANT, CHRONO_BEAM, CHRONO_FRACTURE, CHRONO_SKILLS } from './chrono/constants';
-import { getBeamHitInfo, getBeamRays, rayHitsLens } from './chrono/beamHelpers';
+import { dedupeBeamRays, getBeamHitInfo, resolveBeamRoutes, rayHitsLens } from './chrono/beamHelpers';
+import {
+  clampFracture,
+  getMaxFracture,
+  isFractureInRuptureWindow,
+} from './chrono/fractureHelpers';
 import { updateChronoFractureUI } from './chrono/fractureUi';
+import { pulseChronoLensUI, updateChronoLensUI } from './chrono/lensUi';
+import { computeDamageToEnemy } from '../combat/damage_helpers';
 import { ChronoDephasingGrenade } from './chrono/grenadeProjectile';
+import { NetChrono } from '../../multiplayer/net_chrono';
+import { isServerAuthority, isVisualOnlyMode } from '../../multiplayer/net_combat';
 
 const CHRONO_COLOR = () => CONFIG.colors.chronoregulator;
 
@@ -30,6 +39,9 @@ export class Chronoregulator extends PlayerBase {
     this.beamFocusTime = 0;
     this.beamDamageLog = [];
     this.lenses = [];
+    this._lensUidCounter = 0;
+    this.netAimDir = null;
+    this._lensMeshesById = Object.create(null);
     this.isConverging = false;
     this.convergenceTimer = 0;
     this.convergenceHitCount = 0;
@@ -89,6 +101,14 @@ export class Chronoregulator extends PlayerBase {
   }
 
   getAimDir() {
+    if (!this.isLocalPlayer()) {
+      if (this.netAimDir && this.netAimDir.lengthSq() > 0.001) {
+        return this.netAimDir.clone().normalize();
+      }
+      if (this.netRotation !== undefined) {
+        return new THREE.Vector3(Math.sin(this.netRotation), 0, Math.cos(this.netRotation)).normalize();
+      }
+    }
     if (!Globals.camera) return new THREE.Vector3(0, 0, 1);
     STATE.raycaster.setFromCamera(STATE.mouse, Globals.camera);
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -131,7 +151,7 @@ export class Chronoregulator extends PlayerBase {
   }
 
   getFractureFillRate() {
-    return CHRONO_FRACTURE.max / CHRONO_FRACTURE.fillTime;
+    return this.getFractureCap() / CHRONO_FRACTURE.fillTime;
   }
 
   getSkillFractureCost() {
@@ -139,7 +159,11 @@ export class Chronoregulator extends PlayerBase {
   }
 
   getFractureCap() {
-    return ConvergenceEffects.getFractureMax();
+    return getMaxFracture();
+  }
+
+  getFractureOverheatAt() {
+    return getMaxFracture();
   }
 
   getAscendantMax() {
@@ -194,8 +218,7 @@ export class Chronoregulator extends PlayerBase {
   }
 
   isInRuptureWindow() {
-    return this.fractureGauge >= CHRONO_FRACTURE.ruptureMin
-      && this.fractureGauge <= CHRONO_FRACTURE.ruptureMax;
+    return isFractureInRuptureWindow(this.fractureGauge);
   }
 
   dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0 } = {}) {
@@ -205,17 +228,35 @@ export class Chronoregulator extends PlayerBase {
     if (enemy._temporalVuln?.timer > 0) dmg *= enemy._temporalVuln.mult || 1.2;
 
     const prismCrit = ConvergenceEffects.getPrismCritMods(prismDepth);
+
+    if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
+      const { dmg: preview } = computeDamageToEnemy(enemy, dmg, {
+        forceCrit: prismCrit.forceCrit,
+        critDmgMult: prismCrit.critDmgMult,
+        noCrit: !prismCrit.forceCrit,
+      });
+      createDamageText(Math.floor(preview), enemy.position, '#7df9ff');
+      Network.send({
+        type: 'request-damage',
+        enemyId: enemy.netId,
+        playerId: STATE.multiplayer.id,
+        baseDmg: dmg,
+        opts: {
+          forceCrit: prismCrit.forceCrit,
+          critDmgMult: prismCrit.critDmgMult,
+          noCrit: !prismCrit.forceCrit,
+        },
+        maxRange: 30,
+        pos: Globals.player ? { x: Globals.player.position.x, y: Globals.player.position.y, z: Globals.player.position.z } : null,
+      });
+      return preview;
+    }
+
     if (prismCrit.forceCrit) {
       dmg *= STATE.stats.critDmg * prismCrit.critDmgMult;
       createDamageText('PRISME!', enemy.position, '#7df9ff');
     }
-
-    if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
-      createDamageText(Math.floor(dmg), enemy.position, '#7df9ff');
-      Network.send({ type: 'request-damage', enemyId: enemy.netId, amount: dmg });
-    } else {
-      enemy.takeDamage(dmg);
-    }
+    enemy.takeDamage(dmg);
     return dmg;
   }
 
@@ -436,27 +477,22 @@ export class Chronoregulator extends PlayerBase {
     const staffOrigin = this.getBeamVisualOrigin();
     const coneAmp = STATE.passives?.continuumBurst ? 1.15 : 1;
     const refined = ConvergenceEffects.hasRefinedPrisms();
-    const rays = getBeamRays(hitOrigin, mainDir, this.lenses, coneAmp, refined);
+    const routes = resolveBeamRoutes(hitOrigin, mainDir, this.lenses, coneAmp, refined);
 
     if (staffOrigin.distanceTo(hitOrigin) > 0.12) {
       this.placeBeamSegment(staffOrigin, hitOrigin, false, 0.5);
     }
 
-    if (rays.length > 1) {
-      const lensPoint = rays[0].origin;
-      if (hitOrigin.distanceTo(lensPoint) > 0.15) {
-        this.placeBeamSegment(hitOrigin, lensPoint, false);
+    for (const seg of routes.trunk) {
+      if (seg.from.distanceTo(seg.to) > 0.15) {
+        this.placeBeamSegment(seg.from, seg.to, false);
       }
-      for (const ray of rays) {
-        const { length } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
-        const end = ray.origin.clone().add(ray.dir.clone().multiplyScalar(Math.max(1, length)));
-        this.placeBeamSegment(ray.origin, end, true);
-      }
-    } else {
-      const ray = rays[0];
+    }
+
+    for (const ray of routes.rays) {
       const { length } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
       const end = ray.origin.clone().add(ray.dir.clone().multiplyScalar(Math.max(1, length)));
-      this.placeBeamSegment(ray.origin, end, false);
+      this.placeBeamSegment(ray.origin, end, ray.split);
     }
   }
 
@@ -491,22 +527,35 @@ export class Chronoregulator extends PlayerBase {
 
   tickDistortionBeam() {
     if (!this.isBeaming) return;
+    if (STATE.multiplayer.active && (!isServerAuthority() || isVisualOnlyMode())) return;
+
     const hitOrigin = this.getBeamHitOrigin();
     const mainDir = this.getAimDir();
     const refined = ConvergenceEffects.hasRefinedPrisms();
-    const rays = getBeamRays(hitOrigin, mainDir, this.lenses, STATE.passives?.continuumBurst ? 1.15 : 1, refined);
+    const routes = resolveBeamRoutes(
+      hitOrigin,
+      mainDir,
+      this.lenses,
+      STATE.passives?.continuumBurst ? 1.15 : 1,
+      refined,
+    );
+    const rays = dedupeBeamRays(routes.rays);
     const tickDt = this.getBeamTickInterval();
     const ascMult = this.getAscendantMult();
     const baseDmg = STATE.stats.atk * CHRONO_BEAM.tickDmg * ascMult * this.getBeamTickDmgMult();
 
-    if (!this.isLocalPlayer() && STATE.multiplayer.active && !STATE.multiplayer.isHost) return;
-
     let hitAny = false;
     let focusEnemy = null;
+    const damagedThisTick = new Set();
 
     for (const ray of rays) {
       const { enemy } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
       if (!enemy) continue;
+
+      const eid = this.getEnemyId(enemy);
+      if (damagedThisTick.has(eid)) continue;
+      damagedThisTick.add(eid);
+
       hitAny = true;
       focusEnemy = enemy;
 
@@ -555,6 +604,7 @@ export class Chronoregulator extends PlayerBase {
   addFracture(dt, origin, dir) {
     if (!this.isBeaming || this.overheatTriggered || this.isConverging) return;
     const fractureCap = this.getFractureCap();
+    const overheatAt = this.getFractureOverheatAt();
     if (this.fractureGauge >= fractureCap) return;
 
     let rate = this.getFractureFillRate();
@@ -564,7 +614,8 @@ export class Chronoregulator extends PlayerBase {
     }
     this.fractureGauge = Math.min(fractureCap, this.fractureGauge + rate * dt);
 
-    if (this.fractureGauge >= fractureCap) this.triggerOverheat();
+    // Apex : surchauffe à 150 seulement ; sans Apex : à 100
+    if (this.fractureGauge >= overheatAt) this.triggerOverheat();
   }
 
   triggerVoluntaryRupture() {
@@ -636,22 +687,27 @@ export class Chronoregulator extends PlayerBase {
       AudioSys.play('shoot');
     }
 
-    if (STATE.multiplayer.active && Network) {
-      Network.send({
-        type: 'net-action',
-        action: 'attack-range',
-        id: STATE.multiplayer.id,
-        class: this.className,
-        pos: this.position,
-        dir: this.getAimDir(),
-        color: CHRONO_COLOR(),
-        beam: true,
-      });
+    if (STATE.multiplayer.active) {
+      NetChrono.sendBeamStartIntent(this.getAimDir());
     }
 
     this.refreshBeamVisuals();
-    this.tickDistortionBeam();
+    if (!STATE.multiplayer.active || !isServerAuthority()) {
+      this.beamTickTimer = this.getBeamTickInterval();
+    } else {
+      this.tickDistortionBeam();
+      this.beamTickTimer = this.getBeamTickInterval();
+    }
+  }
+
+  /** Démarrage faisceau depuis réplication réseau (sans renvoyer d'intent). */
+  startDistortionBeamNetwork() {
+    if (this.isBeaming || this.fractureSilence > 0) return;
+    this.isBeaming = true;
+    this.isAttacking = true;
+    this.animState.rightArmOverride = true;
     this.beamTickTimer = this.getBeamTickInterval();
+    this.refreshBeamVisuals();
   }
 
   stopDistortionBeam(fromOverheat = false) {
@@ -671,6 +727,23 @@ export class Chronoregulator extends PlayerBase {
     this.destroyBeamVisuals();
     this.syncConvergenceElectricSound();
     this.attackCooldown = 0.15;
+
+    if (STATE.multiplayer.active && this.isLocalPlayer()) {
+      NetChrono.sendBeamStopIntent();
+    }
+  }
+
+  /** Arrêt faisceau depuis réplication réseau. */
+  stopDistortionBeamNetwork() {
+    if (!this.isBeaming && this.beamVisuals.length === 0) return;
+    this.isBeaming = false;
+    this.isAttacking = false;
+    this.animState.rightArmOverride = false;
+    this.beamFocusId = null;
+    this.beamFocusTime = 0;
+    if (this.armR) this.armR.rotation.x = 0;
+    if (this.chronoOrb?.material) this.chronoOrb.material.emissiveIntensity = 1.8;
+    this.destroyBeamVisuals();
   }
 
   updateDistortionBeam(dt) {
@@ -693,13 +766,18 @@ export class Chronoregulator extends PlayerBase {
     }
 
     this.faceMouse();
+    if (STATE.multiplayer.active && this.isLocalPlayer() && !isServerAuthority()) {
+      NetChrono.sendBeamAimIntent(this.getAimDir());
+    }
     this.addFracture(dt, this.getBeamHitOrigin(), this.getAimDir());
     if (!this.isBeaming) return;
 
-    this.beamTickTimer -= dt;
-    if (this.beamTickTimer <= 0) {
-      this.tickDistortionBeam();
-      this.beamTickTimer = this.getBeamTickInterval();
+    if (!STATE.multiplayer.active) {
+      this.beamTickTimer -= dt;
+      if (this.beamTickTimer <= 0) {
+        this.tickDistortionBeam();
+        this.beamTickTimer = this.getBeamTickInterval();
+      }
     }
 
     if (this.isBeaming) {
@@ -719,6 +797,7 @@ export class Chronoregulator extends PlayerBase {
 
   performAttack() {
     if (this.isBeaming || this.fractureSilence > 0 || this.overheatTriggered) return;
+    if (!this.isLocalPlayer()) return;
     if (!STATE.mouseDown) return;
     this.startDistortionBeam();
   }
@@ -785,7 +864,6 @@ export class Chronoregulator extends PlayerBase {
     this.faceMouse();
     this.spendFractureForSkill();
     this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
-    this.broadcastSkillNetwork(key);
 
     if (key === 'space') this.skillFocusLens();
     else if (key === 'shift') this.skillMolecularDephasing();
@@ -793,13 +871,102 @@ export class Chronoregulator extends PlayerBase {
   }
 
   skillFocusLens() {
-    AudioSys.sfx.mage?.cast?.();
-    const maxPrisms = ConvergenceEffects.getMaxRefinedPrisms();
-    while (ConvergenceEffects.hasRefinedPrisms() && this.lenses.length >= maxPrisms) {
-      const old = this.lenses.shift();
-      if (old?.mesh) Globals.scene.remove(old.mesh);
-      if (old?.ring) Globals.scene.remove(old.ring);
+    if (STATE.multiplayer.active && this.isLocalPlayer() && !isServerAuthority()) {
+      NetChrono.sendLensPlaceIntent(this.getAimDir());
+      AudioSys.sfx.mage?.cast?.();
+      return;
     }
+    this.spawnAuthoritativeLens({});
+  }
+
+  removeLensEntry(lens) {
+    if (!lens) return;
+    if (lens.mesh) Globals.scene.remove(lens.mesh);
+    if (lens.ring) Globals.scene.remove(lens.ring);
+    if (lens.id && this._lensMeshesById[lens.id]) delete this._lensMeshesById[lens.id];
+  }
+
+  syncLensesFromNetwork(lensSnaps) {
+    const incoming = lensSnaps || [];
+    const incomingIds = new Set(incoming.map((l) => l.id));
+    const existingById = Object.create(null);
+    for (const lens of this.lenses) {
+      if (lens.id) existingById[lens.id] = lens;
+    }
+
+    for (const lens of [...this.lenses]) {
+      if (!lens.id || !incomingIds.has(lens.id)) {
+        this.removeLensEntry(lens);
+      }
+    }
+
+    this.lenses = this.lenses.filter((l) => l.id && incomingIds.has(l.id));
+
+    for (const snap of incoming) {
+      let lens = existingById[snap.id];
+      if (lens) {
+        lens.timer = snap.timer;
+        lens.maxTimer = snap.maxTimer || snap.timer;
+        lens.pos.set(snap.x, 0.08, snap.z);
+        if (lens.mesh) lens.mesh.position.copy(lens.pos);
+        if (lens.ring) lens.ring.position.set(snap.x, 0.1, snap.z);
+        continue;
+      }
+
+      const pos = new THREE.Vector3(snap.x, 0.08, snap.z);
+      const refined = ConvergenceEffects.hasRefinedPrisms();
+      const geo = new THREE.CylinderGeometry(0.08, 0.2, 0.35, 6);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x7df9ff, emissive: CHRONO_COLOR(), emissiveIntensity: 1.2, transparent: true, opacity: 0.85,
+      });
+      const prism = new THREE.Mesh(geo, mat);
+      prism.position.copy(pos);
+      Globals.scene.add(prism);
+
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(CHRONO_SKILLS.lens.radius - 0.1, CHRONO_SKILLS.lens.radius, 24),
+        new THREE.MeshBasicMaterial({ color: CHRONO_COLOR(), transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(snap.x, 0.1, snap.z);
+      Globals.scene.add(ring);
+
+      lens = {
+        id: snap.id,
+        pos: pos.clone(),
+        radius: CHRONO_SKILLS.lens.radius,
+        timer: snap.timer,
+        maxTimer: snap.maxTimer || snap.timer,
+        version: snap.version || 1,
+        mesh: prism,
+        ring,
+      };
+      this.lenses.push(lens);
+      this._lensMeshesById[snap.id] = lens;
+    }
+  }
+
+  spawnAuthoritativeLens({ serverId, skipAuthorityCheck = false } = {}) {
+    if (STATE.multiplayer.active && this.isLocalPlayer() && !isServerAuthority() && !skipAuthorityCheck) {
+      return;
+    }
+
+    AudioSys.sfx.mage?.cast?.();
+    const refined = ConvergenceEffects.hasRefinedPrisms();
+    const lensDuration = refined
+      ? ConvergenceEffects.getRefinedLensFullDuration()
+      : ConvergenceEffects.getLensBaseDuration();
+
+    if (refined) {
+      ConvergenceEffects.extendActiveRefinedLenses(this.lenses);
+      const maxPrisms = ConvergenceEffects.getMaxRefinedPrisms();
+      while (this.lenses.length >= maxPrisms) {
+        const old = this.lenses.shift();
+        this.removeLensEntry(old);
+        pulseChronoLensUI('loss');
+      }
+    }
+
     const dir = this.getAimDir();
     const pos = this.position.clone().add(dir.clone().multiplyScalar(CHRONO_SKILLS.lens.placeDist));
     pos.y = 0.08;
@@ -820,16 +987,22 @@ export class Chronoregulator extends PlayerBase {
     ring.position.set(pos.x, 0.1, pos.z);
     Globals.scene.add(ring);
 
-    this.lenses.push({
+    const lensId = serverId || `lens_${++this._lensUidCounter}`;
+    const lens = {
+      id: lensId,
       pos: pos.clone(),
       radius: CHRONO_SKILLS.lens.radius,
-      timer: CHRONO_SKILLS.lens.duration,
+      timer: lensDuration,
+      maxTimer: lensDuration,
+      version: 1,
       mesh: prism,
       ring,
-    });
+    };
+    this.lenses.push(lens);
+    this._lensMeshesById[lensId] = lens;
     spawnParticles(pos, CHRONO_COLOR(), 12);
-    createDamageText('LENTILLE', pos, '#7df9ff');
-    this.addBuff('Lentille', CHRONO_SKILLS.lens.duration, 'fa-gem');
+    createDamageText(refined ? 'PRISME' : 'LENTILLE', pos, '#7df9ff');
+    if (this.isLocalPlayer()) this.addBuff(refined ? 'Prisme' : 'Lentille', lensDuration, 'fa-gem');
   }
 
   skillMolecularDephasing() {
@@ -922,13 +1095,18 @@ export class Chronoregulator extends PlayerBase {
   }
 
   updateLenses(dt) {
+    if (STATE.multiplayer.active) {
+      for (const l of this.lenses) {
+        if (l.mesh) l.mesh.rotation.y += dt * 2;
+      }
+      return;
+    }
     for (let i = this.lenses.length - 1; i >= 0; i--) {
       const l = this.lenses[i];
       l.timer -= dt;
       if (l.mesh) l.mesh.rotation.y += dt * 2;
       if (l.timer <= 0) {
-        if (l.mesh) Globals.scene.remove(l.mesh);
-        if (l.ring) Globals.scene.remove(l.ring);
+        this.removeLensEntry(l);
         this.lenses.splice(i, 1);
       }
     }
@@ -947,8 +1125,10 @@ export class Chronoregulator extends PlayerBase {
 
   updateClassPassives(dt) {
     if (this.fractureSilence > 0) this.fractureSilence -= dt;
+    this.fractureGauge = clampFracture(this.fractureGauge);
     updateChronoFractureUI(this.fractureGauge, this.fractureSilence, this.isLocalPlayer());
     this.updateLenses(dt);
+    updateChronoLensUI(this.lenses, this.isLocalPlayer());
     this.updateInstabilityMarks(dt);
 
     if (this.isConverging) {

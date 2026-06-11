@@ -5,6 +5,7 @@ import { STATE, CONFIG } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, spawnParticles } from '../../visual/effects';
 import { Network } from '../../multiplayer/network';
+import { isServerAuthority } from '../../multiplayer/net_combat';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 
 let enemyIdCounter = 0;
@@ -133,7 +134,34 @@ export class BaseEnemy extends THREE.Group {
         if (this._solarLightDebuffUntil && Date.now() < this._solarLightDebuffUntil && this._solarLightDmgTakenMult) {
             amount *= this._solarLightDmgTakenMult;
         }
-        this.hp -= amount; 
+
+        // Client multijoueur : HP autoritaire via world-update, feedback visuel uniquement
+        if (STATE.multiplayer.active && !isServerAuthority()) {
+            createDamageText(Math.floor(amount), this.position);
+            if (this.mesh) {
+                if (this.flashTimeout) { clearTimeout(this.flashTimeout); this.flashTimeout = null; }
+                this.traverse((child) => {
+                    if (child.isMesh && child.material && child.material.emissive && typeof child.material.emissive.setHex === 'function') {
+                        if (child.userData.origEmissive === undefined) {
+                            child.userData.origEmissive = child.material.emissive.getHex();
+                        }
+                        child.material.emissive.setHex(0xffffff);
+                    }
+                });
+                this.flashTimeout = setTimeout(() => {
+                    if (this.dead) return;
+                    this.traverse((child) => {
+                        if (child.isMesh && child.material && child.material.emissive) {
+                            child.material.emissive.setHex(child.userData.origEmissive ?? 0x000000);
+                        }
+                    });
+                    this.flashTimeout = null;
+                }, 80);
+            }
+            return;
+        }
+
+        this.hp -= amount;
         createDamageText(Math.floor(amount), this.position);
         
         if(Globals.player && STATE.stats.lifesteal > 0 && typeof Globals.player.heal === 'function') {

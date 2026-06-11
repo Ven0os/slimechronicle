@@ -10,6 +10,8 @@ import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { UI } from '../../visual/ui';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
+import { canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
+import { NetClassState } from '../../multiplayer/net_class_state';
 
 export class Pacifier extends PlayerBase {
     // ... (Début inchangé) ...
@@ -241,11 +243,14 @@ export class Pacifier extends PlayerBase {
             clawAnim();
 
             setTimeout(() => {
-                if(STATE.multiplayer.active && this.isLocalPlayer()) {
-                    Network.send({ type: 'net-action', action: 'attack-melee', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.pacifier, class: 'pacifier' });
+                const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+                dir.y = 0; dir.normalize();
+                if (shouldSendSkillIntent()) {
+                    sendSkillIntent({ intent: 'attack-melee', dir, pos: this.position.clone() });
                 }
                 createSkillVisual('melee_slash', this.position, 2.5, CONFIG.colors.pacifier, dir);
-                
+                if (!canDealDamageDirectly()) return;
+
                 Globals.enemies.forEach(e => {
                     const dx = e.position.x - this.position.x;
                     const dz = e.position.z - this.position.z;
@@ -267,8 +272,9 @@ export class Pacifier extends PlayerBase {
     }
 
     firePistol(dir) {
-        // Envoi réseau (si local)
-        if(STATE.multiplayer.active && this.isLocalPlayer()) {
+        if (shouldSendSkillIntent()) {
+            sendSkillIntent({ intent: 'attack-range', dir, pos: this.position.clone() });
+        } else if (STATE.multiplayer.active && this.isLocalPlayer()) {
             Network.send({ type: 'net-action', action: 'attack-range', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.pacifier, class: 'pacifier' });
         }
 
@@ -293,7 +299,9 @@ export class Pacifier extends PlayerBase {
             this.addLocalVisual(beam, 0.1, (m, t) => m.material.opacity = t*10);
         }
 
-        if (!this.isLocalPlayer() && !STATE.multiplayer.isHost) return;
+        if (!canDealDamageDirectly()) return;
+
+        const playerId = String(STATE.multiplayer.id);
 
         for (let s = 0; s < totalShots; s++) {
             const spread = totalShots > 1 ? (s - (totalShots - 1) / 2) * 0.06 : 0;
@@ -322,7 +330,9 @@ export class Pacifier extends PlayerBase {
             });
 
             if (closestHit) {
-                const shotIdx = ConvergenceEffects.getPacifierShotIndex(this);
+                const shotIdx = STATE.multiplayer.active
+                    ? NetClassState.authorizePacifierShot(playerId)
+                    : ConvergenceEffects.getPacifierShotIndex(this);
                 const pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: false });
                 const megaCrit = ConvergenceEffects.isMegaCritShot(shotIdx);
                 if (PassiveKeystoneHooks.isEnemyMarked(closestHit)) createDamageText('EXECUTE!', closestHit.position, '#e74c3c');
@@ -425,7 +435,7 @@ export class Pacifier extends PlayerBase {
                 createSkillVisual('shockwave', this.position, 10, 0xff0000); createDamageText("VERDICT", this.position, '#f00');
                 Globals.enemies.forEach(e => {
                     if(e.position.distanceTo(this.position) <= 10) {
-                        e.takeDamage(ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.5, { skill: true, skillKey: 'shift' }));
+                        dealDamageToEnemy(e, ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.5, { skill: true, skillKey: 'shift' }), { pos: e.position });
                         PassiveKeystoneHooks.markEnemyVerdict(e);
                         const mark = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 8, 16), new THREE.MeshBasicMaterial({color:0xff0000}));
                         mark.position.copy(e.position).add(new THREE.Vector3(0, 2.5, 0));
@@ -477,7 +487,7 @@ export class Pacifier extends PlayerBase {
                 e.speed = 0;
                 setTimeout(() => { if (!e.dead) e.speed = 2.0; }, mods.stunMs);
                 createDamageText("STUN", e.position, '#ffffff');
-                e.takeDamage(impactDmg);
+                dealDamageToEnemy(e, impactDmg, { pos: e.position });
                 enemiesHit++;
             }
         });

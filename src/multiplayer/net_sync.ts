@@ -2,6 +2,8 @@
 import { STATE, CONFIG } from '../core/config';
 import { Globals, addEnemy, removeEnemy } from '../core/globals';
 import { Network } from './network';
+import { NetChrono } from './net_chrono';
+import { NetClassState } from './net_class_state';
 import { Enemy } from '../gameplay/enemy';
 import { BaseEnemy } from '../gameplay/enemies/base_enemy';
 import { Player } from '../gameplay/player';
@@ -35,13 +37,17 @@ export const NetSync = {
             const playersList = [];
             
             // Info Host
+            const hostChrono = NetChrono.getPlayerSnapshot(STATE.multiplayer.id, Globals.player);
+            const hostClass = NetClassState.getSnapshot(STATE.multiplayer.id, Globals.player);
             playersList.push({ 
                 id: STATE.multiplayer.id, 
                 class: STATE.class, 
                 x: myPos.x, y: myPos.y, z: myPos.z, 
                 rot: myRot, 
                 dead: Globals.player.dead,
-                stun: Globals.player.isStunned ? 1 : 0 // Envoi état Stun
+                stun: Globals.player.isStunned ? 1 : 0,
+                chrono: hostChrono || undefined,
+                classState: hostClass || undefined,
             });
 
             // Info Clients (Relais)
@@ -49,6 +55,8 @@ export const NetSync = {
                 const p = STATE.multiplayer.remotePlayers[id];
                 if (p) {
                     const pRot = (p.netRotation !== undefined) ? p.netRotation : (p.mesh ? p.mesh.rotation.y : 0);
+                    const remoteChrono = NetChrono.getPlayerSnapshot(id, p);
+                    const remoteClass = NetClassState.getSnapshot(id, p);
                     playersList.push({
                         id: id,
                         class: p.className || 'warrior', 
@@ -57,7 +65,9 @@ export const NetSync = {
                         z: parseFloat(p.position.z.toFixed(2)),
                         rot: pRot, 
                         dead: !p.visible,
-                        stun: p.isStunned ? 1 : 0 // Relais état Stun
+                        stun: p.isStunned ? 1 : 0,
+                        chrono: remoteChrono || undefined,
+                        classState: remoteClass || undefined,
                     });
                 }
             }
@@ -105,6 +115,15 @@ export const NetSync = {
         
         // CLIENT : Envoi Input vers Host
         else {
+            let chronoPayload = undefined;
+            if (Globals.player?.className === 'chronoregulator') {
+                const aim = Globals.player.getAimDir();
+                chronoPayload = {
+                    isBeaming: Globals.player.isBeaming ? 1 : 0,
+                    aimX: parseFloat(aim.x.toFixed(3)),
+                    aimZ: parseFloat(aim.z.toFixed(3)),
+                };
+            }
             Network.send({
                 type: 'client-input',
                 id: STATE.multiplayer.id,
@@ -112,7 +131,8 @@ export const NetSync = {
                 pos: myPos,
                 rot: myRot,
                 dead: Globals.player.dead,
-                stun: Globals.player.isStunned ? 1 : 0 // Envoi état Stun au Host
+                stun: Globals.player.isStunned ? 1 : 0,
+                chrono: chronoPayload,
             });
         }
     },
@@ -221,13 +241,27 @@ export const NetSync = {
 
     syncPlayers: function(playersData) {
         playersData.forEach(pData => {
-            if (pData.id === STATE.multiplayer.id) return;
-            // Passe l'info 'stun' à updateRemotePlayer
-            this.updateRemotePlayer(pData.id, {x: pData.x, y: pData.y, z: pData.z}, pData.rot, pData.class, pData.dead, pData.stun);
+            if (pData.id === STATE.multiplayer.id) {
+                if (pData.chrono && Globals.player?.className === 'chronoregulator') {
+                    NetChrono.applySnapshot(Globals.player, pData.chrono, true);
+                }
+                if (pData.classState && Globals.player) {
+                    NetClassState.applySnapshot(Globals.player, pData.classState);
+                }
+                return;
+            }
+            this.updateRemotePlayer(pData.id, {x: pData.x, y: pData.y, z: pData.z}, pData.rot, pData.class, pData.dead, pData.stun, this._lastDt);
+            const remote = STATE.multiplayer.remotePlayers[pData.id];
+            if (pData.chrono && remote) {
+                NetChrono.applySnapshot(remote, pData.chrono, false);
+            }
+            if (pData.classState && remote) {
+                NetClassState.applySnapshot(remote, pData.classState);
+            }
         });
     },
 
-    updateRemotePlayer: function(id, pos, rot, className, isDead, isStunned) {
+    updateRemotePlayer: function(id, pos, rot, className, isDead, isStunned, dt) {
         let p = STATE.multiplayer.remotePlayers[id];
         
         if (!p) { 
@@ -242,8 +276,10 @@ export const NetSync = {
         }
 
         const targetV = new THREE.Vector3(pos.x, pos.y, pos.z);
-        if (p.position.distanceTo(targetV) > 5) p.position.copy(targetV);
-        else p.position.lerp(targetV, 0.3);
+        const snapDist = 5;
+        const lerpFactor = 1 - Math.exp(-12 * (dt || 0.016));
+        if (p.position.distanceTo(targetV) > snapDist) p.position.copy(targetV);
+        else p.position.lerp(targetV, lerpFactor);
 
         p.netRotation = rot;
 
@@ -252,8 +288,9 @@ export const NetSync = {
             let diff = rot - r;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
+            const rotLerp = 1 - Math.exp(-12 * (dt || 0.016));
             if (Math.abs(diff) > 1.0) p.mesh.rotation.y = rot;
-            else p.mesh.rotation.y += diff * 0.3;
+            else p.mesh.rotation.y += diff * rotLerp;
         }
         
         const dist = p.position.distanceTo(p.lastPos || p.position);
@@ -290,8 +327,17 @@ export const NetSync = {
         return p;
     },
 
+    _lastDt: 0.016,
+
     update: function(dt) {
-        this.sendWorldState(); 
+        this._lastDt = dt;
+        if (STATE.multiplayer.isHost) {
+            NetChrono.tick(dt);
+            NetClassState.tick(dt);
+        } else {
+            NetChrono.tickRemoteVisuals(dt);
+        }
+        this.sendWorldState();
         for (let id in STATE.multiplayer.remotePlayers) {
             const p = STATE.multiplayer.remotePlayers[id];
             if (p && typeof p.update === 'function') {

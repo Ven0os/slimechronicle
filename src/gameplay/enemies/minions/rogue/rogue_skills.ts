@@ -5,6 +5,7 @@ import { STATE } from '@/core/config';
 import { AudioSys } from '@/core/ressources';
 import { createDamageText, spawnParticles, createTelegraph, createSkillVisual } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
+import { damagePlayer } from '@/multiplayer/net_combat';
 import { Projectile } from '../../../entities';
 
 export class RogueSkills {
@@ -35,14 +36,13 @@ export class RogueSkills {
             spawnParticles(offsetPos, cfg.telegraph.color, 10);
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
             
-            if (Globals.player.position.distanceTo(this.enemy.position) < cfg.range) {
-                const toP = Globals.player.position.clone().sub(this.enemy.position).normalize();
-                if(toP.dot(this.enemy.getWorldDirection(new THREE.Vector3())) > 0.5) {
-                    Globals.player.takeDamage(cfg.damage);
-                    createDamageText("CRITIQUE", Globals.player.position, '#ff0000');
-                    const push = dir.multiplyScalar(cfg.pushForce);
+            if (target.position.distanceTo(this.enemy.position) < cfg.range) {
+                const toP = target.position.clone().sub(this.enemy.position).normalize();
+                if (toP.dot(this.enemy.getWorldDirection(new THREE.Vector3())) > 0.5) {
+                    const push = dir.clone().multiplyScalar(cfg.pushForce);
                     push.y = 0;
-                    Globals.player.knockback.add(push);
+                    damagePlayer(target, cfg.damage, { knockback: push });
+                    createDamageText("CRITIQUE", target.position, '#ff0000');
                 }
             }
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 300);
@@ -100,11 +100,10 @@ export class RogueSkills {
                 this.enemy.animState = 'strike_stab';
                 createSkillVisual('shockwave', this.enemy.position, cfg.range, 0x000000);
                 
-                if (Globals.player.position.distanceTo(this.enemy.position) < cfg.range) {
-                    Globals.player.takeDamage(cfg.damage);
-                    createDamageText("DOS !", Globals.player.position, '#cc0000');
-                    if(cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact); 
-                    if(cfg.stunDuration && Globals.player.applyStun) Globals.player.applyStun(cfg.stunDuration);
+                if (target.position.distanceTo(this.enemy.position) < cfg.range) {
+                    damagePlayer(target, cfg.damage, { stunDuration: cfg.stunDuration });
+                    createDamageText("DOS !", target.position, '#cc0000');
+                    if (cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact);
                 }
                 setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 400); 
             }, cfg.reappearDelay * 1000); 

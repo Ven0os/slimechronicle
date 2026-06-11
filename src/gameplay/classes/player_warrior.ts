@@ -16,6 +16,7 @@ import { ConstellationEngine } from '../../systems/constellationEngine';
 import { ConvergenceEffects } from '../../systems/convergenceEffects';
 
 import { dealDamageToEnemy } from '../combat/damage_helpers';
+import { canApplyGameplay, canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
 
 import { isInSafeZone } from '../world/worldZones';
 
@@ -339,7 +340,7 @@ export class Warrior extends PlayerBase {
                     if (d < minD) { minD = d; closest = e; }
                 });
                 if (closest) {
-                    closest.takeDamage(reflect);
+                    dealDamageToEnemy(closest, reflect, { pos: closest.position, noCrit: true, maxRange: 6 });
                     createDamageText('RENVOI', closest.position, '#d4af37');
                     spawnParticles(closest.position, 0xd4af37, 8);
                 }
@@ -385,7 +386,7 @@ export class Warrior extends PlayerBase {
 
                     if (closest && minD < 5 && closest.takeDamage) {
 
-                        closest.takeDamage(reflectDmg);
+                        dealDamageToEnemy(closest, reflectDmg, { pos: closest.position, noCrit: true, maxRange: 6 });
 
                         createDamageText("RETOUR: " + Math.floor(reflectDmg), closest.position, "#aaaaaa");
 
@@ -440,7 +441,7 @@ export class Warrior extends PlayerBase {
                     createDamageText("RETOUR DE FORCE!", this.position, '#8e44ad');
                     Globals.enemies.forEach(e => {
                         if (e.position.distanceTo(this.position) < 8) {
-                            e.takeDamage(explodeDmg);
+                            dealDamageToEnemy(e, explodeDmg, { pos: e.position });
                             e.pushBack(this.position, 12);
                         }
                     });
@@ -529,14 +530,16 @@ export class Warrior extends PlayerBase {
         setTimeout(() => {
 
             const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+            dir.y = 0; dir.normalize();
 
-            if(STATE.multiplayer.active && this.isLocalPlayer()) {
-
+            if (shouldSendSkillIntent()) {
+                sendSkillIntent({ intent: 'attack-melee', dir, pos: this.position.clone() });
+            } else if (STATE.multiplayer.active && this.isLocalPlayer()) {
                 Network.send({ type: 'net-action', action: 'attack-melee', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.warrior, class: 'warrior' });
-
             }
 
             createSkillVisual('melee_slash', this.position, 4.0, 0x9b59b6, dir);
+            if (!canDealDamageDirectly()) return;
 
             const dmg = ConstellationEngine.calcWarriorSkillDamage('primary');
 
@@ -582,7 +585,7 @@ export class Warrior extends PlayerBase {
         }
         Globals.enemies.forEach(e => {
             if (e.position.distanceTo(this.position) <= radius) {
-                e.takeDamage(smashDmg);
+                dealDamageToEnemy(e, smashDmg, { pos: e.position });
                 e.pushBack(this.position, radius > 13 ? 20 : 14);
             }
         });

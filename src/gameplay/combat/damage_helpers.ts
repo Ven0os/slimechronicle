@@ -5,6 +5,11 @@ import { ConvergenceEffects } from '@/systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
+import { Globals } from '@/core/globals';
+import { isServerAuthority, isVisualOnlyMode, findEnemyByNetId, getPlayerByPeerId } from '@/multiplayer/net_combat';
+import { NetClassState } from '@/multiplayer/net_class_state';
+import { NetAuthority, registerDamageEvent, makeDamageEventKey } from '@/multiplayer/net_authority';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
 
 /** La barrière corrompue absorbe les dégâts sans recevoir de coups critiques. */
 export function enemyHasCorruptBarrier(enemy) {
@@ -54,9 +59,31 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
         if (opts.onCrit && typeof opts.onCrit === 'function') opts.onCrit();
     }
 
+    if (isVisualOnlyMode()) {
+        NetAuthority.logAuthViolation('visual_damage_attempt', 'dealDamageToEnemy in visual-only mode');
+        return { dmg: 0, isCrit: false };
+    }
+
     if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
         createDamageText(Math.floor(dmg), pos);
-        Network.send({ type: 'request-damage', enemyId: enemy.netId, amount: dmg });
+        Network.send({
+            type: 'request-damage',
+            enemyId: enemy.netId,
+            playerId: STATE.multiplayer.id,
+            baseDmg: scaled,
+            skillKey: opts.skillKey || 'primary',
+            tick: NetClassState.getServerTick(),
+            opts: {
+                forceCrit: !!opts.forceCrit,
+                megaCrit: !!opts.megaCrit,
+                noCrit: !!opts.noCrit,
+                critDmgMult: opts.critDmgMult,
+            },
+            amount: dmg,
+            maxRange: opts.maxRange ?? 25,
+        });
+    } else if (!isServerAuthority()) {
+        return { dmg: 0, isCrit: false };
     } else if (opts.onHitEnemy) {
         opts.onHitEnemy(enemy, dmg);
     } else {

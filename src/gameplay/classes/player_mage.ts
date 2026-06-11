@@ -8,6 +8,7 @@ import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
+import { dealDamageToEnemy } from '../combat/damage_helpers';
 
 export class Mage extends PlayerBase {
     constructor() {
@@ -520,7 +521,7 @@ export class Mage extends PlayerBase {
                 if(e.position.distanceTo(oldPos) <= blink.radius) {
                     const dmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 2.5 * blink.dmgMult, { skill: true, skillKey: 'e' });
                     const hpBefore = e.hp;
-                    e.takeDamage(dmg);
+                    dealDamageToEnemy(e, dmg, { pos: e.position });
                     if (e.dead || (hpBefore > 0 && e.hp <= 0)) killed = true;
                     this.heal(dmg * blink.healRatio); 
                     createDamageText("SIPHON", e.position, '#00ff00');
@@ -552,7 +553,7 @@ export class Mage extends PlayerBase {
             if(e.position.distanceTo(this.position) <= stasis.radius) {
                 if (e._stasisOrigSpeed == null) e._stasisOrigSpeed = e.speed;
                 e.speed = e._stasisOrigSpeed * stasis.slowFactor;
-                e.takeDamage(ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: true, skillKey: 'shift' })); 
+                dealDamageToEnemy(e, ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: true, skillKey: 'shift' }), { pos: e.position }); 
                 spawnParticles(e.position, 0x00ffff, 15); 
                 setTimeout(() => { if(e && !e.dead) { e.speed = e._stasisOrigSpeed ?? e.speed; e._stasisOrigSpeed = null; } }, stasis.duration); 
             }

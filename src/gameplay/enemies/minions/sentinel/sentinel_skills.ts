@@ -5,6 +5,7 @@ import { STATE } from '@/core/config';
 import { AudioSys } from '@/core/ressources';
 import { createDamageText, createTelegraph, createSkillVisual } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
+import { damagePlayer, getAllLivingPlayers } from '@/multiplayer/net_combat';
 
 export class SentinelSkills {
     constructor(enemy) {
@@ -34,13 +35,14 @@ export class SentinelSkills {
             setTimeout(() => { 
                 if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
                 createSkillVisual('shockwave', this.enemy.position, cfg.radius, 0x95a5a6);
-                if (Globals.player.position.distanceTo(this.enemy.position) < cfg.radius) {
-                    Globals.player.takeDamage(cfg.damage);
-                    createDamageText("ÉCRASEMENT", Globals.player.position, '#e74c3c');
-                    const push = Globals.player.position.clone().sub(this.enemy.position).normalize().multiplyScalar(cfg.pushForce);
-                    push.y = 0;
-                    Globals.player.knockback.add(push);
-                }
+                getAllLivingPlayers().forEach((t) => {
+                    if (this.enemy.position.distanceTo(t.position) < cfg.radius) {
+                        const push = t.position.clone().sub(this.enemy.position).normalize().multiplyScalar(cfg.pushForce);
+                        push.y = 0;
+                        damagePlayer(t, cfg.damage, { knockback: push });
+                    }
+                });
+                createDamageText("ÉCRASEMENT", this.enemy.position, '#e74c3c');
                 setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 300);
             }, 100); 
         });
@@ -72,17 +74,17 @@ export class SentinelSkills {
                 const currentSpeed = THREE.MathUtils.lerp(startSpeed, endSpeed, elapsed / maxDuration);
                 this.enemy.position.add(chargeDir.clone().multiplyScalar(currentSpeed * 0.05));
                 
-                if (Globals.player.position.distanceTo(this.enemy.position) < cfg.hitRadius) {
-                    Globals.player.takeDamage(cfg.damage);
-                    const push = chargeDir.clone().multiplyScalar(cfg.pushForce);
-                    push.y = 0;
-                    Globals.player.knockback.add(push);
-                    createDamageText("PERCUTÉ", Globals.player.position, '#e67e22');
-                    if(cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact); 
-                    if(cfg.stunDuration && Globals.player.applyStun) Globals.player.applyStun(cfg.stunDuration);
-                    clearInterval(interval);
-                    this.stopCharge();
-                }
+                getAllLivingPlayers().forEach((t) => {
+                    if (this.enemy.position.distanceTo(t.position) < cfg.hitRadius) {
+                        const push = chargeDir.clone().multiplyScalar(cfg.pushForce);
+                        push.y = 0;
+                        damagePlayer(t, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
+                        createDamageText("PERCUTÉ", t.position, '#e67e22');
+                        if (cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact);
+                        clearInterval(interval);
+                        this.stopCharge();
+                    }
+                });
             }, 50);
         }, 800); 
         this.enemy.attackCooldown = cfg.cooldown;
@@ -108,16 +110,14 @@ export class SentinelSkills {
         this.spawnTelegraphNetwork(offsetPos, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
             this.enemy.animState = 'strike_bash';
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
-            if (Globals.player.position.distanceTo(this.enemy.position) < cfg.range) {
-                const toP = Globals.player.position.clone().sub(this.enemy.position).normalize();
+            if (target.position.distanceTo(this.enemy.position) < cfg.range) {
+                const toP = target.position.clone().sub(this.enemy.position).normalize();
                 const facing = this.enemy.getWorldDirection(new THREE.Vector3());
-                if(toP.dot(facing) > 0.5) {
-                    Globals.player.takeDamage(cfg.damage);
-                    const push = toP.multiplyScalar(cfg.pushForce);
-                    push.y = 0; 
-                    Globals.player.knockback.add(push);
-                    createDamageText("STUN", Globals.player.position, '#3498db');
-                    if(cfg.stunDuration && Globals.player.applyStun) Globals.player.applyStun(cfg.stunDuration);
+                if (toP.dot(facing) > 0.5) {
+                    const push = toP.clone().multiplyScalar(cfg.pushForce);
+                    push.y = 0;
+                    damagePlayer(target, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
+                    createDamageText("STUN", target.position, '#3498db');
                 }
             }
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 200);

@@ -3,6 +3,7 @@ import { Globals } from '../core/globals';
 import { STATE } from '../core/config';
 import { spawnParticles, createDamageText } from '../visual/effects';
 import { dealDamageToEnemy } from './combat/damage_helpers';
+import { damageClosestPlayerInRadius, isServerAuthority, isVisualOnlyMode } from '@/multiplayer/net_combat';
 
 export class Projectile {
     constructor(geo, mat, pos, dir, speed, dmg, owner, color, hasTrail = true) {
@@ -31,6 +32,7 @@ export class Projectile {
         this.piercing = false;
         this.hitIds = new Set();
         this.onHitEnemy = null;
+        this.visualOnly = isVisualOnlyMode();
 
         // Glow (Lueur) ajustée selon la forme
         const glowGeo = (geo.type === 'CylinderGeometry' || geo.type === 'CapsuleGeometry') 
@@ -48,7 +50,7 @@ export class Projectile {
         this.life -= dt; 
         if(this.life <= 0) { this.destroy(); return; }
         
-        this.mesh.position.add(this.dir.clone().multiplyScalar(this.speed));
+        this.mesh.position.add(this.dir.clone().multiplyScalar(this.speed * dt));
         
         // Effet de rotation sur lui-même (pour les orbes magiques)
         this.mesh.rotateZ(this.rotSpeed * dt);
@@ -81,17 +83,24 @@ export class Projectile {
             }
         }
         
-        // --- Collisions Joueur (Tir Ennemi) ---
-        if(this.owner === 'enemy' && Globals.player && !Globals.player.dead) {
-            const dx = this.mesh.position.x - Globals.player.position.x;
-            const dz = this.mesh.position.z - Globals.player.position.z;
-            const dist = Math.sqrt(dx*dx + dz*dz);
-            // Hitbox un peu plus généreuse pour le joueur
-            if(dist < 1.2) { 
-                Globals.player.takeDamage(this.dmg); 
-                spawnParticles(this.mesh.position, this.color, 8);
-                this.destroy(); 
-                return; 
+        // --- Collisions Joueur (Tir Ennemi) — autorité hôte uniquement ---
+        if (this.owner === 'enemy' && isServerAuthority()) {
+            const hitPos = this.mesh.position;
+            const targets = [];
+            if (Globals.player && !Globals.player.dead) targets.push(Globals.player);
+            for (const id in STATE.multiplayer.remotePlayers) {
+                const p = STATE.multiplayer.remotePlayers[id];
+                if (p && !p.dead && p.visible) targets.push(p);
+            }
+            for (const t of targets) {
+                const dx = hitPos.x - t.position.x;
+                const dz = hitPos.z - t.position.z;
+                if (Math.sqrt(dx * dx + dz * dz) < 1.2) {
+                    damageClosestPlayerInRadius(hitPos, 1.2, this.dmg);
+                    spawnParticles(hitPos, this.color, 8);
+                    this.destroy();
+                    return;
+                }
             }
         }
         
@@ -107,6 +116,13 @@ export class Projectile {
                 if(dist2d <= (e.radius + 0.5)) {
                     const eid = e.netId || e.uuid || `${e.position.x}-${e.position.z}`;
                     if (this.piercing && this.hitIds.has(eid)) continue;
+
+                    if (this.visualOnly) {
+                        spawnParticles(this.mesh.position, this.color, 5);
+                        if (!this.piercing) { this.destroy(); break; }
+                        this.hitIds.add(eid);
+                        continue;
+                    }
 
                     dealDamageToEnemy(e, this.dmg, {
                         pos: e.position,

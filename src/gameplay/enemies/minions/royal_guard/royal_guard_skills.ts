@@ -5,6 +5,7 @@ import { STATE } from '@/core/config';
 import { AudioSys } from '@/core/ressources';
 import { createDamageText, createTelegraph, createSkillVisual } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
+import { damagePlayer, getAllLivingPlayers } from '@/multiplayer/net_combat';
 
 export class RoyalGuardSkills {
     constructor(enemy) {
@@ -35,12 +36,12 @@ export class RoyalGuardSkills {
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
             createSkillVisual('slash', this.enemy.position, 2.5, cfg.telegraph.color, dir);
             
-            if (Globals.player.position.distanceTo(this.enemy.position) < cfg.range) {
-                const toP = Globals.player.position.clone().sub(this.enemy.position).normalize();
+            if (target.position.distanceTo(this.enemy.position) < cfg.range) {
+                const toP = target.position.clone().sub(this.enemy.position).normalize();
                 if (toP.dot(dir) > 0.5) {
-                    Globals.player.takeDamage(cfg.damage);
-                    const push = dir.multiplyScalar(cfg.pushForce);
-                    Globals.player.knockback.add(push);
+                    const push = dir.clone().multiplyScalar(cfg.pushForce);
+                    push.y = 0;
+                    damagePlayer(target, cfg.damage, { knockback: push });
                 }
             }
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 300);
@@ -58,13 +59,14 @@ export class RoyalGuardSkills {
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
             createSkillVisual('shockwave', this.enemy.position, cfg.radius, cfg.telegraph.color);
             
-            if (Globals.player.position.distanceTo(this.enemy.position) < cfg.radius) {
-                Globals.player.takeDamage(cfg.damage);
-                const push = Globals.player.position.clone().sub(this.enemy.position).normalize().multiplyScalar(cfg.pushForce);
-                Globals.player.knockback.add(push);
-                createDamageText("STOMP", Globals.player.position, '#ffaa00');
-                if(cfg.stunDuration && Globals.player.applyStun) Globals.player.applyStun(cfg.stunDuration);
-            }
+            getAllLivingPlayers().forEach((t) => {
+                if (this.enemy.position.distanceTo(t.position) < cfg.radius) {
+                    const push = t.position.clone().sub(this.enemy.position).normalize().multiplyScalar(cfg.pushForce);
+                    push.y = 0;
+                    damagePlayer(t, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
+                    createDamageText("STOMP", t.position, '#ffaa00');
+                }
+            });
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 400);
         });
         this.enemy.attackCooldown = cfg.cooldown;
