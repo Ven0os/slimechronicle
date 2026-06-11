@@ -356,12 +356,21 @@ export class Blade extends PlayerBase {
             const spinDur = PassiveKeystoneHooks.getCycloneDurationMs();
             const start = Date.now();
             let lastPull = 0;
+            let lastCycloneDmg = 0;
 
             const spinAnim = () => {
                 const elapsed = Date.now() - start;
                 if (elapsed - lastPull > 50) {
                     PassiveKeystoneHooks.applyCyclonePull(this, 0.05);
                     lastPull = elapsed;
+                }
+                if (ConstellationEngine.getPassiveRank('cyclonePull') && elapsed - lastCycloneDmg > 500) {
+                    Globals.enemies.forEach((e) => {
+                        if (!e.dead && e.position.distanceTo(this.position) < 5) {
+                            dealDamageToEnemy(e, STATE.stats.atk * 0.35, { pos: e.position });
+                        }
+                    });
+                    lastCycloneDmg = elapsed;
                 }
                 if(elapsed >= spinDur) {
                     this.animState.override = false;

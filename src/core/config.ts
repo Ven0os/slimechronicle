@@ -22,46 +22,46 @@ export const CONFIG = {
     },
     tooltips: {
         warrior: {
-            passive: { name: "Peau de Fer", desc: "Réduit les dégâts de 12%. Bloquer charge une explosion." }, 
-            space: { name: "Frappe Sismique", desc: "Bondit et écrase le sol. Dégâts massifs + Repousse." },
-            shift: { name: "Cri de Guerre", desc: "Soin personnel et repousse les ennemis proches." },
-            e: { name: "Parade", desc: "Posture défensive. Bloque 75% des dégâts pendant 3s." }
+            passive: { name: "Peau de Fer", desc: "−12 % dégâts reçus.\n\nChaque blocage en Parade charge une explosion." },
+            space: { name: "Frappe Sismique", desc: "Bond au sol.\nDégâts de zone et repousse les ennemis." },
+            shift: { name: "Cri de Guerre", desc: "Soin personnel.\nRepousse les ennemis proches." },
+            e: { name: "Parade", desc: "Posture défensive.\nBloque 75 % des dégâts pendant 3 s." }
         },
         mage: {
-            passive: { name: "Surcharge", desc: "Les sorts réduisent les autres cooldowns." },
-            space: { name: "Arcane Barrage", desc: "Balayage magique : Tire 3 projectiles téléguidés." },
-            shift: { name: "Chronostase", desc: "Fige les ennemis dans la zone et inflige des dégâts." },
-            e: { name: "Transfert", desc: "Téléportation instantanée + Explosion au point de départ." }
+            passive: { name: "Surcharge", desc: "Chaque sort réduit les autres temps de recharge." },
+            space: { name: "Arcane Barrage", desc: "Tire 3 projectiles téléguidés.\nDégâts magiques." },
+            shift: { name: "Chronostase", desc: "Zone de ralentissement.\nInflige des dégâts aux ennemis figés." },
+            e: { name: "Transfert", desc: "Téléportation instantanée.\nExplosion au point de départ." }
         },
         sentinel: {
-            passive: { name: "Aura Solaire", desc: "Présence divine qui inspire les alliés." },
-            space: { name: "Rayon Stellaire", desc: "Charge (1s) puis tire un laser dévastateur." },
-            shift: { name: "Champ de Lumière", desc: "Plante la lance : dégâts continus, soin personnel et malus ennemis (lenteur + vulnérabilité)." },
-            e: { name: "Égide Divine", desc: "Moulinet sacré : Soin important + Bouclier." }
+            passive: { name: "Aura Solaire", desc: "Aura de soutien autour du lanceur.\nBonus offensifs aux alliés proches." },
+            space: { name: "Rayon Stellaire", desc: "Charge 1 s, puis laser en ligne.\nDégâts massifs." },
+            shift: { name: "Champ de Lumière", desc: "Lance sacrée au sol.\nZone persistante : dégâts périodiques et soin du lanceur." },
+            e: { name: "Égide Divine", desc: "Moulinet sacré.\nSoin important et bouclier." }
         },
         blade: {
-            passive: { name: "Soif de Sang", desc: "Plus les PV sont bas, plus les dégâts augmentent." },
-            space: { name: "Toupie Létale", desc: "Tourbillon de lames. Dégâts autour de soi." },
-            shift: { name: "Ombre Véloce", desc: "Dash fantôme rapide. Traverse et blesse les ennemis." },
-            e: { name: "Tsunami", desc: "Plonge dans le sol et retombe en une vague d'eau massive." }
+            passive: { name: "Soif de Sang", desc: "+1 % dégâts par % de PV manquant." },
+            space: { name: "Toupie Létale", desc: "Tourbillon de lames autour de soi.\nDégâts de zone." },
+            shift: { name: "Ombre Véloce", desc: "Dash rapide à travers les ennemis.\nDégâts au passage." },
+            e: { name: "Tsunami", desc: "Plonge sous le sol.\nVague d'eau à l'impact : dégâts de zone." }
         },
         pacifier: {
-            passive: { name: "Bouclier de Sang", desc: "Le soin excédentaire génère un bouclier." },
-            space: { name: "Saut Vampirique", desc: "S'envole et s'écrase au sol. Stun + Vol de vie de zone." },
-            shift: { name: "Verdict Sanguin", desc: "Claquement de doigts : Dégâts et applique une marque." },
-            e: { name: "Frénésie", desc: "Recharge : Active le pistolet. Tirs rapides et critiques." }
+            passive: { name: "Bouclier de Sang", desc: "Le soin excédentaire est converti en bouclier." },
+            space: { name: "Saut Vampirique", desc: "Saut et écrasement.\nÉtourdit les ennemis · vol de vie de zone." },
+            shift: { name: "Verdict Sanguin", desc: "Dégâts instantanés.\nApplique une marque pendant 6 s." },
+            e: { name: "Frénésie", desc: "Active le pistolet.\nTirs rapides à chance de critique accrue." }
         },
         eclipse: {
-            passive: { name: "Balance Astrale", desc: "Alterne Soleil (DoT) et Lune (Burst/Slow)." },
-            space: { name: "Éclat Solaire", desc: "Orbe ricochant sur 5 ennemis. (Immunité 0.25s)" },
-            shift: { name: "Pic de Lune", desc: "Invocation massive qui empale les ennemis." },
-            e: { name: "Cataclysme", desc: "Explosion massive (x2 degats en Ascension)" }
+            passive: { name: "Balance Astrale", desc: "Alterne attaques Solaires et Lunaires.\nSoleil : dégâts sur la durée · Lune : burst et ralentissement." },
+            space: { name: "Éclat Solaire", desc: "Orbe ricochant jusqu'à 5 cibles.\nImmunité au rebond : 0,25 s." },
+            shift: { name: "Pic de Lune", desc: "Burst de zone.\nEmpale et ralentit les ennemis." },
+            e: { name: "Cataclysme", desc: "Explosion massive.\nDégâts de zone · aspire les ennemis proches." }
         },
         chronoregulator: {
-            passive: { name: "Surcharge Chronologique", desc: "Maintenez le clic pour canaliser le Rayon de Distorsion. La Fracture monte jusqu'à la surchauffe (100%). Relâchez entre 85-95% : explosion de rupture. Compétences : -30 Fracture." },
-            space: { name: "Lentille de Focalisation", desc: "Prisme au sol : le rayon se triple en cône. La Fracture monte 2× plus lentement à travers la lentille." },
-            shift: { name: "Déphasage Moléculaire", desc: "Lance une grenade en arc : explosion de zone, Instabilité Chronologique (4s). Tant qu'une cible est marquée : Fracture ÷4 au rayon." },
-            e: { name: "Convergence Temporelle", desc: "6 s de Convergence : +10% vitesse, rayon sans Fracture ni surchauffe, attire les marquées, ondes résiduelles. Réactive E pour l'explosion finale. CD 17 s." }
+            passive: { name: "Surcharge Chronologique", desc: "Maintenez le clic pour canaliser le rayon.\nFracture monte jusqu'à 100 %.\n\nRelâchez entre 85–95 % : explosion de rupture.\nCompétences : −30 Fracture." },
+            space: { name: "Lentille de Focalisation", desc: "Prisme au sol.\nLe rayon se divise en cône · Fracture ×0,5 à travers la lentille." },
+            shift: { name: "Déphasage Moléculaire", desc: "Grenade en arc : explosion de zone.\nInstabilité chronologique 4 s.\n\nCible marquée : Fracture ÷4 au rayon." },
+            e: { name: "Convergence Temporelle", desc: "Durée 6 s · +10 % vitesse.\nRayon sans Fracture ni surchauffe.\n\nAttire les cibles marquées.\nRéactive E pour l'explosion finale.\n\nRecharge : 17 s." }
         }
     }
 };

@@ -237,13 +237,14 @@ export class Sentinel extends PlayerBase {
             slamAnim();
             const fieldRadius = ConstellationEngine.getLightFieldRadius();
             const healTick = ConstellationEngine.getLightFieldHealTick();
-            ConstellationEngine.registerSolarLightField(this.position.clone(), 5);
+            const fieldDuration = ConstellationEngine.getLightFieldDuration();
+            ConstellationEngine.registerSolarLightField(this.position.clone(), fieldDuration);
             createSkillVisual('vortex', this.position, fieldRadius, 0xf1c40f);
             const zonePos = this.position.clone();
             const ringInner = Math.max(0.5, fieldRadius - 0.5);
             const zone = new THREE.Mesh(new THREE.RingGeometry(ringInner, fieldRadius, 32), new THREE.MeshBasicMaterial({color:0xf1c40f, side:THREE.DoubleSide, transparent:true, opacity:0.5}));
             zone.rotation.x = -Math.PI/2; zone.position.copy(zonePos).add(new THREE.Vector3(0, 0.1, 0));
-            this.addLocalVisual(zone, 5.0, (m, t) => { 
+            this.addLocalVisual(zone, fieldDuration, (m, t) => { 
                 m.rotation.z -= 0.02; m.scale.setScalar(1 + Math.sin(t*5)*0.05);
                 if (Math.floor(t * 10) !== Math.floor((t + 0.016) * 10)) { 
                      const fieldDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.1, { skill: true, skillKey: 'shift' });

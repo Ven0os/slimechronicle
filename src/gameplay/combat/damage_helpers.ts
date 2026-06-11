@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
+import { AudioSys } from '@/core/ressources';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
@@ -12,16 +14,24 @@ export function enemyHasCorruptBarrier(enemy) {
 export function computeDamageToEnemy(enemy, baseDmg, opts = {}) {
     let dmg = baseDmg;
     let isCrit = false;
+    let critMult = STATE.stats.critDmg;
 
-    if (opts.forceCrit) {
-        dmg *= STATE.stats.critDmg;
+    if (opts.megaCrit) {
+        critMult *= ConvergenceEffects.getMegaCritMult();
+    }
+    if (opts.critDmgMult) {
+        critMult *= opts.critDmgMult;
+    }
+
+    if (opts.forceCrit || opts.megaCrit) {
+        dmg *= critMult;
         isCrit = true;
     } else if (!opts.noCrit && !enemyHasCorruptBarrier(enemy) && Math.random() < STATE.stats.crit) {
-        dmg *= STATE.stats.critDmg;
+        dmg *= critMult;
         isCrit = true;
     }
 
-    return { dmg, isCrit };
+    return { dmg, isCrit, isMegaCrit: !!opts.megaCrit && isCrit };
 }
 
 export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
@@ -32,10 +42,13 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
         scaled = baseDmg * 1.35;
     }
 
-    const { dmg, isCrit } = computeDamageToEnemy(enemy, scaled, opts);
+    const { dmg, isCrit, isMegaCrit } = computeDamageToEnemy(enemy, scaled, opts);
     const pos = opts.pos || enemy.position;
 
-    if (isCrit) {
+    if (isMegaCrit) {
+        createDamageText('MÉGA CRIT!', pos, '#ff0066');
+        if (AudioSys?.sfx?.crit) AudioSys.sfx.crit();
+    } else if (isCrit) {
         createDamageText('CRIT!', pos, '#ff0');
         PassiveKeystoneHooks.onCritApplyHemorrhage(enemy, dmg);
         if (opts.onCrit && typeof opts.onCrit === 'function') opts.onCrit();

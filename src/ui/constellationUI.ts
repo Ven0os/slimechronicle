@@ -16,6 +16,7 @@ import {
 } from '@/data/constellationMeta';
 import { getPassiveMeta } from '@/data/passiveCatalog';
 import { formatPassiveDetailHtml } from '@/data/passiveScalingConfig';
+import { getBranchLayout, getClassLayout } from '@/data/constellationLayouts';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 
 const SLOT_CLASS = { atk: 'branch-atk', hp: 'branch-hp', spd: 'branch-spd', mst: 'branch-mst' };
@@ -23,24 +24,13 @@ const SLOT_CLASS = { atk: 'branch-atk', hp: 'branch-hp', spd: 'branch-spd', mst:
 /** Canvas large pour constellation éparpillée */
 const CANVAS = { size: 720, cx: 360, cy: 360 };
 
-/** 4 branches espacées à ~90° pour éviter les collisions entre branches proches */
-const BRANCH_LAYOUT: Record<string, { angleDeg: number; spread: number }> = {
-  atk: { angleDeg: -92, spread: 1.0 },
-  hp: { angleDeg: -2, spread: 1.02 },
-  spd: { angleDeg: 88, spread: 0.98 },
-  mst: { angleDeg: 178, spread: 1.01 },
-};
-
-const MIN_NODE_GAP_PX = 16;
-const BRANCH_CHAIN_EXTRA_PX = 20;
-/** Arc par branche : palier 1 à l'extérieur, palier 4 près du centre */
-const BRANCH_TIER_ANGLE_STEP = 0.36;
+const MIN_NODE_GAP_PX = 14;
+const BRANCH_CHAIN_EXTRA_PX = 18;
 const BRANCH_TIER_COUNT = 4;
-const BRANCH_BASE_RADIUS_FRAC = 0.36;
-const BRANCH_RADIUS_STEP_FRAC = 0.165;
-const NODE_SIZE = { normal: 40, keystone: 44 };
-const APEX_CLEAR_RADIUS = 58;
-const CANVAS_MARGIN = 40;
+const NODE_SIZE = { normal: 40, keystone: 46 };
+/** Zone réservée autour de l'Apex — réduite pour garder les keystones proches. */
+const APEX_CLEAR_RADIUS = 46;
+const CANVAS_MARGIN = 36;
 
 let selectedNodeId: string | null = null;
 let layoutCache: Map<string, { x: number; y: number; size: number }> = new Map();
@@ -52,6 +42,7 @@ interface PlacedNode {
   size: number;
   branchId: string;
   tierIndex: number;
+  keystone?: boolean;
 }
 
 function hashPair(a: string, b: string): number {
@@ -62,25 +53,31 @@ function maxOrbitRadius(): number {
   return CANVAS.size / 2 - CANVAS_MARGIN - NODE_SIZE.keystone / 2;
 }
 
-/** Placement en arc : les paliers d'une branche ne sont jamais sur le même rayon */
+/** Placement en arc par classe — palier 4 (keystone) proche de l'Apex. */
 function scatterNodePos(
-  slot: string,
+  classId: ClassId,
   branchId: string,
   tierIndex: number,
   keystone = false,
 ): { x: number; y: number } {
-  const layout = BRANCH_LAYOUT[slot] || { angleDeg: 0, spread: 1 };
-  const baseRad = (layout.angleDeg * Math.PI) / 180;
-  const angle = baseRad + tierIndex * BRANCH_TIER_ANGLE_STEP;
-  const outwardTier = (BRANCH_TIER_COUNT - 1) - tierIndex;
-  const frac = BRANCH_BASE_RADIUS_FRAC + outwardTier * BRANCH_RADIUS_STEP_FRAC;
-  let dist = maxOrbitRadius() * frac * layout.spread;
-  if (keystone) dist += 6;
+  const classLayout = getClassLayout(classId);
+  const branch = getBranchLayout(classId, branchId);
+  const baseRad = (branch.angleDeg * Math.PI) / 180;
+  const angle = baseRad + tierIndex * branch.tierAngleStep;
+
+  let frac: number;
+  if (tierIndex >= BRANCH_TIER_COUNT - 1) {
+    frac = classLayout.keystoneRadiusFrac;
+  } else {
+    frac = classLayout.outerTierFracs[tierIndex] ?? classLayout.outerTierFracs[2];
+  }
+
+  let dist = maxOrbitRadius() * frac * branch.spread * branch.radiusBias;
 
   const seed = branchId.split('').reduce((a, c) => a + c.charCodeAt(0), tierIndex * 31);
   const perp = angle + Math.PI / 2;
-  const perpOffset = Math.sin(seed * 0.09) * 6;
-  const alongOffset = Math.cos(seed * 0.05) * 4;
+  const perpOffset = Math.sin(seed * 0.09) * (keystone ? 3 : 7);
+  const alongOffset = Math.cos(seed * 0.05) * (keystone ? 2 : 5);
 
   return {
     x: CANVAS.cx + Math.cos(angle) * (dist + alongOffset) + Math.cos(perp) * perpOffset,
@@ -175,7 +172,7 @@ function computeLayout(classId: ClassId): Map<string, { x: number; y: number; si
 
   for (const branch of c.branches) {
     branch.nodes.forEach((node, i) => {
-      const pos = scatterNodePos(branch.slot, branch.id, i, !!node.keystone);
+      const pos = scatterNodePos(classId, branch.id, i, !!node.keystone);
       placed.push({
         id: node.id,
         x: pos.x,
@@ -183,11 +180,12 @@ function computeLayout(classId: ClassId): Map<string, { x: number; y: number; si
         size: node.keystone ? NODE_SIZE.keystone : NODE_SIZE.normal,
         branchId: branch.id,
         tierIndex: i,
+        keystone: !!node.keystone,
       });
     });
   }
 
-  enforceMinimumSpacing(placed, 96);
+  enforceMinimumSpacing(placed, 80);
 
   const map = new Map<string, { x: number; y: number; size: number }>();
   for (const p of placed) map.set(p.id, { x: p.x, y: p.y, size: p.size });
@@ -286,8 +284,8 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
         </div>
         <div class="detail-reward-legend">
           <span class="detail-reward-badge badge-stat">Paliers 1-3</span> bonus de stats permanents<br>
-          <span class="detail-reward-badge badge-passive">Palier 4</span> passif de branche<br>
-          <span class="detail-reward-badge badge-apex"><span class="badge-apex-text">Apex</span></span> passif ultime de classe
+          <span class="detail-reward-badge badge-passive">Palier 4</span> spécialisation de branche<br>
+          <span class="detail-reward-badge badge-apex"><span class="badge-apex-text">Apex</span></span> aboutissement de la constellation
         </div>
         <p class="detail-hint">Cliquez une étoile pour voir son effet.</p>
       </div>
@@ -330,8 +328,10 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
     ? ''
     : (() => {
         const accent = passiveMeta?.color || '#d4af37';
-        const icon = passiveMeta?.icon || node.icon;
+        let icon = passiveMeta?.icon || node.icon || 'fa-star';
+        if (!icon.startsWith('fa-')) icon = `fa-${icon}`;
         const apexClass = rewardKind === 'apex' ? ' detail-section-apex-effect' : '';
+        const iconClass = rewardKind === 'apex' ? ' detail-passive-effect-icon apex-card-icon' : ' detail-passive-effect-icon';
         const passiveKey = node.effects.passive;
         const passiveRank = node.effects.passiveRank ?? 1;
         const detailHtml = passiveKey
@@ -341,7 +341,7 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
         return `<div class="detail-section detail-section-passive-effect${apexClass}">
           <div class="detail-passive-effect-card" style="--passive-accent:${accent}">
             <div class="detail-passive-effect-glow"></div>
-            <div class="detail-passive-effect-icon"><i class="fas ${icon}"></i></div>
+            <div class="${iconClass.trim()}"><i class="fas ${icon}" aria-hidden="true"></i></div>
             <div class="detail-passive-effect-body">
               <div class="detail-passive-effect-name">${passiveTitle}</div>
               ${detailHtml}
@@ -433,18 +433,20 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
     }
 
     if (points.length) {
-      const inner = points[points.length - 1];
-      const innerSt = nodeStatus(inner.nodeId);
-      const toCore = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      toCore.setAttribute('x1', String(inner.x));
-      toCore.setAttribute('y1', String(inner.y));
-      toCore.setAttribute('x2', String(cx));
-      toCore.setAttribute('y2', String(cy));
-      toCore.setAttribute('stroke', innerSt === 'unlocked' ? theme : '#3a3a48');
-      toCore.setAttribute('stroke-opacity', innerSt === 'unlocked' ? '0.45' : '0.15');
-      toCore.setAttribute('stroke-width', innerSt === 'unlocked' ? '1.6' : '1');
-      if (innerSt === 'available') toCore.setAttribute('stroke-dasharray', '6 5');
-      svg.appendChild(toCore);
+      const keystone = points[points.length - 1];
+      const ks = nodeStatus(keystone.nodeId);
+      const isPrimary = branch.id === getClassLayout(classId).primaryBranch;
+      const toApex = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      toApex.setAttribute('x1', String(keystone.x));
+      toApex.setAttribute('y1', String(keystone.y));
+      toApex.setAttribute('x2', String(cx));
+      toApex.setAttribute('y2', String(cy));
+      toApex.setAttribute('class', `culmination-link${isPrimary ? ' culmination-link-primary' : ''}`);
+      toApex.setAttribute('stroke', ks === 'unlocked' ? (isPrimary ? 'url(#apexLineGrad)' : theme) : '#3a3a48');
+      toApex.setAttribute('stroke-opacity', ks === 'unlocked' ? (isPrimary ? '0.75' : '0.5') : '0.14');
+      toApex.setAttribute('stroke-width', ks === 'unlocked' ? (isPrimary ? '2.2' : '1.6') : '1');
+      if (ks === 'available') toApex.setAttribute('stroke-dasharray', '5 4');
+      svg.appendChild(toApex);
     }
 
     if (prog.unlocked > 0 && points.length) {
@@ -462,17 +464,16 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
     }
   }
 
-  if (apexUnlocked) {
-    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ring.setAttribute('cx', String(cx));
-    ring.setAttribute('cy', String(cy));
-    ring.setAttribute('r', '52');
-    ring.setAttribute('fill', 'none');
-    ring.setAttribute('stroke', 'url(#apexLineGrad)');
-    ring.setAttribute('stroke-width', '2');
-    ring.setAttribute('opacity', '0.7');
-    svg.appendChild(ring);
-  }
+  const keystoneRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  keystoneRing.setAttribute('cx', String(cx));
+  keystoneRing.setAttribute('cy', String(cy));
+  keystoneRing.setAttribute('r', String(maxOrbitRadius() * getClassLayout(classId).keystoneRadiusFrac + 8));
+  keystoneRing.setAttribute('fill', 'none');
+  keystoneRing.setAttribute('stroke', apexUnlocked ? 'url(#apexLineGrad)' : theme);
+  keystoneRing.setAttribute('stroke-width', apexUnlocked ? '1.5' : '1');
+  keystoneRing.setAttribute('opacity', apexUnlocked ? '0.35' : '0.12');
+  keystoneRing.setAttribute('stroke-dasharray', apexUnlocked ? 'none' : '4 6');
+  svg.insertBefore(keystoneRing, svg.firstChild?.nextSibling || null);
 }
 
 function bindNode(el: HTMLElement, node: ConstellationNode, onUnlock: (id: string) => void): void {
@@ -505,20 +506,21 @@ export const ConstellationUI = {
     mount.innerHTML = `
       <aside class="constellation-sidebar">
         <div class="sidebar-class-badge" style="--badge-color:${data.themeColor}">
-          <i class="fas fa-moon"></i>
+          <i class="fas ${data.apex.icon}"></i>
           <div>
             <div class="sidebar-title">${data.title}</div>
             <div class="sidebar-sub">${data.subtitle}</div>
           </div>
         </div>
         <div class="apex-progress-card">
-          <div class="apex-progress-label"><i class="fas fa-crown"></i> Convergence Apex</div>
+          <div class="apex-progress-label"><i class="fas fa-crown"></i> Apex stellaire</div>
           <div class="apex-progress-bar"><div class="apex-progress-fill" style="width:${Math.min(100, (apexProg / CONSTELLATION_APEX_MIN_NODES) * 100)}%"></div></div>
           <div class="apex-progress-text">${apexProg} / ${CONSTELLATION_APEX_MIN_NODES} nœuds · ${ConstellationEngine.isNodeUnlocked(data.apex.id) ? 'DÉBLOQUÉ' : 'En cours'}</div>
         </div>
         <div class="sidebar-node-hint">
           <p><span class="hint-dot hint-stat"></span> Paliers 1–3 : stats</p>
-          <p><span class="hint-dot hint-keystone"></span> Palier 4 : passif doré</p>
+          <p><span class="hint-dot hint-keystone"></span> Palier 4 : spécialisation</p>
+          <p><span class="hint-dot hint-apex"></span> Apex : aboutissement</p>
         </div>
       </aside>
       <div class="constellation-canvas">
@@ -549,7 +551,8 @@ export const ConstellationUI = {
         const pct = toPercent(pos.x, pos.y);
 
         const el = document.createElement('div');
-        el.className = `tree-node ${nodeStatus(node.id)} ${node.keystone ? 'keystone node-passive-reward' : 'node-stat-reward'}`;
+        const culmination = node.keystone ? ' node-culmination' : '';
+        el.className = `tree-node ${nodeStatus(node.id)} ${node.keystone ? 'keystone node-passive-reward' : 'node-stat-reward'}${culmination}${branch.id === getClassLayout(classId).primaryBranch && node.keystone ? ' node-culmination-primary' : ''}`;
         el.id = `node-${node.id}`;
         el.dataset.nodeId = node.id;
         el.style.left = pct.left;

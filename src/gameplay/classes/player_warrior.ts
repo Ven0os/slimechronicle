@@ -13,6 +13,7 @@ import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { ConvergenceEffects } from '../../systems/convergenceEffects';
 
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 
@@ -316,9 +317,7 @@ export class Warrior extends PlayerBase {
             ConstellationEngine.onWarriorParryBlock(this, blocked);
             this.parryBlockedTotal = (this.parryBlockedTotal || 0) + blocked;
 
-            const hasChargePassive = ConstellationEngine.getPassiveRank('parryCharge')
-
-                || ConstellationEngine.getPassiveRank('runicColossus');
+            const hasChargePassive = ConstellationEngine.getPassiveRank('parryCharge');
 
             if (!hasChargePassive) {
 
@@ -329,6 +328,22 @@ export class Warrior extends PlayerBase {
 
 
             amount *= 0.25;
+
+            const reflect = ConvergenceEffects.calcParryReflectDamage(blocked);
+            if (reflect > 0) {
+                let closest = null;
+                let minD = 8;
+                Globals.enemies.forEach((e) => {
+                    if (e.dead) return;
+                    const d = e.position.distanceTo(this.position);
+                    if (d < minD) { minD = d; closest = e; }
+                });
+                if (closest) {
+                    closest.takeDamage(reflect);
+                    createDamageText('RENVOI', closest.position, '#d4af37');
+                    spawnParticles(closest.position, 0xd4af37, 8);
+                }
+            }
 
             createDamageText("BLOQUÉ", this.position, '#cccccc');
 

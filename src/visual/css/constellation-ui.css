@@ -115,14 +115,36 @@
   padding: 12px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+  isolation: isolate;
+}
+
+.apex-progress-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 8px;
+  padding: 1px;
+  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
+  background-size: 400% 100%;
+  animation: apexLabelFlow 5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
 .apex-progress-label {
   font-size: 0.7rem;
-  color: #d4af37;
   letter-spacing: 1px;
   margin-bottom: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #c8c8c8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .apex-progress-bar {
@@ -134,7 +156,7 @@
 
 .apex-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--constellation-theme), #fff);
+  background: linear-gradient(90deg, #ffffff, #e0e0e0, #cccccc);
   transition: width 0.4s ease;
 }
 
@@ -183,6 +205,23 @@
   border: 1px solid #ffd700;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
   animation: keystoneHintPulse 2.5s ease-in-out infinite;
+}
+
+.hint-dot.hint-apex {
+  background: #120f18;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+  box-shadow: 0 0 10px rgba(107, 203, 255, 0.35);
+}
+
+.hint-dot.hint-apex::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff);
+  z-index: -1;
 }
 
 @keyframes keystoneHintPulse {
@@ -626,12 +665,10 @@
 
 .center-star .center-icon {
   font-size: 1.5rem;
-  background: linear-gradient(135deg, #ffd700, #ff6b9d, #6bcbff, #c77dff);
-  background-size: 200% 200%;
+  background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 50%, #cccccc 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: apexIconShift 4s ease infinite;
 }
 
 .center-star:not(.apex-unlocked) .center-icon {
@@ -645,12 +682,10 @@
   letter-spacing: 3px;
   font-weight: bold;
   margin-top: 2px;
-  background: linear-gradient(90deg, #ff9a9e, #fad0c4, #a8edea, #fed6e3);
-  background-size: 300% 100%;
+  background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 50%, #cccccc 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: apexLabelFlow 6s linear infinite;
 }
 
 .center-star:not(.apex-unlocked) .center-label {
@@ -840,15 +875,25 @@
   list-style: disc;
 }
 
-.detail-passive-mechanics li {
-  font-size: 0.74rem;
-  color: #d8d0b8;
-  line-height: 1.5;
-  margin-bottom: 6px;
+.detail-passive-prose {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.detail-passive-mechanics li:last-child {
-  margin-bottom: 0;
+.detail-passive-paragraph {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #d8d0b8;
+  line-height: 1.55;
+}
+
+.detail-passive-line {
+  display: inline;
+}
+
+.detail-passive-mechanics {
+  display: none;
 }
 
 .detail-passive-fallback {
@@ -963,26 +1008,97 @@
 }
 
 .detail-section-apex-effect .detail-passive-effect-card {
-  border-color: rgba(255, 217, 61, 0.55);
+  --passive-accent: #e8e8e8;
+  border: 1px solid transparent;
+  background-clip: padding-box;
   background: linear-gradient(
     135deg,
-    rgba(255, 107, 157, 0.08) 0%,
-    rgba(255, 217, 61, 0.16) 30%,
-    rgba(107, 203, 255, 0.06) 60%,
-    rgba(18, 16, 10, 0.92) 100%
+    rgba(18, 16, 10, 0.96) 0%,
+    rgba(12, 12, 16, 0.98) 100%
   );
   box-shadow:
-    0 0 24px rgba(255, 217, 61, 0.18),
-    inset 0 1px 0 rgba(255, 236, 160, 0.12);
+    0 0 28px rgba(107, 203, 255, 0.12),
+    0 0 16px rgba(255, 107, 157, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.detail-section-apex-effect .detail-passive-line-title {
-  background: linear-gradient(90deg, #ffeaa7, #ffd93d, #f5c842, #ffeaa7);
-  background-size: 200% auto;
+.detail-section-apex-effect .detail-passive-effect-card::before {
+  width: 3px;
+  background: linear-gradient(180deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
+  background-size: 100% 200%;
+  animation: apexLabelFlow 5s linear infinite;
+}
+
+.detail-section-apex-effect .detail-passive-effect-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 8px;
+  padding: 1px;
+  background: linear-gradient(135deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
+  background-size: 400% 400%;
+  animation: apexLabelFlow 6s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.detail-section-apex-effect .detail-passive-effect-glow {
+  background: radial-gradient(ellipse at center, rgba(107, 203, 255, 0.1) 0%, transparent 70%);
+}
+
+.detail-section-apex-effect .detail-passive-effect-icon {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.06);
+}
+
+.detail-section-apex-effect .detail-passive-effect-icon i {
+  font-size: 1rem;
+  background: linear-gradient(135deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
+  background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: apexLabelFlow 4s linear infinite;
+  color: transparent;
+  animation: apexIconShift 4s ease infinite;
+  filter: drop-shadow(0 0 6px rgba(107, 203, 255, 0.35));
+}
+
+.detail-section-apex-effect .detail-passive-effect-name,
+.detail-section-apex-effect .detail-passive-line-title,
+.detail-section-apex-effect .detail-passive-paragraph,
+.detail-section-apex-effect .detail-passive-line,
+.detail-section-apex-effect .detail-passive-fallback,
+.detail-section-apex-effect .detail-passive-line-text {
+  background: linear-gradient(180deg, #ffffff 0%, #ececec 45%, #d4d4d4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.detail-section-apex-effect .detail-passive-effect-line:not(:last-child) {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.constellation-svg .culmination-link {
+  transition: stroke-opacity 0.25s ease;
+}
+
+.constellation-svg .culmination-link-primary {
+  filter: drop-shadow(0 0 4px rgba(255, 200, 100, 0.35));
+}
+
+.tree-node.node-culmination {
+  z-index: 3;
+}
+
+.tree-node.node-culmination-primary .keystone-glow-animated {
+  opacity: 0.85;
 }
 
 .detail-section-stat-effect .detail-node-desc {
@@ -1058,7 +1174,7 @@
   z-index: 0;
   isolation: isolate;
   overflow: hidden;
-  color: #ffd93d;
+  color: transparent;
   background: transparent;
   box-shadow: 0 0 14px rgba(255, 130, 200, 0.22);
 }
@@ -1067,13 +1183,11 @@
   position: relative;
   z-index: 1;
   display: inline-block;
-  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
-  background-size: 300% 100%;
+  background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #cccccc 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  color: #ffd93d;
+  color: #ffffff;
   -webkit-text-fill-color: transparent;
-  animation: apexLabelFlow 4s linear infinite;
 }
 
 .badge-apex::before {

@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { UI } from '../../visual/ui';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
@@ -321,12 +322,11 @@ export class Pacifier extends PlayerBase {
             });
 
             if (closestHit) {
-                const shotIdx = this._frenzyShotIndex || 0;
-                this._frenzyShotIndex = shotIdx + 1;
+                const shotIdx = ConvergenceEffects.getPacifierShotIndex(this);
                 const pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: false });
-                const forceCrit = this.bloodPistolActive && PassiveKeystoneHooks.isFrenzyGuaranteedCrit(shotIdx);
+                const megaCrit = ConvergenceEffects.isMegaCritShot(shotIdx);
                 if (PassiveKeystoneHooks.isEnemyMarked(closestHit)) createDamageText('EXECUTE!', closestHit.position, '#e74c3c');
-                dealDamageToEnemy(closestHit, pDmg, { pos: closestHit.position, forceCrit });
+                dealDamageToEnemy(closestHit, pDmg, { pos: closestHit.position, megaCrit });
                 this.spawnHitAura(closestHit.position);
             }
         }
