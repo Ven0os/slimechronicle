@@ -358,7 +358,7 @@ export const ConstellationEngine = {
     }
 
     if (p.beamHaste && key === 'space' && player.className === 'sentinel') {
-      player.addBuff?.('Hâte solaire', 2, '☀');
+      player.addBuff?.('Hâte solaire', 2, 'fa-sun');
       player.speed *= 1.3;
       setTimeout(() => {
         if (Globals.player) Globals.player.speed = STATE.stats.speed;
@@ -692,7 +692,7 @@ export const ConstellationEngine = {
     }
 
     if (p.titanBlood && player.addBuff) {
-      player.addBuff('Élan titan', 3, '💪');
+      player.addBuff('Élan titan', 3, 'fa-dumbbell');
     }
 
     if (p.ironWall && (player.parryBlockedTotal || 0) > 0 && player.heal) {

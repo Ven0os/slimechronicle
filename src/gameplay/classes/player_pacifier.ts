@@ -159,9 +159,25 @@ export class Pacifier extends PlayerBase {
         if(this.drainActiveTime > 0) this.drainActiveTime -= dt;
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
-            let html = `<span style="color:#e74c3c">Soif de Sang: ${this.sanguinStacks || 0}/5</span>`;
-            if (this.bloodPistolActive) html += ` <span style="color:#ff0000; font-weight:bold;">| FRENESIE</span>`;
-            resourceEl.innerHTML = html; resourceEl.style.display = 'block';
+            const stacks = this.sanguinStacks || 0;
+            const pct = (stacks / 5) * 100;
+            const isFrenzy = !!this.bloodPistolActive;
+            const titleColor = isFrenzy ? '#ff0000' : '#e74c3c';
+            const titleText = isFrenzy ? 'FRÉNÉSIE ACTIVE' : 'SOIF DE SANG';
+            const icon = isFrenzy ? 'fa-gun' : 'fa-droplet';
+            
+            resourceEl.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${titleColor};">
+                        <span style="display:flex; align-items:center; gap:5px;"><i class="fas ${icon}"></i> ${titleText}</span>
+                        <span>${stacks}/5</span>
+                    </div>
+                    <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width:${pct}%; height:100%; background:${titleColor}; box-shadow:0 0 6px ${titleColor}; transition: width 0.2s;"></div>
+                    </div>
+                </div>
+            `;
+            resourceEl.style.display = 'block';
         }
     }
 

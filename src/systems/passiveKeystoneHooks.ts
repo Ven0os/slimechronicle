@@ -209,7 +209,7 @@ export const PassiveKeystoneHooks = {
   // ——— Sentinelle (compléments) ———
   onSentinelBeamFired(player: { addBuff?: (n: string, d: number, i: string) => void; speed?: number }) {
     if (!rank('beamHaste') || !player) return;
-    player.addBuff?.('Hâte solaire', 2, '☀');
+    player.addBuff?.('Hâte solaire', 2, 'fa-sun');
     const base = STATE.stats.speed;
     player.speed = base * 1.3;
     setTimeout(() => {

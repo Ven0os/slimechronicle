@@ -230,19 +230,42 @@ export class Eclipse extends PlayerBase {
 
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
-            const sunColor = this.eclipse.sun >= 100 ? '#fff7e6' : '#cccccc'; 
-            const moonColor = this.eclipse.moon >= 100 ? '#a3b1cc' : '#888888'; 
-            const nextText = this.eclipse.nextIsSun ? '<span style="color:#ffcc00">SOLAIRE</span>' : '<span style="color:#aa00ff">LUNAIRE</span>';
+            const sunColor = this.eclipse.sun >= 100 ? '#ffcc00' : '#ffa800'; 
+            const moonColor = this.eclipse.moon >= 100 ? '#a3b1cc' : '#5dade2'; 
+            const nextText = this.eclipse.nextIsSun ? '<span style="color:#ffcc00; font-weight:700;">SOLAIRE</span>' : '<span style="color:#a3b1cc; font-weight:700;">LUNAIRE</span>';
             
             let html = '';
             if (this.eclipse.active) {
-                html = `<div style="color:#ffffff; font-size:1.1em; animation: pulse 0.5s infinite; text-shadow: 0 0 10px #ffaa00;">✦ ASCENSION ✦</div>`;
+                html = `<div style="color:#ffffff; font-family:'Cinzel', serif; font-size:10px; font-weight:700; text-align:center; animation: pulse 1s infinite ease-in-out; text-shadow: 0 0 12px #ffaa00; width:100%; letter-spacing:2px;"><i class="fas fa-yin-yang"></i> ✦ ASCENSION ✦</div>`;
             } else {
-                html = `<div style="display:flex; justify-content:space-between; width:120px; font-weight:bold; text-shadow: 1px 1px 2px #000;">
-                    <span style="color:${sunColor}">☀ ${Math.floor(this.eclipse.sun)}%</span>
-                    <span style="color:${moonColor}">☾ ${Math.floor(this.eclipse.moon)}%</span>
-                </div>`;
-                html += `<div style="font-size:0.8em; color:#ddd; margin-top:2px; text-shadow: 1px 1px 1px #000;">Alignement: ${nextText}</div>`;
+                html = `
+                    <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:9px; font-weight:700; color:rgba(255,255,255,0.6);">
+                            <span>ALIGNEMENT</span>
+                            <span>${nextText}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; gap:12px; width:100%;">
+                            <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                                <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; color:${sunColor};">
+                                    <span>☀ SOLEIL</span>
+                                    <span>${Math.floor(this.eclipse.sun)}%</span>
+                                </div>
+                                <div style="width:100%; height:3px; background:rgba(0,0,0,0.5); border-radius:1.5px; overflow:hidden;">
+                                    <div style="width:${Math.min(100, this.eclipse.sun)}%; height:100%; background:${sunColor}; box-shadow:0 0 4px ${sunColor};"></div>
+                                </div>
+                            </div>
+                            <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                                <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; color:${moonColor};">
+                                    <span>☾ LUNE</span>
+                                    <span>${Math.floor(this.eclipse.moon)}%</span>
+                                </div>
+                                <div style="width:100%; height:3px; background:rgba(0,0,0,0.5); border-radius:1.5px; overflow:hidden;">
+                                    <div style="width:${Math.min(100, this.eclipse.moon)}%; height:100%; background:${moonColor}; box-shadow:0 0 4px ${moonColor};"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
             resourceEl.innerHTML = html;
             resourceEl.style.display = 'block';

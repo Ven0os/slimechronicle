@@ -267,23 +267,26 @@ export class Warrior extends PlayerBase {
 
 
     updateClassPassives(dt) {
-
         const resourceEl = document.getElementById('class-resource');
-
         const charge = ConstellationEngine.getStoredParryCharge();
-
         if (resourceEl) {
-
             if (charge > 0) {
-
-                resourceEl.innerHTML = `<div style="color:#9b59b6; font-weight:bold; text-shadow:0 0 5px #4a235a;">🛡 CHARGE SISMIQUE: ${Math.floor(charge)}</div>`;
-
+                resourceEl.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#9b59b6;">
+                            <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-shield-halved"></i> CHARGE SISMIQUE</span>
+                            <span>${Math.floor(charge)}</span>
+                        </div>
+                        <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="width:${Math.min(100, (charge / 500) * 100)}%; height:100%; background:#9b59b6; box-shadow:0 0 6px #9b59b6; transition: width 0.2s;"></div>
+                        </div>
+                    </div>
+                `;
                 resourceEl.style.display = 'block';
-
-            } else { resourceEl.style.display = 'none'; }
-
+            } else {
+                resourceEl.style.display = 'none';
+            }
         }
-
     }
 
 

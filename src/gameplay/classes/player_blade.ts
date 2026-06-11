@@ -270,7 +270,18 @@ export class Blade extends PlayerBase {
             const bonusPct = Math.floor((mult - 1.0) * 100); 
             let color = '#1abc9c';
             if (bonusPct > 50) color = '#e74c3c';
-            resourceEl.innerHTML = `<div style="color:${color}; font-weight:bold;">SOIF DE SANG: +${bonusPct}% DMG</div>`;
+            const pct = Math.min(100, (bonusPct / 100) * 100);
+            resourceEl.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${color};">
+                        <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-droplet"></i> SOIF DE SANG</span>
+                        <span>+${bonusPct}% DMG</span>
+                    </div>
+                    <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width:${pct}%; height:100%; background:${color}; box-shadow:0 0 6px ${color}; transition: width 0.2s;"></div>
+                    </div>
+                </div>
+            `;
             resourceEl.style.display = 'block';
         }
     }
