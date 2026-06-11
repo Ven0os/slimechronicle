@@ -90,7 +90,7 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
     },
   },
   eclipse: {
-    lore: 'Soleil et Lune : stats puis passifs en bout de branche. L\'apex fusionne les deux astres.',
+    lore: 'Soleil et Lune : stats puis passifs en bout de branche. L\'Apex fusionne les deux astres.',
     motto: 'Deux astres, une volonté.',
     branches: {
       soleil: { desc: 'ATK et DoT — keystone : corona.', icon: 'fa-sun', focus: 'DoT' },

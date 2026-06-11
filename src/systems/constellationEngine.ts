@@ -24,6 +24,7 @@ import {
   getUnlockedPassiveDetails,
 } from '@/data/passiveScalingConfig';
 import { getWarriorDefPower } from '@/data/classStatsConfig';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText } from '@/visual/effects';
 
@@ -85,8 +86,12 @@ function registerPassive(effects: NodeEffects): void {
   if (key === 'warFervor' && !p.warFervorStacks) p.warFervorStacks = 0;
   if (key === 'orbitalWeave' && !p.orbitalStacks) p.orbitalStacks = 0;
   if (key === 'lastBreath') p.lastBreathCd = 0;
-  if ((key === 'parryCharge' || key === 'runicColossus') && p.storedParryDamage == null) {
+  if (key === 'parryCharge' && p.storedParryDamage == null) {
     p.storedParryDamage = 0;
+  }
+  if (key === 'paradoxOverload' && rank >= 2 && !p._paradoxKillCount) {
+    p._paradoxKillCount = 0;
+    p._paradoxRewards = {};
   }
 }
 
@@ -171,6 +176,13 @@ export const ConstellationEngine = {
       const node = getNodeById(id);
       if (node) applyNode(node, true);
     }
+    ConvergenceEffects.applyPacifierConvergenceStats();
+    ConvergenceEffects.reapplyParadoxRewards();
+    if (Globals.player?.className === 'blade') {
+      ConvergenceEffects.syncBladeThirstCrit(Globals.player);
+    } else {
+      ConvergenceEffects.resetBladeThirstCrit();
+    }
     this.syncPlayerStats();
   },
 
@@ -207,6 +219,20 @@ export const ConstellationEngine = {
     return (p?.[key] as number) || 0;
   },
 
+  isConvergenceUnlocked(classId?: ClassId): boolean {
+    const cid = classId || this.getActiveClass();
+    return this.isNodeUnlocked(`${cid}-apex`);
+  },
+
+  /** @deprecated Utiliser isConvergenceUnlocked */
+  isApexUnlocked(classId?: ClassId): boolean {
+    return this.isConvergenceUnlocked(classId);
+  },
+
+  hasSolarWellCurse(): boolean {
+    return this.getPassiveRank('solarInspiration') >= 2;
+  },
+
   /** Boucle de passifs (regen, titan, fureur, inspiration…). */
   tick(dt: number): void {
     const p = ensurePassives();
@@ -226,6 +252,10 @@ export const ConstellationEngine = {
     this.tickSolarInspiration(dt);
     this.tickSolarLightField(dt);
     PassiveKeystoneHooks.tickOrbitalWeave();
+
+    if (player.className === 'blade') {
+      ConvergenceEffects.syncBladeThirstCrit(player);
+    }
 
     if (p.lastBreathCd && (p.lastBreathCd as number) > 0) {
       p.lastBreathCd = (p.lastBreathCd as number) - dt;
@@ -250,12 +280,9 @@ export const ConstellationEngine = {
     const player = Globals.player;
     if (!player) return;
 
-    const overloadRank = Math.max(
-      (p.arcaneOverload as number) || 0,
-      (p.paradoxOverload as number) || 0,
-    );
-    if (overloadRank > 0 && player.cooldowns) {
-      const reduction = overloadRank >= 2 ? 1.2 : 0.6;
+    const arcaneRank = (p.arcaneOverload as number) || 0;
+    if (arcaneRank > 0 && player.cooldowns) {
+      const reduction = 0.6;
       for (const k of ['space', 'shift', 'e'] as const) {
         if (k !== key && player.cooldowns[k] > 0) {
           player.cooldowns[k] = Math.max(0, player.cooldowns[k] - reduction);
@@ -284,9 +311,12 @@ export const ConstellationEngine = {
     if (def > 0) dmg *= Math.max(0.4, 1 - def * 0.008);
 
     if (p.ironWall) dmg *= 0.92;
-    if (p.runicColossus) dmg *= 0.82;
-    else if (['warrior', 'blade', 'pacifier', 'eclipse'].includes(Globals.player?.className)) {
+    if (['warrior', 'blade', 'pacifier', 'eclipse'].includes(Globals.player?.className)) {
       dmg *= 0.88;
+    }
+
+    if (p._solarWellAnchored && this.hasSolarWellCurse()) {
+      dmg *= 1.12;
     }
 
     return dmg;
@@ -345,21 +375,29 @@ export const ConstellationEngine = {
   getLightFieldRadius(): number {
     let r = 10;
     if (this.getPassiveRank('healAmp')) r += 2;
-    if (this.getPassiveRank('solarInspiration')) r += 2;
+    if (this.hasSolarWellCurse()) r += 2;
     return r;
   },
 
-  getLightFieldHealTick(): number {
+  getLightFieldDuration(): number {
+    let d = 5;
+    if (this.getPassiveRank('healAmp')) d += 2;
+    if (this.hasSolarWellCurse()) d += 1;
+    return d;
+  },
+
+  getLightFieldHealTick(anchored = false): number {
     let heal = 1;
     if (this.getPassiveRank('healAmp')) heal *= 1.15;
+    if (anchored && this.hasSolarWellCurse()) heal *= 2;
     return heal;
   },
 
-  getLightFieldEnemyDebuffMods(): { speedMult: number; dmgTakenMult: number } {
-    const apex = this.getPassiveRank('solarInspiration');
+  getLightFieldEnemyDebuffMods(): { speedMult: number; dmgTakenMult: number } | null {
+    if (!this.hasSolarWellCurse()) return null;
     return {
-      speedMult: apex ? 0.7 : 0.8,
-      dmgTakenMult: apex ? 1.2 : 1.15,
+      speedMult: 0.65,
+      dmgTakenMult: 1.25,
     };
   },
 
@@ -404,26 +442,41 @@ export const ConstellationEngine = {
     });
   },
 
-  tickSolarLightField(_dt: number): void {
+  tickSolarLightField(dt: number): void {
     this.clearExpiredLightFieldDebuffs();
 
     const p = ensurePassives();
     const field = p._solarLightField as { pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean } | undefined;
     if (!field || Date.now() >= field.until) {
       if (field) delete p._solarLightField;
+      p._solarWellAnchored = false;
       return;
     }
 
+    const source = Globals.player;
+    const anchored = !!(
+      source
+      && !source.dead
+      && source.className === 'sentinel'
+      && source.position.distanceTo(field.pos) <= field.radius
+    );
+    p._solarWellAnchored = anchored && this.hasSolarWellCurse();
+
+    if (anchored && this.hasSolarWellCurse() && source?.heal) {
+      source.heal(source.maxHp * 0.02 * dt);
+    }
+
     const mods = this.getLightFieldEnemyDebuffMods();
+    if (mods) {
+      Globals.enemies?.forEach((enemy) => {
+        if (enemy.dead || enemy.position.distanceTo(field.pos) > field.radius) return;
+        this.applyLightFieldDebuff(enemy, mods);
+      });
 
-    Globals.enemies?.forEach((enemy) => {
-      if (enemy.dead || enemy.position.distanceTo(field.pos) > field.radius) return;
-      this.applyLightFieldDebuff(enemy, mods);
-    });
-
-    if (!field.malusAnnounced && Globals.enemies?.some((e) => !e.dead && e.position.distanceTo(field.pos) <= field.radius)) {
-      field.malusAnnounced = true;
-      createDamageText('MALUS SOLAIRE', field.pos, '#e67e22');
+      if (!field.malusAnnounced && Globals.enemies?.some((e) => !e.dead && e.position.distanceTo(field.pos) <= field.radius)) {
+        field.malusAnnounced = true;
+        createDamageText('PUITS SOLAIRE', field.pos, '#e67e22');
+      }
     }
   },
 
@@ -498,6 +551,10 @@ export const ConstellationEngine = {
     dmg *= PassiveKeystoneHooks.getOrbitalAtkMult();
     dmg *= this.getWarFervorMult();
 
+    if (p._solarWellAnchored && this.hasSolarWellCurse()) {
+      dmg *= 1.35;
+    }
+
     const key = context.skillKey ?? (context.skill ? undefined : 'primary');
     if (key) dmg *= this.getSkillDmgMod(key);
 
@@ -505,17 +562,8 @@ export const ConstellationEngine = {
       if (p.executioner && context.marked) dmg *= 1.35;
     }
 
-    if (Globals.player?.className === 'blade') {
-      const rank = (p.eternalThirst as number) || (p.earlyThirst ? 1 : 0);
-      if (rank > 0) {
-        const hpPct = Globals.player.hp / Globals.player.maxHp;
-        const threshold = PassiveKeystoneHooks.getEternalThirstThreshold();
-        if (hpPct <= threshold) {
-          const maxBonus = rank >= 2 ? 0.6 : 0.4;
-          const t = 1 - hpPct / threshold;
-          dmg *= 1 + maxBonus * t;
-        }
-      }
+    if (Globals.player?.className === 'chronoregulator' && Globals.player.fractureGauge != null) {
+      dmg *= ConvergenceEffects.getFractureDamageMult(Globals.player.fractureGauge);
     }
 
     return dmg;
@@ -523,9 +571,8 @@ export const ConstellationEngine = {
 
   onBlock(damageBlocked: number): void {
     const p = ensurePassives();
-    if (!p.parryCharge && !p.runicColossus) return;
-    const rate = p.runicColossus ? 0.4 : 0.25;
-    p.storedParryDamage = ((p.storedParryDamage as number) || 0) + damageBlocked * rate;
+    if (!p.parryCharge) return;
+    p.storedParryDamage = ((p.storedParryDamage as number) || 0) + damageBlocked * 0.25;
   },
 
   getStoredParryCharge(): number {
@@ -547,11 +594,11 @@ export const ConstellationEngine = {
   },
 
   shouldTriggerParrySeismic(): boolean {
-    return !!(this.getPassiveRank('parryCharge') || this.getPassiveRank('runicColossus'));
+    return !!this.getPassiveRank('parryCharge');
   },
 
   getFreeSeismicRadius(): number {
-    return this.getPassiveRank('runicColossus') ? 15 : 12;
+    return 12;
   },
 
   /** Fin de Parade (guerrier) : QOL keystones cri + remboursement CD. */
@@ -613,7 +660,11 @@ export const ConstellationEngine = {
     p.lastBreathCd = 90;
     if (Globals.player) {
       Globals.player.hp = 1;
+      Globals.player.isIntangible = true;
       createDamageText('DERNIER SOUFFLE', Globals.player.position, '#1abc9c');
+      setTimeout(() => {
+        if (Globals.player) Globals.player.isIntangible = false;
+      }, 2000);
     }
     return true;
   },
@@ -634,7 +685,7 @@ export const ConstellationEngine = {
       return {
         name: c.apex.name,
         desc: meta?.desc || c.apex.desc,
-        scalingHtml: formatPassiveDetailHtml(key, rank),
+        scalingHtml: formatPassiveDetailHtml(key, rank, classId),
       };
     }
 

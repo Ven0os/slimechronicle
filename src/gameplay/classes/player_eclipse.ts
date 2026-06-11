@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 
@@ -289,7 +290,8 @@ export class Eclipse extends PlayerBase {
         if(this.isCasting) return; // Empêche d'attaquer si en train de cast
 
         this.faceMouse(); 
-        this.attackCooldown = this.attackMaxCooldown * (STATE.stats.attackSpeedMod || 1);
+        const haste = ConvergenceEffects.getEclipseAttackSpeedMult(this);
+        this.attackCooldown = (this.attackMaxCooldown * (STATE.stats.attackSpeedMod || 1)) / haste;
         this.isAttacking = true;
         AudioSys.sfx.mage.cast(); 
 
@@ -311,57 +313,66 @@ export class Eclipse extends PlayerBase {
             Network.send({ type: 'net-action', action: 'attack-range', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.eclipse, class: 'eclipse' });
         }
 
-        // --- LOGIQUE AUTO-ATTAQUE ---
-        if (this.eclipse.nextIsSun) {
+        const empowered = (this._empoweredAttacksLeft || 0) > 0;
+        if (empowered) {
+            this._empoweredAttacksLeft -= 1;
+            createDamageText('DUALITÉ+', this.position, '#ffcc00');
+        }
+
+        const empMult = empowered ? 1.3 : 1;
+
+        const fireSun = empowered || this.eclipse.nextIsSun;
+        const fireMoon = empowered || !this.eclipse.nextIsSun;
+
+        if (fireSun) {
             // SOLEIL
             const proj = new Projectile(
                 new THREE.SphereGeometry(0.35, 8, 8), 
                 new THREE.MeshStandardMaterial({color: 0xffdd88, emissive:0xffaa00, emissiveIntensity:2}), 
                 this.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 
-                dir, 0.7, STATE.stats.atk, 'player', 0xffffff
+                dir, 0.7, STATE.stats.atk * empMult, 'player', 0xffffff
             );
             
-            if(this.eclipse.active) {
-                const originalUpdate = proj.update.bind(proj);
-                proj.update = (dt) => {
-                    originalUpdate(dt);
-                    if (!Globals.scene.children.includes(proj.mesh)) { 
-                         Globals.enemies.forEach(e => {
-                             if(e.position.distanceTo(proj.mesh.position) < 2.5) {
-                                 const burnDmg = STATE.stats.atk * 0.2;
-                                 setTimeout(() => { if(!e.dead) { e.takeDamage(burnDmg); createDamageText("FEU", e.position, '#ffa500'); } }, 500);
-                             }
-                        });
-                    }
-                };
-            }
+            const originalUpdate = proj.update.bind(proj);
+            proj.update = (dt) => {
+                originalUpdate(dt);
+                if (!Globals.scene.children.includes(proj.mesh)) { 
+                     Globals.enemies.forEach(e => {
+                         if(e.position.distanceTo(proj.mesh.position) < 2.5) {
+                             const burnDmg = STATE.stats.atk * 0.2 * empMult;
+                             setTimeout(() => { if(!e.dead) { e.takeDamage(burnDmg); createDamageText("FEU", e.position, '#ffa500'); ConvergenceEffects.applyCataclysmVulnerability(e); } }, 500);
+                         }
+                    });
+                }
+            };
             Globals.projectiles.push(proj);
             this.eclipse.sun = Math.min(100, this.eclipse.sun + 10);
-            this.eclipse.nextIsSun = false;
+            if (!empowered) this.eclipse.nextIsSun = false;
 
-        } else {
+        }
+        if (fireMoon) {
             // LUNE
             const proj = new Projectile(
                 new THREE.TorusGeometry(0.25, 0.08, 8, 16), 
                 new THREE.MeshStandardMaterial({color: 0x220044, emissive:0x440088, emissiveIntensity:1}), 
                 this.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 
-                dir, 0.7, STATE.stats.atk * 1.2, 'player', 0xaa00ff
+                dir, 0.7, STATE.stats.atk * 1.2 * empMult, 'player', 0xaa00ff
             );
             proj.mesh.rotation.x = Math.PI/2;
             
-            const originalUpdate = proj.update.bind(proj);
+            const originalUpdateMoon = proj.update.bind(proj);
             proj.update = (dt) => {
-                originalUpdate(dt);
+                originalUpdateMoon(dt);
                 if (!Globals.scene.children.includes(proj.mesh)) {
                     if(Math.random() < 0.5) { 
-                         this.heal(STATE.stats.atk * 0.1);
+                         this.heal(STATE.stats.atk * 0.1 * empMult);
                          createDamageText("+HP", this.position, '#00ff00');
                     }
                 }
             };
             Globals.projectiles.push(proj);
             this.eclipse.moon = Math.min(100, this.eclipse.moon + 10);
-            this.eclipse.nextIsSun = true;
+            if (!empowered) this.eclipse.nextIsSun = true;
         }
     }
 
@@ -478,7 +489,8 @@ export class Eclipse extends PlayerBase {
 
         } else if (key === 'e') { 
             // --- CATACLYSME / ASCENSION ---
-            AudioSys.sfx.warrior.smash(); 
+            AudioSys.sfx.warrior.smash();
+            ConvergenceEffects.onEclipseCataclysm(this);
             let dmgMultiplier = 1.0;
             let applyEffects = false;
             
@@ -621,6 +633,7 @@ export class Eclipse extends PlayerBase {
                 this.eclipse.moon = 0;
             } else {
                 createDamageText("CATACLYSME", this.position, '#ffffff');
+                this.eclipse.active = false;
                 this.eclipse.sun = 0;
                 this.eclipse.moon = 0;
             }
@@ -640,7 +653,8 @@ export class Eclipse extends PlayerBase {
 
                 Globals.enemies.forEach(e => {
                     if(e.position.distanceTo(this.position) < 15) {
-                        const baseDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * dmgMultiplier * (1 + PassiveKeystoneHooks.getCataclysmChargeBonus()), { skill: true, skillKey: 'e' });
+                        const vuln = ConvergenceEffects.getCataclysmVulnMult(e);
+                        const baseDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 3.0 * dmgMultiplier * vuln * (1 + PassiveKeystoneHooks.getCataclysmChargeBonus()), { skill: true, skillKey: 'e' });
                         e.takeDamage(baseDmg);
                         e.pushBack(this.position, 15);
                         if (applyEffects) {

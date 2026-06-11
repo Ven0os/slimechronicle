@@ -190,13 +190,11 @@
 
 .grimoire-apex-label {
   display: inline-block;
-  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
-  background-size: 300% 100%;
+  background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #cccccc 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  color: #ffd93d;
+  color: #ffffff;
   -webkit-text-fill-color: transparent;
-  animation: apexLabelFlow 4s linear infinite;
   font-weight: 700;
 }
 
@@ -324,6 +322,7 @@
   font-size: 0.78rem;
   color: #aaa;
   line-height: 1.45;
+  white-space: pre-line;
 }
 
 .grimoire-skill-hint {
@@ -369,6 +368,7 @@
   line-height: 1.55;
   color: #8a8a9a;
   letter-spacing: 0.3px;
+  white-space: pre-line;
 }
 
 @media (max-width: 900px) {

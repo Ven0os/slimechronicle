@@ -1,5 +1,7 @@
 // @ts-nocheck
 
+import { STATE } from '@/core/config';
+
 import type { ClassId } from './constellations';
 
 import { getNodeById } from './constellations';
@@ -10,9 +12,13 @@ import { getPassiveMeta } from './passiveCatalog';
 
 export interface PassiveDetailDef {
 
-  /** Puces de détail mécanique affichées dans le panneau constellation / grimoire. */
+  /** Paragraphes de tooltip (lignes séparées par \\n à l'intérieur d'un bloc). */
 
-  mechanics: (rank: number) => string[];
+  paragraphs?: (rank: number) => string[];
+
+  /** Lignes brutes — regroupées automatiquement si paragraphs absent. */
+
+  mechanics?: (rank: number) => string[];
 
   summary?: (rank: number) => string;
 
@@ -30,15 +36,15 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Réduit tous les dégâts reçus de 8 %, en plus de la réduction par DEF et Peau de Fer.',
+      '−8 % dégâts reçus (cumul DEF et Peau de Fer).',
 
-      'Parade dure 3,5 s au lieu de 3 s.',
+      'Parade : durée 3,5 s.',
 
-      'Chaque coup bloqué : soin 1 % PV max · fin de Parade avec blocage : soin 3 % PV max.',
+      'Blocage : soin 1 % PV max.',
+
+      'Fin de Parade avec blocage : soin 3 % PV max.',
 
     ],
-
-    summary: () => '−8 % dégâts reçus · Parade renforcée.',
 
   },
 
@@ -46,11 +52,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: (rank) => [
 
-      `Convertit ${rank * 2} % de vos PV maximum en DEF runique permanente.`,
+      `Convertit ${rank * 2} % PV max en DEF runique.`,
 
-      'Augmente les dégâts de l\'attaque, du Cri, de la Parade et surtout de la Frappe Sismique.',
+      'Augmente les dégâts de l\'attaque, du Cri, de la Parade et de la Frappe Sismique.',
 
-      'Fin de Parade : +10 % sprint pendant 3 s (Élan titan).',
+      'Fin de Parade : +10 % vitesse de sprint pendant 3 s.',
 
     ],
 
@@ -60,9 +66,9 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'À la fin de Parade (E), réduit de 10 % le temps de recharge maximum de Espace, Shift et E.',
+      'Fin de Parade : −10 % recharge max (Espace, Shift, E).',
 
-      'Bonus QOL : 0,4 s d\'intangibilité à la fin de Parade.',
+      'Fin de Parade : 0,4 s d\'intangibilité.',
 
     ],
 
@@ -72,11 +78,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: (rank) => [
 
-      `En Parade, ${25 * rank} % des dégâts bloqués sont stockés en charge sismique.`,
+      `Parade : ${25 * rank} % des dégâts bloqués stockés.`,
 
-      'Fin de Parade : Frappe Sismique automatique au sol (sans cooldown Espace).',
+      'Fin de Parade : Frappe Sismique gratuite.',
 
-      'La charge bloquée s\'ajoute aux dégâts du séisme gratuit · rayon 12 m.',
+      'Charge ajoutée aux dégâts du séisme · rayon 12 m.',
 
     ],
 
@@ -84,13 +90,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   runicColossus: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Peau de Fer apex : −18 % dégâts reçus (remplace le −12 % de base).',
+      'En Parade, renvoie 30 % des dégâts bloqués.',
 
-      'Parade stocke 40 % des dégâts bloqués · séisme gratuit en fin de Parade (rayon 15 m).',
-
-      'Ne consomme pas le cooldown de Frappe Sismique.',
+      'Bonus de renvoi : +5 % de la DEF.\nDéclenchement à chaque blocage réussi.',
 
     ],
 
@@ -112,9 +116,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: (rank) => [
 
-      `Après un sort, les deux autres compétences récupèrent ${rank >= 2 ? '1,2' : '0,6'} s de recharge.`,
-
-      'Encourage la rotation Espace → Shift → E.',
+      `Après un sort : les deux autres compétences −${rank >= 2 ? '1,2' : '0,6'} s de recharge.`,
 
     ],
 
@@ -122,11 +124,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   paradoxOverload: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Version apex : −1,2 s de recharge sur les deux autres sorts à chaque utilisation.',
+      'Tous les 5 éliminations : bonus de stat permanent.',
 
-      'Rotation quasi permanente entre les trois compétences.',
+      'Stat aléatoire parmi ATK, PV max, vitesse, critique, DEF…\n+0,01 % à +0,09 % par gain.',
+
+      'Cumul persistant sur la partie.',
 
     ],
 
@@ -172,11 +176,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Rayon Stellaire (Espace) : taille du faisceau et zone d\'impact +10 %.',
+      'Rayon Stellaire : taille du faisceau +10 %.',
 
-      'Dégâts bonus : +5 % de vos PV max ajoutés au coup (en plus du ratio ATK).',
+      'Rayon Stellaire : +5 % PV max en dégâts au coup.',
 
-      'Impact plus violent : onde de choc élargie et recul renforcé.',
+      'Zone d\'impact et recul augmentés.',
 
     ],
 
@@ -186,9 +190,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Tous les soins reçus : +15 %.',
+      'Soins reçus : +15 %.',
 
-      'Champ de Lumière : rayon +2 m (12 m) et soin personnel par tick +15 %.',
+      'Champ de Lumière : rayon +2 m.',
+
+      'Champ de Lumière : durée +2 s.',
+
+      'Champ de Lumière : soin personnel +15 % par tick.',
 
     ],
 
@@ -198,9 +206,9 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Après un Rayon Stellaire complet : +30 % vitesse de sprint pendant 2 s.',
+      'Après Rayon Stellaire complet : +30 % vitesse de sprint.',
 
-      'Permet de repositionner ou d\'esquiver pendant la fenêtre.',
+      'Durée : 2 s.',
 
     ],
 
@@ -220,17 +228,15 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   solarInspiration: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Aura permanente 14 m : alliés +15 % ATK, +1 % PV max/s.',
+      'Aura 14 m : alliés +15 % ATK et +1 % PV max/s.\nVous : +30 % ATK.',
 
-      'Sur vous : +30 % ATK (soin non doublé).',
+      'Champ de Lumière devient Puits Solaire.\nEnnemis : −35 % vitesse · +25 % dégâts subis.',
 
-      'Champ de Lumière (Shift) : malus ennemis −30 % vitesse et +20 % dégâts subis (rayon +2 m).',
+      'Ancré dans le puits : +35 % dégâts infligés.\n+12 % dégâts reçus · soin 2 % PV/s.',
 
     ],
-
-    summary: () => 'Aura alliée permanente ; Champ de Lumière affaiblit les ennemis.',
 
   },
 
@@ -262,9 +268,9 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Toupie Létale (Espace) attire les ennemis vers le centre (force légère).',
+      'Toupie Létale (Espace) : aspiration continue vers le centre pendant la rotation.',
 
-      'Durée de la toupie +1 s ; dégâts par tick inchangés.',
+      'Durée +1 s · chaque ennemi aspiré subit un tick de 35 % ATK toutes les 0,5 s.',
 
     ],
 
@@ -272,11 +278,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   eternalThirst: {
 
-    mechanics: (rank) => [
+    paragraphs: () => [
 
-      `À bas PV : jusqu'à ${rank >= 2 ? '+60' : '+40'} % dégâts (seuil 30 % PV, linéaire).`,
+      'Par % de PV manquant : +0,3 % critique et +0,3 % dégâts critiques.',
 
-      'Apex : seuil étendu à 50 % PV pour activer le bonus plus tôt.',
+      'À 0 PV : jusqu\'à +30 % crit et +30 % dégâts crit.',
 
     ],
 
@@ -284,11 +290,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   lastBreath: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Premier coup fatal évité : vous survivez à 1 PV (CD 90 s).',
+      'Premier coup fatal évité.',
 
-      'Texte « Dernier Souffle » affiché à l\'activation.',
+      'Survie à 1 PV.\nIntangibilité pendant 2 s.',
+
+      'Recharge : 90 s.',
 
     ],
 
@@ -310,9 +318,9 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Verdict Sanguin (Shift) : cibles marquées subissent +35 % dégâts de toutes vos sources.',
+      'Cibles marquées (Verdict Sanguin) : +35 % dégâts subis.',
 
-      'La marque dure 6 s et se voit sur l\'ennemi (texte « MARQUÉ »).',
+      'Durée de la marque : 6 s.',
 
     ],
 
@@ -348,11 +356,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   bloodPact: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Bouclier de Sang : plafond +40 % PV max.',
+      '+45 % dégâts critiques.',
 
-      'Frénésie (E) : +2 projectiles par rafale ; 3e balle de chaque rafale est un critique garanti.',
+      'Chaque 3e projectile : Méga-Critique.\nMultiplicateur crit × 1,5.',
 
     ],
 
@@ -408,11 +416,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   celestialConvergence: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Après un cycle Soleil → Lune complet : Ascension permanente (+vitesse, +dégâts).',
+      'Après Cataclysme : 6 attaques renforcées.\n+30 % dégâts · Soleil et Lune simultanés.',
 
-      'Les bonus des deux astres restent actifs sans retomber en phase simple.',
+      'Après Cataclysme : +50 % vitesse d\'attaque pendant 5 s.',
+
+      'Brûlures appliquent Vulnérabilité cataclysmique.\n+25 % dégâts de Cataclysme.',
 
     ],
 
@@ -422,9 +432,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Lentille (Espace) : cône +15 %, dégâts du rayon +8 %.',
+      'Lentille (Espace) : cône +15 %.',
 
-      'Convergence (E) : durée +0,5 s, rayon de résonance +0,5 m.',
+      'Lentille (Espace) : dégâts du rayon +8 %.',
+
+      'Convergence Temporelle (E) : durée +0,5 s.',
+
+      'Convergence Temporelle (E) : rayon de résonance +0,5 m.',
 
     ],
 
@@ -446,9 +460,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
     mechanics: () => [
 
-      'Chaque compétence coûte 25 Fracture au lieu de 30 (−17 %).',
-
-      'Libère plus souvent Déphasage et Convergence dans la même rotation.',
+      'Coût Fracture des compétences : 25 (au lieu de 30).',
 
     ],
 
@@ -468,11 +480,13 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   continuumMastery: {
 
-    mechanics: () => [
+    paragraphs: () => [
 
-      'Forme Ascendant : +60 % dégâts du rayon continu.',
+      'Prismes Affinés : maximum 3.\nChaque prisme −20 % dégâts · duplication de rayons.',
 
-      'Fenêtre Écho élargie (80–98 % Fracture) ; surchauffe : −25 % contrecoup PV.',
+      'Rayon via prisme : +100 % critique.\n−25 % dégâts critiques.',
+
+      'Fracture max : 150 %.\n+0,33 % dégâts infligés par point de Fracture.',
 
     ],
 
@@ -482,28 +496,44 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
 
 
-export function getPassiveMechanics(passiveKey: string, rank = 1): string[] {
-
-  const def = PASSIVE_DETAILS[passiveKey];
-
-  if (def) return def.mechanics(rank);
-
-  const meta = getPassiveMeta(passiveKey);
-
-  return meta ? [meta.desc] : [];
-
+function groupLinesIntoParagraphs(lines: string[]): string[] {
+  if (!lines.length) return [];
+  const out: string[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.length) {
+      out.push(buf.join('\n'));
+      buf = [];
+    }
+  };
+  for (const line of lines) {
+    buf.push(line);
+    const solo = /^(Recharge|Durée|Cumul|Maximum|Fracture max)/i.test(line);
+    if (solo || buf.length >= 2) flush();
+  }
+  flush();
+  return out;
 }
 
+export function getPassiveParagraphs(passiveKey: string, rank = 1, _classId?: ClassId): string[] {
+  const def = PASSIVE_DETAILS[passiveKey];
+  if (def?.paragraphs) return def.paragraphs(rank);
+  if (def?.mechanics) return groupLinesIntoParagraphs(def.mechanics(rank));
+  const meta = getPassiveMeta(passiveKey);
+  return meta ? [meta.desc] : [];
+}
 
+export function getPassiveMechanics(passiveKey: string, rank = 1, classId?: ClassId): string[] {
+  return getPassiveParagraphs(passiveKey, rank, classId).flatMap((p) => p.split('\n'));
+}
 
-export function formatPassiveDetailHtml(passiveKey: string, rank = 1): string {
-
-  const lines = getPassiveMechanics(passiveKey, rank);
-
-  if (!lines.length) return '';
-
-  return `<ul class="detail-passive-mechanics">${lines.map((l) => `<li>${l}</li>`).join('')}</ul>`;
-
+export function formatPassiveDetailHtml(passiveKey: string, rank = 1, classId?: ClassId): string {
+  const paragraphs = getPassiveParagraphs(passiveKey, rank, classId);
+  if (!paragraphs.length) return '';
+  return `<div class="detail-passive-prose">${paragraphs.map((block) => {
+    const inner = block.split('\n').map((line) => `<span class="detail-passive-line">${line}</span>`).join('<br>');
+    return `<p class="detail-passive-paragraph">${inner}</p>`;
+  }).join('')}</div>`;
 }
 
 
@@ -522,7 +552,7 @@ export function formatPassiveScalingText(passiveKey: string, rank = 1): string {
 
   if (def?.summary) return def.summary(rank);
 
-  return getPassiveMechanics(passiveKey, rank).join(' ');
+  return getPassiveParagraphs(passiveKey, rank).join(' ');
 
 }
 

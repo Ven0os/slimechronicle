@@ -6,6 +6,7 @@ import { createDamageText, createSkillVisual, createTelegraph, spawnParticles } 
 import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { CHRONO_ASCENDANT, CHRONO_BEAM, CHRONO_FRACTURE, CHRONO_SKILLS } from './chrono/constants';
 import { getBeamHitInfo, getBeamRays, rayHitsLens } from './chrono/beamHelpers';
 import { updateChronoFractureUI } from './chrono/fractureUi';
@@ -137,8 +138,12 @@ export class Chronoregulator extends PlayerBase {
     return STATE.passives?.anachronismeAmp ? 25 : CHRONO_FRACTURE.skillCost;
   }
 
+  getFractureCap() {
+    return ConvergenceEffects.getFractureMax();
+  }
+
   getAscendantMax() {
-    return STATE.passives?.continuumMastery ? 0.65 : CHRONO_ASCENDANT.max;
+    return CHRONO_ASCENDANT.max;
   }
 
   getBeamTickDmgMult() {
@@ -162,7 +167,6 @@ export class Chronoregulator extends PlayerBase {
 
   getConvergenceFinaleRadius() {
     let r = CHRONO_SKILLS.convergence.finaleRadius;
-    if (STATE.passives?.continuumMastery) r += 1;
     if (STATE.passives?.continuumBurst) r += 0.5;
     return r;
   }
@@ -186,7 +190,7 @@ export class Chronoregulator extends PlayerBase {
   }
 
   getOverheatBacklashMult() {
-    return STATE.passives?.continuumMastery ? 0.75 : 1;
+    return 1;
   }
 
   isInRuptureWindow() {
@@ -194,10 +198,17 @@ export class Chronoregulator extends PlayerBase {
       && this.fractureGauge <= CHRONO_FRACTURE.ruptureMax;
   }
 
-  dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary' } = {}) {
+  dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0 } = {}) {
     if (!enemy || enemy.dead) return 0;
-    let dmg = ConstellationEngine.modifyDamageDealt(baseDmg, { skill, skillKey });
+    let dmg = baseDmg * ConvergenceEffects.getPrismBeamDmgMult(prismDepth);
+    dmg = ConstellationEngine.modifyDamageDealt(dmg, { skill, skillKey });
     if (enemy._temporalVuln?.timer > 0) dmg *= enemy._temporalVuln.mult || 1.2;
+
+    const prismCrit = ConvergenceEffects.getPrismCritMods(prismDepth);
+    if (prismCrit.forceCrit) {
+      dmg *= STATE.stats.critDmg * prismCrit.critDmgMult;
+      createDamageText('PRISME!', enemy.position, '#7df9ff');
+    }
 
     if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
       createDamageText(Math.floor(dmg), enemy.position, '#7df9ff');
@@ -424,7 +435,8 @@ export class Chronoregulator extends PlayerBase {
     const hitOrigin = this.getBeamHitOrigin();
     const staffOrigin = this.getBeamVisualOrigin();
     const coneAmp = STATE.passives?.continuumBurst ? 1.15 : 1;
-    const rays = getBeamRays(hitOrigin, mainDir, this.lenses, coneAmp);
+    const refined = ConvergenceEffects.hasRefinedPrisms();
+    const rays = getBeamRays(hitOrigin, mainDir, this.lenses, coneAmp, refined);
 
     if (staffOrigin.distanceTo(hitOrigin) > 0.12) {
       this.placeBeamSegment(staffOrigin, hitOrigin, false, 0.5);
@@ -481,7 +493,8 @@ export class Chronoregulator extends PlayerBase {
     if (!this.isBeaming) return;
     const hitOrigin = this.getBeamHitOrigin();
     const mainDir = this.getAimDir();
-    const rays = getBeamRays(hitOrigin, mainDir, this.lenses, STATE.passives?.continuumBurst ? 1.15 : 1);
+    const refined = ConvergenceEffects.hasRefinedPrisms();
+    const rays = getBeamRays(hitOrigin, mainDir, this.lenses, STATE.passives?.continuumBurst ? 1.15 : 1, refined);
     const tickDt = this.getBeamTickInterval();
     const ascMult = this.getAscendantMult();
     const baseDmg = STATE.stats.atk * CHRONO_BEAM.tickDmg * ascMult * this.getBeamTickDmgMult();
@@ -502,7 +515,7 @@ export class Chronoregulator extends PlayerBase {
         tickDmg *= 1 + CHRONO_SKILLS.dephasing.beamMarkedBonus;
       }
 
-      const dealt = this.dealMagicDamage(enemy, tickDmg, { skillKey: 'primary' });
+      const dealt = this.dealMagicDamage(enemy, tickDmg, { skillKey: 'primary', prismDepth: ray.prismDepth || 0 });
       this.recordBeamDamage(enemy, dealt);
 
       if (this.isConverging) {
@@ -541,16 +554,17 @@ export class Chronoregulator extends PlayerBase {
 
   addFracture(dt, origin, dir) {
     if (!this.isBeaming || this.overheatTriggered || this.isConverging) return;
-    if (this.fractureGauge >= CHRONO_FRACTURE.max) return;
+    const fractureCap = this.getFractureCap();
+    if (this.fractureGauge >= fractureCap) return;
 
     let rate = this.getFractureFillRate();
     if (this.getActiveLens(origin, dir)) rate *= 0.5;
     if (this.hasActiveInstabilityMark()) {
       rate /= CHRONO_SKILLS.dephasing.fractureDivisor;
     }
-    this.fractureGauge = Math.min(CHRONO_FRACTURE.max, this.fractureGauge + rate * dt);
+    this.fractureGauge = Math.min(fractureCap, this.fractureGauge + rate * dt);
 
-    if (this.fractureGauge >= CHRONO_FRACTURE.max) this.triggerOverheat();
+    if (this.fractureGauge >= fractureCap) this.triggerOverheat();
   }
 
   triggerVoluntaryRupture() {
@@ -697,7 +711,7 @@ export class Chronoregulator extends PlayerBase {
       if (this.isConverging) {
         this.chronoOrb.material.emissiveIntensity = 4.5 + Math.sin(Date.now() * 0.03) * 0.8;
       } else {
-        const heat = this.fractureGauge / CHRONO_FRACTURE.max;
+        const heat = this.fractureGauge / this.getFractureCap();
         this.chronoOrb.material.emissiveIntensity = 2 + heat * 3 + Math.sin(Date.now() * 0.02) * 0.4;
       }
     }
@@ -780,6 +794,12 @@ export class Chronoregulator extends PlayerBase {
 
   skillFocusLens() {
     AudioSys.sfx.mage?.cast?.();
+    const maxPrisms = ConvergenceEffects.getMaxRefinedPrisms();
+    while (ConvergenceEffects.hasRefinedPrisms() && this.lenses.length >= maxPrisms) {
+      const old = this.lenses.shift();
+      if (old?.mesh) Globals.scene.remove(old.mesh);
+      if (old?.ring) Globals.scene.remove(old.ring);
+    }
     const dir = this.getAimDir();
     const pos = this.position.clone().add(dir.clone().multiplyScalar(CHRONO_SKILLS.lens.placeDist));
     pos.y = 0.08;

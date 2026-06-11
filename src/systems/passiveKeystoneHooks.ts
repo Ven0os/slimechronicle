@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
-import { createDamageText } from '@/visual/effects';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
+import { createDamageText, createSkillVisual } from '@/visual/effects';
 
 function rank(key: string): number {
   const p = STATE.passives as Record<string, number> | undefined;
@@ -55,13 +56,20 @@ export const PassiveKeystoneHooks = {
     }
   },
 
-  onBladeDashEnd(player: { isIntangible?: boolean }) {
-    if (!rank('dashReset') || !player) return;
-    player.isIntangible = true;
-    setTimeout(() => {
-      if (Globals.player === player) player.isIntangible = false;
-    }, 400);
-    player._dashKillWindowUntil = Date.now() + 3000;
+  onBladeDashEnd(player: {
+    isIntangible?: boolean;
+    position?: THREE.Vector3;
+    _dashKillWindowUntil?: number;
+    _dashShadowPos?: THREE.Vector3;
+  }) {
+    if (!player) return;
+    if (rank('dashReset')) {
+      player.isIntangible = true;
+      setTimeout(() => {
+        if (Globals.player === player) player.isIntangible = false;
+      }, 400);
+      player._dashKillWindowUntil = Date.now() + 3000;
+    }
   },
 
   onBladeKill(player: { cooldowns?: Record<string, number>; maxCooldowns?: Record<string, number> }) {
@@ -89,8 +97,7 @@ export const PassiveKeystoneHooks = {
   },
 
   getEternalThirstThreshold(): number {
-    if (rank('eternalThirst') >= 2) return 0.5;
-    if (rank('eternalThirst') >= 1 || rank('earlyThirst')) return 0.3;
+    if (rank('earlyThirst')) return 0.3;
     return 0.3;
   },
 
@@ -98,7 +105,6 @@ export const PassiveKeystoneHooks = {
   getBloodShieldMaxMult(): number {
     let m = 1;
     if (rank('shieldOverflow')) m += 0.25;
-    if (rank('bloodPact')) m += 0.4;
     return m;
   },
 
@@ -119,7 +125,11 @@ export const PassiveKeystoneHooks = {
     }, durationSec * 1000);
   },
 
-  onPacifierFrenzyKill(player: { bloodPistolActive?: boolean; cooldowns?: Record<string, number>; _frenzyRefundUsed?: boolean }) {
+  onPacifierFrenzyKill(player: {
+    bloodPistolActive?: boolean;
+    cooldowns?: Record<string, number>;
+    _frenzyRefundUsed?: boolean;
+  }) {
     if (!rank('frenzyAdrenaline') || !player?.bloodPistolActive) return;
     if (player._frenzyRefundUsed) return;
     if (!player.cooldowns) return;
@@ -135,11 +145,11 @@ export const PassiveKeystoneHooks = {
   },
 
   getFrenzyExtraBullets(): number {
-    return rank('bloodPact') ? 2 : 0;
+    return 0;
   },
 
-  isFrenzyGuaranteedCrit(shotIndex: number): boolean {
-    return rank('bloodPact') && shotIndex > 0 && (shotIndex + 1) % 3 === 0;
+  isFrenzyGuaranteedCrit(_shotIndex: number): boolean {
+    return false;
   },
 
   // ——— Éclipse ———
@@ -215,5 +225,6 @@ export const PassiveKeystoneHooks = {
     if (!player || player.dead) return;
     if (player.className === 'blade') this.onBladeKill(player);
     if (player.className === 'pacifier') this.onPacifierFrenzyKill(player);
+    if (player.className === 'mage') ConvergenceEffects.onParadoxKill(player);
   },
 };
