@@ -12,9 +12,9 @@ import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { canApplyGameplay } from '../../multiplayer/net_authority';
 
 export class Sentinel extends PlayerBase {
-    // ... (Constructeur et createModel inchangés) ...
     constructor() {
         super('sentinel');
+        this.isApexActive = false;
         this.createClassModel();
         this.applyClassStats();
         
@@ -28,18 +28,53 @@ export class Sentinel extends PlayerBase {
     }
 
     createClassModel() {
-        // ... (Reprise du modèle pour contexte) ...
-        const armorWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.5, name: 'bodyPart' });
-        const armorGold = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 1.0, emissive: 0x443300, name: 'bodyPart' });
-        const innerDark = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, name: 'bodyPart' });
-        const energyMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8, side: THREE.DoubleSide, name: 'bodyPart' });
+        const isApex = STATE.unlockedNodes?.includes('sentinel-apex') || false;
+        this.isApexActive = isApex;
+        
+        // Colors & materials
+        const armorColor = 0xffffff; // Sleek white armor
+        const goldColor = isApex ? 0xffea00 : 0xffd700; // Bright sun-gold vs standard gold
+        const energyColor = isApex ? 0xffd700 : 0xffaa00; // Brilliant yellow vs warm yellow-orange
+        
+        const armorWhite = new THREE.MeshStandardMaterial({ 
+            color: armorColor, 
+            roughness: isApex ? 0.12 : 0.22, 
+            metalness: isApex ? 0.85 : 0.55,
+            name: 'bodyPart' 
+        });
+        const armorGold = new THREE.MeshStandardMaterial({ 
+            color: goldColor, 
+            roughness: isApex ? 0.08 : 0.18, 
+            metalness: 1.0, 
+            emissive: isApex ? 0x665200 : 0x332200, 
+            emissiveIntensity: isApex ? 1.0 : 0.4,
+            name: 'bodyPart' 
+        });
+        const innerDark = new THREE.MeshStandardMaterial({ 
+            color: isApex ? 0x111622 : 0x1f2733, 
+            roughness: 0.8, 
+            name: 'bodyPart' 
+        });
+        
+        // Base energy material
+        const energyMat = new THREE.MeshStandardMaterial({ 
+            color: energyColor, 
+            roughness: 0.1,
+            metalness: 0.1,
+            emissive: energyColor,
+            emissiveIntensity: isApex ? 2.5 : 1.5,
+            transparent: true, 
+            opacity: 0.85, 
+            side: THREE.DoubleSide, 
+            name: 'bodyPart' 
+        });
 
         this.mesh = new THREE.Group();
         this.bodyGroup.add(this.mesh);
 
         const legHeight = 0.75;
-        this.legL = this.createLeg(armorWhite, innerDark, armorGold, -0.15, legHeight);
-        this.legR = this.createLeg(armorWhite, innerDark, armorGold, 0.15, legHeight);
+        this.legL = this.createLeg(armorWhite, innerDark, armorGold, -0.16, legHeight);
+        this.legR = this.createLeg(armorWhite, innerDark, armorGold, 0.16, legHeight);
         this.mesh.add(this.legL);
         this.mesh.add(this.legR);
 
@@ -47,57 +82,346 @@ export class Sentinel extends PlayerBase {
         this.body.position.y = legHeight; 
         this.mesh.add(this.body);
 
-        const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.25), innerDark);
-        hips.position.y = 0.1; this.body.add(hips);
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.55, 8), armorWhite);
-        torso.position.y = 0.5; this.body.add(torso);
-        const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.15), armorGold);
-        chestPlate.position.set(0, 0.6, 0.18); this.body.add(chestPlate);
-        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.08), energyMat);
-        core.position.set(0, 0.6, 0.26); this.body.add(core);
+        // Hips & Belt
+        const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.2), innerDark);
+        hips.position.y = 0.08; 
+        this.body.add(hips);
+        
+        const belt = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.025, 8, 16), armorGold);
+        belt.rotation.x = Math.PI / 2;
+        belt.position.y = 0.14;
+        this.body.add(belt);
 
-        const skirtGroup = new THREE.Group(); skirtGroup.position.y = 0.15; this.body.add(skirtGroup);
-        const skirtGeo = new THREE.BoxGeometry(0.18, 0.45, 0.05);
-        [-0.4, 0.4, Math.PI - 0.4, Math.PI + 0.4].forEach(angle => {
-            const plate = new THREE.Mesh(skirtGeo, armorWhite);
-            plate.position.set(Math.cos(angle) * 0.22, -0.2, Math.sin(angle) * 0.22);
-            plate.rotation.set(0.15, -angle + Math.PI/2, 0);
-            skirtGroup.add(plate);
-        });
+        // Sleek layered chest armor torso
+        const chestGroup = new THREE.Group();
+        chestGroup.position.y = 0.48;
+        this.body.add(chestGroup);
+        
+        const mainChest = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.18, 0.5, 8), armorWhite);
+        chestGroup.add(mainChest);
+        
+        // Pectoral plates (left & right angled plates for detailed look)
+        const plateL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.28, 0.08), armorWhite);
+        plateL.position.set(0.08, 0.08, 0.13);
+        plateL.rotation.set(0.1, -0.25, 0.05);
+        chestGroup.add(plateL);
+        
+        const plateR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.28, 0.08), armorWhite);
+        plateR.position.set(-0.08, 0.08, 0.13);
+        plateR.rotation.set(0.1, 0.25, -0.05);
+        chestGroup.add(plateR);
+        
+        // Chest Gold Trim/Guard
+        const collar = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.2), armorGold);
+        collar.position.set(0, 0.22, 0.06);
+        collar.rotation.x = 0.15;
+        chestGroup.add(collar);
+        
+        // glowing sun core in chest center
+        const coreSize = isApex ? 0.075 : 0.055;
+        const coreGeo = new THREE.IcosahedronGeometry(coreSize, 1);
+        const coreMat = energyMat.clone();
+        if (isApex) {
+            coreMat.color.setHex(0xffea00);
+            coreMat.emissive.setHex(0xffaa00);
+            coreMat.emissiveIntensity = 3.0;
+        }
+        this.chestCore = new THREE.Mesh(coreGeo, coreMat);
+        this.chestCore.position.set(0, 0.08, 0.18);
+        chestGroup.add(this.chestCore);
+        
+        // Floating ring around core
+        const coreRing = new THREE.Mesh(new THREE.TorusGeometry(coreSize * 1.6, 0.01, 8, 16), armorGold);
+        coreRing.position.set(0, 0.08, 0.17);
+        coreRing.rotation.y = 0.1;
+        chestGroup.add(coreRing);
 
-        this.headGroup = new THREE.Group(); this.headGroup.position.y = 0.95; this.body.add(this.headGroup);
-        const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.28), armorWhite); this.headGroup.add(helmet);
-        const visorV = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.02), energyMat); visorV.position.set(0, 0, 0.15); this.headGroup.add(visorV);
-        const visorH = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.02), energyMat); visorH.position.set(0, 0, 0.15); this.headGroup.add(visorH);
-        this.halo = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.015, 8, 32), energyMat); this.halo.rotation.x = Math.PI / 2; this.halo.position.y = 0.35; this.headGroup.add(this.halo);
+        // Skirt/Tassets
+        const skirtGroup = new THREE.Group(); skirtGroup.position.y = 0.12; this.body.add(skirtGroup);
+        const tassetGeo = new THREE.BoxGeometry(0.14, 0.38, 0.03);
+        tassetGeo.translate(0, -0.19, 0); // pivot at top
+        
+        const numTassets = 6;
+        for (let i = 0; i < numTassets; i++) {
+            const angle = (i / numTassets) * Math.PI * 2;
+            const tasset = new THREE.Group();
+            tasset.position.set(Math.cos(angle) * 0.18, 0, Math.sin(angle) * 0.18);
+            
+            const plate = new THREE.Mesh(tassetGeo, armorWhite);
+            plate.rotation.y = -angle + Math.PI / 2;
+            plate.rotation.x = 0.18;
+            tasset.add(plate);
+            
+            const trimTip = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.04), armorGold);
+            trimTip.position.set(0, -0.34, 0.015);
+            trimTip.rotation.y = -angle + Math.PI / 2;
+            trimTip.rotation.x = 0.18;
+            tasset.add(trimTip);
+            
+            skirtGroup.add(tasset);
+        }
 
-        this.shoulders = new THREE.Group(); this.shoulders.position.y = 0.75; this.body.add(this.shoulders);
-        const pauldronGeo = new THREE.DodecahedronGeometry(0.16);
-        const sL = new THREE.Mesh(pauldronGeo, armorGold); sL.position.set(0.32, 0.05, 0); this.shoulders.add(sL);
-        const sR = new THREE.Mesh(pauldronGeo, armorGold); sR.position.set(-0.32, 0.05, 0); this.shoulders.add(sR);
+        // Helmet & Head
+        this.headGroup = new THREE.Group(); this.headGroup.position.y = 1.0; this.body.add(this.headGroup);
+        const helmetBase = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), armorWhite);
+        helmetBase.scale.set(1, 1.15, 1.1);
+        this.headGroup.add(helmetBase);
+        
+        const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.25), armorGold);
+        crest.position.set(0, 0.18, -0.02);
+        crest.rotation.x = -0.2;
+        this.headGroup.add(crest);
+        
+        // Visor glowing cross
+        const visorCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.035, 0.04), energyMat);
+        visorCrossH.position.set(0, 0.02, 0.14);
+        this.headGroup.add(visorCrossH);
+        
+        const visorCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.14, 0.04), energyMat);
+        visorCrossV.position.set(0, 0.02, 0.14);
+        this.headGroup.add(visorCrossV);
+        
+        const visorBack = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.15, 0.02), innerDark);
+        visorBack.position.set(0, 0.02, 0.13);
+        this.headGroup.add(visorBack);
+        
+        // Floating Halo above head
+        this.haloGroup = new THREE.Group();
+        this.haloGroup.position.y = 0.38;
+        this.headGroup.add(this.haloGroup);
+        
+        this.halo = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.016, 8, 32), energyMat);
+        this.halo.rotation.x = Math.PI / 2;
+        this.haloGroup.add(this.halo);
+        
+        if (isApex) {
+            this.halo2 = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.012, 8, 32), energyMat.clone());
+            this.halo2.material.color.setHex(0xff5500); // deep red-orange outer ring
+            this.halo2.material.emissive.setHex(0xff3300);
+            this.halo2.rotation.x = (Math.PI / 2) + 0.2;
+            this.halo2.rotation.y = 0.15;
+            this.haloGroup.add(this.halo2);
+            
+            // Ray spikes on main halo
+            this.raysGroup = new THREE.Group();
+            this.halo.add(this.raysGroup);
+            const numRays = 8;
+            for (let r = 0; r < numRays; r++) {
+                const rayAngle = (r / numRays) * Math.PI * 2;
+                const ray = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 4), armorGold);
+                ray.position.set(Math.cos(rayAngle) * 0.24, Math.sin(rayAngle) * 0.24, 0);
+                ray.rotation.z = rayAngle - Math.PI / 2;
+                ray.rotation.x = Math.PI / 2;
+                this.raysGroup.add(ray);
+            }
+        }
 
-        const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.45);
-        this.armL = new THREE.Mesh(armGeo, innerDark); this.armL.position.set(0.35, 0.6, 0); this.body.add(this.armL);
-        this.armR = new THREE.Mesh(armGeo, innerDark); this.armR.position.set(-0.35, 0.6, 0); this.body.add(this.armR);
+        // Shoulders & Pauldrons
+        this.shoulders = new THREE.Group(); this.shoulders.position.y = 0.65; this.body.add(this.shoulders);
+        
+        const pauldronGroupL = new THREE.Group();
+        pauldronGroupL.position.set(0.38, 0.08, 0);
+        this.shoulders.add(pauldronGroupL);
+        const pauldronL = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 1), armorWhite);
+        pauldronL.scale.set(1.2, 0.9, 1);
+        pauldronGroupL.add(pauldronL);
+        const trimL = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 1), armorGold);
+        trimL.scale.set(1.25, 0.5, 1.05);
+        trimL.position.y = -0.04;
+        pauldronGroupL.add(trimL);
+        
+        const pauldronGroupR = new THREE.Group();
+        pauldronGroupR.position.set(-0.38, 0.08, 0);
+        this.shoulders.add(pauldronGroupR);
+        const pauldronR = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 1), armorWhite);
+        pauldronR.scale.set(1.2, 0.9, 1);
+        pauldronGroupR.add(pauldronR);
+        const trimR = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 1), armorGold);
+        trimR.scale.set(1.25, 0.5, 1.05);
+        trimR.position.y = -0.04;
+        pauldronGroupR.add(trimR);
+        
+        if (isApex) {
+            this.floatGemL = new THREE.Mesh(new THREE.OctahedronGeometry(0.045), energyMat.clone());
+            this.floatGemL.position.set(0, 0.22, 0);
+            pauldronGroupL.add(this.floatGemL);
+            
+            this.floatGemR = new THREE.Mesh(new THREE.OctahedronGeometry(0.045), energyMat.clone());
+            this.floatGemR.position.set(0, 0.22, 0);
+            pauldronGroupR.add(this.floatGemR);
+        }
 
-        this.weaponGroup = new THREE.Group(); this.weaponGroup.position.set(0, -0.2, 0.2); this.weaponGroup.rotation.x = Math.PI / 2; this.armR.add(this.weaponGroup);
-        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.5), armorWhite); spearShaft.position.y = 0.4; this.weaponGroup.add(spearShaft);
-        const spearHead = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 4), energyMat); spearHead.position.y = 1.8; this.weaponGroup.add(spearHead);
-        const spearGuard = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 8, 4), armorGold); spearGuard.rotation.x = Math.PI / 2; spearGuard.rotation.z = Math.PI / 4; spearGuard.position.y = 1.4; this.weaponGroup.add(spearGuard);
+        // Arms
+        const armGeo = new THREE.CylinderGeometry(0.05, 0.045, 0.4);
+        
+        this.armL = new THREE.Group(); this.armL.position.set(0.36, 0.65, 0); this.body.add(this.armL);
+        const upperArmL = new THREE.Mesh(armGeo, innerDark); upperArmL.position.y = -0.15; this.armL.add(upperArmL);
+        const bracerL = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.05, 0.22), armorWhite); bracerL.position.y = -0.32; this.armL.add(bracerL);
+        const bracerTrimL = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.01, 8, 12), armorGold); bracerTrimL.rotation.x = Math.PI / 2; bracerTrimL.position.y = -0.26; this.armL.add(bracerTrimL);
 
-        this.wings = new THREE.Group(); this.wings.position.set(0, 0.7, -0.25); this.body.add(this.wings);
-        const wingBladeGeo = new THREE.BoxGeometry(0.08, 1.0, 0.02);
-        for(let i=0; i<3; i++) {
-            const wL = new THREE.Mesh(wingBladeGeo, energyMat); wL.position.x = 0.15 + (i*0.08); wL.rotation.z = -0.4 - (i*0.25); wL.userData.baseRot = wL.rotation.z; this.wings.add(wL);
-            const wR = new THREE.Mesh(wingBladeGeo, energyMat); wR.position.x = -0.15 - (i*0.08); wR.rotation.z = 0.4 + (i*0.25); wR.userData.baseRot = wR.rotation.z; this.wings.add(wR);
+        this.armR = new THREE.Group(); this.armR.position.set(-0.36, 0.65, 0); this.body.add(this.armR);
+        const upperArmR = new THREE.Mesh(armGeo, innerDark); upperArmR.position.y = -0.15; this.armR.add(upperArmR);
+        const bracerR = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.05, 0.22), armorWhite); bracerR.position.y = -0.32; this.armR.add(bracerR);
+        const bracerTrimR = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.01, 8, 12), armorGold); bracerTrimR.rotation.x = Math.PI / 2; bracerTrimR.position.y = -0.26; this.armR.add(bracerTrimR);
+
+        // Weapon (Solar Glaive / Divine Spear)
+        this.weaponGroup = new THREE.Group(); 
+        this.weaponGroup.position.set(0, -0.4, 0.15); 
+        this.weaponGroup.rotation.x = Math.PI / 2; 
+        this.armR.add(this.weaponGroup);
+        
+        const shaftLength = isApex ? 2.8 : 2.4;
+        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, shaftLength), armorWhite); 
+        spearShaft.position.y = 0.3; 
+        this.weaponGroup.add(spearShaft);
+        
+        // Gold bands on shaft
+        for (let s = -0.8; s <= 1.0; s += 0.6) {
+            const band = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.04), armorGold);
+            band.position.y = s;
+            this.weaponGroup.add(band);
+        }
+        
+        const guardGroup = new THREE.Group(); guardGroup.position.y = shaftLength / 2 + 0.1; this.weaponGroup.add(guardGroup);
+        const guardRing = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 8, 16), armorGold); guardRing.rotation.x = Math.PI / 2; guardGroup.add(guardRing);
+        const wingL = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 4), armorGold); wingL.position.x = 0.11; wingL.rotation.z = -Math.PI / 3; guardGroup.add(wingL);
+        const wingR = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 4), armorGold); wingR.position.x = -0.11; wingR.rotation.z = Math.PI / 3; guardGroup.add(wingR);
+        
+        if (isApex) {
+            this.weaponGuardCore = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), energyMat.clone());
+            this.weaponGuardCore.material.color.setHex(0xffea00);
+            this.weaponGuardCore.material.emissive.setHex(0xffaa00);
+            this.weaponGuardCore.material.emissiveIntensity = 2.0;
+            guardGroup.add(this.weaponGuardCore);
+        }
+
+        const bladeLength = isApex ? 0.85 : 0.55;
+        const bladeGeo = new THREE.ConeGeometry(0.07, bladeLength, 4);
+        bladeGeo.scale(1, 1, 0.3); // Flatten
+        const customBladeMat = energyMat.clone();
+        if (isApex) {
+            customBladeMat.color.setHex(0xffea00);
+            customBladeMat.emissive.setHex(0xffaa00);
+            customBladeMat.emissiveIntensity = 3.0;
+        }
+        const spearHead = new THREE.Mesh(bladeGeo, customBladeMat); 
+        spearHead.position.y = shaftLength / 2 + bladeLength / 2 + 0.15; 
+        this.weaponGroup.add(spearHead);
+        
+        if (isApex) {
+            this.floatBladeL = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.35, 4), energyMat.clone());
+            this.floatBladeL.geometry.scale(1, 1, 0.25);
+            this.floatBladeL.material.color.setHex(0xff5500); // orange-red side floating blade
+            this.floatBladeL.material.emissive.setHex(0xff2200);
+            this.floatBladeL.position.set(0.14, shaftLength / 2 + 0.3, 0);
+            this.floatBladeL.rotation.z = -0.15;
+            this.weaponGroup.add(this.floatBladeL);
+            
+            this.floatBladeR = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.35, 4), energyMat.clone());
+            this.floatBladeR.geometry.scale(1, 1, 0.25);
+            this.floatBladeR.material.color.setHex(0xff5500);
+            this.floatBladeR.material.emissive.setHex(0xff2200);
+            this.floatBladeR.position.set(-0.14, shaftLength / 2 + 0.3, 0);
+            this.floatBladeR.rotation.z = 0.15;
+            this.weaponGroup.add(this.floatBladeR);
+        }
+
+        // Seraphic Crystalline Wings
+        this.wings = new THREE.Group(); this.wings.position.set(0, 0.75, -0.22); this.body.add(this.wings);
+        const numWings = isApex ? 6 : 3;
+        
+        for (let i = 0; i < numWings; i++) {
+            const wingWidth = 0.075 - (i * 0.005);
+            const wingLength = isApex ? (1.5 - (i * 0.14)) : (1.15 - (i * 0.15));
+            const wingGeo = new THREE.ConeGeometry(wingWidth, wingLength, 4);
+            wingGeo.rotateX(Math.PI); // Point down-outwards
+            
+            const customEnergyMat = energyMat.clone();
+            if (isApex) {
+                // Alternating golden-yellow and fiery solar orange
+                if (i % 2 === 0) {
+                    customEnergyMat.color.setHex(0xffea00);
+                    customEnergyMat.emissive.setHex(0xffaa00);
+                } else {
+                    customEnergyMat.color.setHex(0xff5500);
+                    customEnergyMat.emissive.setHex(0xff3300);
+                }
+            }
+            
+            // Left Wing
+            const wL = new THREE.Mesh(wingGeo, customEnergyMat);
+            const angleL = -0.32 - (i * (isApex ? 0.22 : 0.35));
+            wL.position.set(0.12 + (i * 0.06), i * 0.05, -0.05);
+            wL.rotation.set(0.1, 0, angleL);
+            wL.userData = { baseRotZ: angleL, baseRotX: 0.1, index: i, side: 'L' };
+            this.wings.add(wL);
+            
+            // Right Wing
+            const wR = new THREE.Mesh(wingGeo, customEnergyMat);
+            const angleR = 0.32 + (i * (isApex ? 0.22 : 0.35));
+            wR.position.set(-0.12 - (i * 0.06), i * 0.05, -0.05);
+            wR.rotation.set(0.1, 0, angleR);
+            wR.userData = { baseRotZ: angleR, baseRotX: 0.1, index: i, side: 'R' };
+            this.wings.add(wR);
+        }
+
+        // Apex Orbiting Waist Crystals
+        if (isApex) {
+            this.orbitGroup = new THREE.Group();
+            this.orbitGroup.position.set(0, 0.5, 0);
+            this.body.add(this.orbitGroup);
+            
+            const numCrystals = 3;
+            this.orbitCrystals = [];
+            for (let c = 0; c < numCrystals; c++) {
+                const crystalMat = energyMat.clone();
+                crystalMat.color.setHex(0xffea00);
+                crystalMat.emissive.setHex(0xffaa00);
+                crystalMat.emissiveIntensity = 2.0;
+                
+                const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), crystalMat);
+                this.orbitGroup.add(crystal);
+                this.orbitCrystals.push(crystal);
+            }
         }
     }
 
     createLeg(mat1, mat2, mat3, x, y) {
         const group = new THREE.Group(); group.position.set(x, y, 0);
-        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.4), mat2); thigh.position.y = -0.2; group.add(thigh);
-        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.22), mat1); boot.position.set(0, -0.55, 0.05); group.add(boot);
-        const knee = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.1), mat3); knee.position.set(0, -0.35, 0.12); group.add(knee);
+        
+        // Thigh
+        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.35), mat2); 
+        thigh.position.y = -0.18; 
+        group.add(thigh);
+        
+        // Knee Guard (rotated box)
+        const knee = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.08), mat3); 
+        knee.position.set(0, -0.35, 0.06);
+        knee.rotation.set(0.2, 0, Math.PI / 4);
+        group.add(knee);
+        
+        // Shin
+        const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.045, 0.35, 6), mat1);
+        shin.position.set(0, -0.52, 0.02);
+        shin.rotation.x = 0.05;
+        group.add(shin);
+        
+        // Gold boot trim lining shin
+        const bootTrim = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.3, 0.02), mat3);
+        bootTrim.position.set(0, -0.5, 0.07);
+        bootTrim.rotation.x = 0.05;
+        group.add(bootTrim);
+        
+        // Foot
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.16), mat1); 
+        foot.position.set(0, -0.7, 0.06);
+        group.add(foot);
+        
+        // Golden toe/heel plate
+        const toePlate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), mat3);
+        toePlate.position.set(0, -0.7, 0.13);
+        group.add(toePlate);
+        
         return group;
     }
 
@@ -105,29 +429,182 @@ export class Sentinel extends PlayerBase {
         super.animateCharacter(dt);
         const t = Date.now() * 0.001;
         this.wingTime += dt;
+        
+        if (this.isStunned) return;
+
+        // 1. Idle Bobbing & Tilting (Hover Pose breathing)
         if (this.body) {
-            this.body.position.y = 0.75 + Math.sin(t * 1.5) * 0.01 + this.animState.spineBend; 
-            if (!this.animState.rightArmOverride) this.body.rotation.z = Math.sin(t) * 0.01;
+            const bob = Math.sin(t * 1.8) * 0.035;
+            this.body.position.y = 0.75 + bob + this.animState.spineBend; 
+            
+            if (!this.animState.rightArmOverride) {
+                this.body.rotation.z = Math.sin(t * 0.9) * 0.015;
+                this.body.rotation.y = Math.cos(t * 0.7) * 0.01;
+            }
         }
-        if(this.halo) {
-            this.halo.rotation.z += dt; this.halo.rotation.x = (Math.PI/2) + Math.sin(t) * 0.1;
+        
+        // Head bobbing out of phase
+        if (this.headGroup) {
+            this.headGroup.rotation.x = Math.sin(t * 1.2) * 0.012;
+            this.headGroup.rotation.z = Math.cos(t * 0.9) * 0.01;
         }
-        if(this.wings) {
-            this.wings.children.forEach((wing, i) => {
-                const flap = Math.sin(this.wingTime * 2 + i) * 0.1; wing.rotation.z = wing.userData.baseRot + flap;
-                if(wing.material.opacity !== undefined) wing.material.opacity = 0.6 + Math.sin(t * 3 + i) * 0.2;
+
+        // 2. Halo rotations
+        if (this.haloGroup) {
+            this.haloGroup.position.y = 0.38 + Math.sin(t * 2.2) * 0.015;
+            if (this.halo) {
+                this.halo.rotation.z += dt * 1.2;
+            }
+            if (this.halo2) {
+                this.halo2.rotation.z -= dt * 0.8;
+            }
+        }
+
+        // 3. Chest Core pulse
+        if (this.chestCore) {
+            const pulse = 1.0 + Math.sin(t * 4.0) * 0.12;
+            this.chestCore.scale.setScalar(pulse);
+        }
+
+        // 4. Wings flapping & casting flare
+        if (this.wings) {
+            const isMoving = this.isMoving && !this.isAttacking;
+            const flapSpeed = isMoving ? 3.8 : 2.0;
+            const flapAmp = isMoving ? 0.22 : 0.12;
+            
+            if (this.isCasting) {
+                this.wings.scale.setScalar(THREE.MathUtils.lerp(this.wings.scale.x, 1.35, dt * 5));
+            } else {
+                this.wings.scale.setScalar(THREE.MathUtils.lerp(this.wings.scale.x, 1.0, dt * 5));
+            }
+            
+            this.wings.children.forEach((wing) => {
+                const i = wing.userData.index;
+                const phaseOffset = i * 0.45;
+                const flap = Math.sin(this.wingTime * flapSpeed - phaseOffset) * flapAmp;
+                
+                wing.rotation.z = wing.userData.baseRotZ + (wing.userData.side === 'L' ? -flap : flap);
+                wing.rotation.x = wing.userData.baseRotX + Math.cos(this.wingTime * flapSpeed - phaseOffset) * 0.08;
+                
+                if (wing.material && wing.material.opacity !== undefined) {
+                    wing.material.opacity = 0.75 + Math.sin(t * 3.0 + i) * 0.15;
+                }
             });
         }
-        if (!this.animState.rightArmOverride && this.isMoving && !this.isAttacking) {
-             this.armR.rotation.x = Math.sin(this.animTime + Math.PI) * 0.5;
-        } else if (!this.animState.rightArmOverride && !this.isAttacking) {
-             this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, 0, dt * 5);
+
+        // 5. Elegant Trailing Legs Hover animation (custom override)
+        if (this.legL && this.legR) {
+            if (this.isMoving) {
+                const trailAngle = 0.38 + Math.sin(t * 4) * 0.05;
+                this.legL.rotation.x = THREE.MathUtils.lerp(this.legL.rotation.x, trailAngle, dt * 8);
+                this.legR.rotation.x = THREE.MathUtils.lerp(this.legR.rotation.x, trailAngle + 0.12, dt * 8);
+                
+                this.body.rotation.x = THREE.MathUtils.lerp(this.body.rotation.x, 0.18, dt * 6);
+                
+                if (Math.random() < 0.15) {
+                    const trailPos = this.position.clone().add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.3,
+                        0.5 + (Math.random() - 0.5) * 0.5,
+                        -0.4
+                    ));
+                    spawnParticles(trailPos, CONFIG.colors.sentinel, 1);
+                }
+            } else {
+                const dangle = Math.sin(t * 1.5) * 0.06;
+                this.legL.rotation.x = THREE.MathUtils.lerp(this.legL.rotation.x, dangle, dt * 5);
+                this.legR.rotation.x = THREE.MathUtils.lerp(this.legR.rotation.x, -dangle * 0.4, dt * 5);
+                
+                this.body.rotation.x = THREE.MathUtils.lerp(this.body.rotation.x, 0, dt * 5);
+            }
+        }
+
+        // 6. Arm / Weapon Bobbing
+        if (!this.animState.rightArmOverride && !this.isAttacking) {
+            const weaponBob = Math.sin(t * 2.2) * 0.025;
+            this.weaponGroup.position.y = -0.4 + weaponBob;
+            this.weaponGroup.rotation.x = (Math.PI / 2) + Math.cos(t * 1.5) * 0.03;
+        }
+
+        // 7. Apex specific cosmetic animations
+        if (this.isApexActive) {
+            // Waist crystals orbit
+            if (this.orbitGroup && this.orbitCrystals) {
+                const orbitSpeed = t * 2.2;
+                this.orbitCrystals.forEach((crystal, idx) => {
+                    const angle = orbitSpeed + (idx * Math.PI * 2 / 3);
+                    crystal.position.set(Math.cos(angle) * 0.44, Math.sin(t * 1.8 + idx) * 0.06, Math.sin(angle) * 0.44);
+                    crystal.rotation.set(angle, t, angle * 0.5);
+                });
+            }
+            
+            // Shoulder float gems bobbing
+            if (this.floatGemL && this.floatGemR) {
+                const gemBob = 0.22 + Math.sin(t * 2.5) * 0.03;
+                this.floatGemL.position.y = gemBob;
+                this.floatGemL.rotation.y += dt * 1.5;
+                this.floatGemL.rotation.x += dt * 0.5;
+                
+                this.floatGemR.position.y = gemBob;
+                this.floatGemR.rotation.y -= dt * 1.5;
+                this.floatGemR.rotation.x += dt * 0.5;
+            }
+            
+            // Weapon guard core pulsing
+            if (this.weaponGuardCore) {
+                this.weaponGuardCore.scale.setScalar(1.0 + Math.sin(t * 6.0) * 0.15);
+            }
+            
+            // Weapon float blades vibration
+            if (this.floatBladeL && this.floatBladeR) {
+                const vibration = Math.sin(t * 8.0) * 0.015;
+                this.floatBladeL.position.x = 0.14 + vibration;
+                this.floatBladeR.position.x = -0.14 - vibration;
+            }
+        }
+    }
+
+    rebuildClassModel() {
+        if (this.mesh) {
+            this.bodyGroup.remove(this.mesh);
+            this.mesh.traverse(child => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                }
+            });
+        }
+        
+        this.createClassModel();
+        
+        // Unleash brilliant cosmic awakening effect!
+        if (this.isApexActive) {
+            createSkillVisual('shockwave', this.position, 6.0, 0xffea00);
+            createDamageText("ÉVEIL APEX DIVIN", this.position, '#ffea00');
+            spawnParticles(this.position.clone().add(new THREE.Vector3(0, 1.0, 0)), 0xffea00, 35);
+            AudioSys.play('war_cry', 1.0); // Majestic sound for transformation
         }
     }
 
     update(dt) {
-        if (this.isCasting) { this.speed = 0; } else { this.speed = STATE.stats.speed; }
+        if (this.isCasting) { 
+            this.speed = 0; 
+            this.isMoving = false;
+        } else { 
+            this.speed = STATE.stats.speed; 
+        }
+        
+        // Apex unlock observer
+        const currentApex = STATE.unlockedNodes?.includes('sentinel-apex') || false;
+        if (currentApex !== this.isApexActive) {
+            this.isApexActive = currentApex;
+            this.rebuildClassModel();
+        }
+        
         super.update(dt);
+        
+        // Force isMoving to false again after super updates to prevent any keypress walk triggers while casting
+        if (this.isCasting) {
+            this.isMoving = false;
+        }
     }
 
     performAttack() {
@@ -138,7 +615,7 @@ export class Sentinel extends PlayerBase {
         this.isAttacking = true;
         AudioSys.sfx.sentinel.laser();
 
-        const animDuration = 200;
+        const animDuration = 250;
         const start = Date.now();
         this.animState.rightArmOverride = true;
 
@@ -147,14 +624,28 @@ export class Sentinel extends PlayerBase {
             if (elapsed >= animDuration) {
                 this.isAttacking = false;
                 this.animState.rightArmOverride = false;
-                this.weaponGroup.position.z = 0.2; 
-                this.armR.rotation.x = 0;
+                this.armR.rotation.set(0, 0, 0);
+                this.weaponGroup.rotation.set(Math.PI / 2, 0, 0);
+                this.weaponGroup.position.set(0, -0.4, 0.15);
                 return;
             }
             const p = elapsed / animDuration;
-            const z = p < 0.3 ? 0.2 + (p/0.3)*0.5 : 0.7 - ((p-0.3)/0.7)*0.5;
-            this.weaponGroup.position.z = z;
-            this.armR.rotation.x = -0.3 * Math.sin(p * Math.PI);
+            
+            // Point Glaive forward to fire a ray
+            const armAngle = p < 0.25 ? (-Math.PI / 2) * (p / 0.25) : (p < 0.75 ? -Math.PI / 2 : -Math.PI / 2 * (1 - (p - 0.75) / 0.25));
+            const weaponAngle = p < 0.25 ? (Math.PI / 2) - (Math.PI / 2) * (p / 0.25) : (p < 0.75 ? 0 : (Math.PI / 2) * ((p - 0.75) / 0.25));
+            
+            this.armR.rotation.x = armAngle;
+            this.weaponGroup.rotation.x = weaponAngle;
+            
+            // Recoil kickback on weapon
+            if (p >= 0.25 && p < 0.55) {
+                const recoil = (0.55 - p) / 0.3 * 0.18;
+                this.weaponGroup.position.z = 0.15 - recoil;
+            } else {
+                this.weaponGroup.position.z = 0.15;
+            }
+            
             requestAnimationFrame(attackAnim);
         }
         attackAnim();
@@ -167,11 +658,24 @@ export class Sentinel extends PlayerBase {
             Network.send({ type: 'net-action', action: 'attack-range', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.sentinel, class: 'sentinel' });
         }
 
-        const projGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8); projGeo.rotateX(-Math.PI / 2); 
-        const projMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+        // Upgraded projectile to look like a brilliant laser ray
+        const projGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.5, 8); 
+        projGeo.rotateX(-Math.PI / 2); 
+        const projMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff, 
+            emissive: 0xffea00, 
+            emissiveIntensity: 3.0,
+            transparent: true,
+            opacity: 0.95
+        });
+        
         const startPos = this.position.clone().add(new THREE.Vector3(0, 0.8, 0)); 
         Globals.projectiles.push(new Projectile(projGeo, projMat, startPos, dir, 0.8, STATE.stats.atk, 'player', CONFIG.colors.sentinel));
         spawnParticles(startPos, CONFIG.colors.sentinel, 5);
+        
+        // Spawn shiny muzzle flash at tip of weapon
+        const tipPos = this.position.clone().add(new THREE.Vector3(0, 0.8, 0)).add(dir.clone().multiplyScalar(1.4));
+        createSkillVisual('shockwave', tipPos, 1.0, 0xffd700);
     }
 
     useSkill(key) {
@@ -188,7 +692,7 @@ export class Sentinel extends PlayerBase {
         if(key === 'space') { 
             // --- RAYON STELLAIRE ---
             this.isCasting = true; 
-            createDamageText("CHARGE...", this.position, '#ffffaa');
+            createDamageText("CHARGE STELLAIRE...", this.position, '#ffffaa');
             
             const chargeTime = 1000;
             const startTime = Date.now();
@@ -202,23 +706,24 @@ export class Sentinel extends PlayerBase {
                 this.armR.rotation.x = -Math.PI / 2 - (p * 0.5); 
                 this.body.rotation.x = -0.3 * p; 
                 this.armL.rotation.x = -1.0 * p;
+                
+                // Float higher during charge
+                this.body.position.y += 0.015 * p;
 
                 if(Math.random() < p) {
-                    const tipPos = this.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(dir.clone().multiplyScalar(-1));
+                    const tipPos = this.position.clone().add(new THREE.Vector3(0, 1.6, 0)).add(dir.clone().multiplyScalar(-1.0));
                     spawnParticles(tipPos, 0xffffaa, 1);
                 }
 
                 if(elapsed < chargeTime) {
                     requestAnimationFrame(chargeAnim);
                 } else {
-                    // FIX: Passer la direction du mesh
                     this.fireStellarBeam(dir);
                 }
             };
             chargeAnim();
 
         } else if (key === 'shift') { 
-            // ... (Champ lumière inchangé) ...
             AudioSys.sfx.sentinel.field();
             this.animState.rightArmOverride = true;
             const animDur = 500;
@@ -226,12 +731,24 @@ export class Sentinel extends PlayerBase {
             const slamAnim = () => {
                 const elapsed = Date.now() - startTime;
                 const p = elapsed / animDur;
-                if (p >= 1) { this.animState.rightArmOverride = false; this.armR.rotation.x = 0; this.weaponGroup.rotation.x = Math.PI/2; return; }
-                if (p < 0.4) { this.armR.rotation.x = -Math.PI; this.weaponGroup.rotation.x = 0; } 
-                else if (p < 0.6) { this.armR.rotation.x = 0.5; this.weaponGroup.position.y = -0.5; }
+                if (p >= 1) { 
+                    this.animState.rightArmOverride = false; 
+                    this.armR.rotation.x = 0; 
+                    this.weaponGroup.rotation.x = Math.PI/2; 
+                    this.weaponGroup.position.y = -0.4; // Reset to base
+                    return; 
+                }
+                if (p < 0.4) { 
+                    this.armR.rotation.x = -Math.PI; 
+                    this.weaponGroup.rotation.x = 0; 
+                } 
+                else if (p < 0.6) { 
+                    this.armR.rotation.x = 0.5; 
+                    this.weaponGroup.position.y = -0.6; 
+                }
                 else {
                     this.armR.rotation.x = THREE.MathUtils.lerp(0.5, 0, (p-0.6)/0.4);
-                    this.weaponGroup.position.y = THREE.MathUtils.lerp(-0.5, -0.2, (p-0.6)/0.4);
+                    this.weaponGroup.position.y = THREE.MathUtils.lerp(-0.6, -0.4, (p-0.6)/0.4);
                     this.weaponGroup.rotation.x = THREE.MathUtils.lerp(0, Math.PI/2, (p-0.6)/0.4);
                 }
                 requestAnimationFrame(slamAnim);
@@ -257,7 +774,6 @@ export class Sentinel extends PlayerBase {
             });
 
         } else if (key === 'e') { 
-            // ... (Egide divine inchangé) ...
             AudioSys.sfx.sentinel.shield();
             this.animState.rightArmOverride = true;
             const animDur = 600;
@@ -265,9 +781,16 @@ export class Sentinel extends PlayerBase {
             const spinAnim = () => {
                 const elapsed = Date.now() - startTime;
                 const p = elapsed / animDur;
-                if (p >= 1) { this.animState.rightArmOverride = false; this.armR.rotation.x = 0; this.weaponGroup.rotation.z = 0; return; }
+                if (p >= 1) { 
+                    this.animState.rightArmOverride = false; 
+                    this.armR.rotation.x = 0; 
+                    this.weaponGroup.rotation.z = 0; 
+                    this.weaponGroup.position.y = -0.4;
+                    return; 
+                }
                 this.armR.rotation.x = -Math.PI * 0.8;
                 this.weaponGroup.rotation.z = p * Math.PI * 4;
+                this.weaponGroup.position.y = -0.4;
                 requestAnimationFrame(spinAnim);
             };
             spinAnim();
@@ -276,15 +799,13 @@ export class Sentinel extends PlayerBase {
             this.addLocalVisual(sphere, 5.0, (m, t) => { m.position.copy(this.position); m.rotation.y += 0.02; m.material.opacity = (t/5.0) * 0.5; });
             this.heal(40);
             this.addBuff('Shield', 5, '<i class="fas fa-shield-alt"></i>');
-            createDamageText("BOUCLIER", this.position, '#ffff00');
+            createDamageText("BOUCLIER DIVIN", this.position, '#ffff00');
         }
     }
 
     fireStellarBeam(dir) {
         AudioSys.sfx.sentinel.laser();
         
-        // FIX: Calcul de la cible basé sur la direction et distance fixe (pour Remote)
-        // Ou Raycast pour Local
         let targetPos;
         if (this.isLocalPlayer() && Globals.camera) {
             STATE.raycaster.setFromCamera(STATE.mouse, Globals.camera);
@@ -294,11 +815,10 @@ export class Sentinel extends PlayerBase {
             targetPos = intersection;
             this.faceMouse();
         } else {
-            // Pour Remote, on tire droit devant à une distance fixe (ex: 15m)
             targetPos = this.position.clone().add(dir.clone().multiplyScalar(15.0));
         }
 
-        // Animation
+        // Recoil Animation
         const recoilAnim = () => {
             this.body.rotation.x = 0.5; this.armR.rotation.x = 0.5; 
             setTimeout(() => {

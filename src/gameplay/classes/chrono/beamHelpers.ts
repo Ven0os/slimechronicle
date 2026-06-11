@@ -153,16 +153,16 @@ function resolveSingleLensRoutes(
     };
   }
 
-  const lensOrigin = lensPointAt(hitOrigin, mainDir, hit.dist);
+  const lensPos = hit.entry.lens.pos.clone();
   const spread = CHRONO_SKILLS.lens.cone * coneAmp;
   const rays: BeamRay[] = [
-    { origin: lensOrigin.clone(), dir: rotateDirXZ(mainDir, -spread), split: true, prismDepth: 1 },
-    { origin: lensOrigin.clone(), dir: mainDir.clone(), split: true, prismDepth: 1 },
-    { origin: lensOrigin.clone(), dir: rotateDirXZ(mainDir, spread), split: true, prismDepth: 1 },
+    { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, -spread), split: true, prismDepth: 1 },
+    { origin: lensPos.clone(), dir: mainDir.clone(), split: true, prismDepth: 1 },
+    { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, spread), split: true, prismDepth: 1 },
   ];
 
   return {
-    trunk: [{ from: hitOrigin.clone(), to: lensOrigin.clone() }],
+    trunk: [{ from: hitOrigin.clone(), to: lensPos.clone() }],
     rays: dedupeBeamRays(rays),
   };
 }
@@ -189,26 +189,26 @@ function resolveRefinedChainRoutes(
     const hit = findNearestLensOnRay(cursor, mainDir, entries, visited);
     if (!hit) break;
 
-    const lensOrigin = lensPointAt(cursor, mainDir, hit.dist);
-    trunk.push({ from: cursor.clone(), to: lensOrigin.clone() });
+    const lensPos = hit.entry.lens.pos.clone();
+    trunk.push({ from: cursor.clone(), to: lensPos.clone() });
     visited.add(hit.entry.id);
 
     const nextDepth = depth + 1;
     // Splits latéraux : terminaux (ne traversent pas d'autres lentilles)
     rays.push({
-      origin: lensOrigin.clone(),
+      origin: lensPos.clone(),
       dir: rotateDirXZ(mainDir, -spread),
       split: true,
       prismDepth: nextDepth,
     });
     rays.push({
-      origin: lensOrigin.clone(),
+      origin: lensPos.clone(),
       dir: rotateDirXZ(mainDir, spread),
       split: true,
       prismDepth: nextDepth,
     });
 
-    cursor = lensOrigin;
+    cursor = lensPos;
     depth = nextDepth;
   }
 
