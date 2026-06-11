@@ -2,6 +2,8 @@
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { getPassiveMeta } from '@/data/passiveCatalog';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
+import { ConstellationEngine } from '@/systems/constellationEngine';
 
 const MALUS_BUFF_NAMES = new Set([
   'Malus', 'Malédiction', 'Curse', 'Ralenti', 'Slow', 'Poison', 'Saignée', 'Affaibli', 'Brûlure',
@@ -166,6 +168,70 @@ export const BuffBar = {
         type: 'bouclier',
         extra: `${Math.floor(player.bloodShield)}`,
       });
+    }
+
+    if (ConstellationEngine.isApexPassiveActive('bloodPact', 'pacifier') && player?.className === 'pacifier') {
+      const until = ConvergenceEffects.getPacifierShotsUntilMegaCrit(player);
+      entries.push({
+        id: 'apex-pacifier-megacrit',
+        name: 'Pacte de Sang',
+        desc: until === 1 ? 'Prochain tir : Méga-Critique' : `Méga-Crit dans ${until} tirs`,
+        icon: 'fa-crosshairs',
+        color: '#e74c3c',
+        type: 'stack',
+        stacks: until === 1 ? 3 : until - 1,
+        maxStacks: 3,
+      });
+    }
+
+    if ((player?._empoweredAttacksLeft || 0) > 0
+        && ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse')
+        && player?.className === 'eclipse') {
+      entries.push({
+        id: 'apex-eclipse-empowered',
+        name: 'Dualité Céleste',
+        desc: 'Attaques renforcées après Cataclysme (Soleil + Lune).',
+        icon: 'fa-sun',
+        color: '#ffcc00',
+        type: 'stack',
+        stacks: player._empoweredAttacksLeft,
+        maxStacks: 6,
+      });
+    }
+
+    if (player?._cataclysmHasteUntil && Date.now() < player._cataclysmHasteUntil
+        && ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse')
+        && player?.className === 'eclipse') {
+      const left = Math.max(0, (player._cataclysmHasteUntil - Date.now()) / 1000);
+      entries.push({
+        id: 'apex-eclipse-haste',
+        name: 'Hâte Cataclysme',
+        desc: '+50 % vitesse d\'attaque.',
+        icon: 'fa-bolt',
+        color: '#ffffff',
+        type: 'buff',
+        timer: left,
+        maxTimer: 5,
+      });
+    }
+
+    const paradoxRewards = p._paradoxRewards as Record<string, number> | undefined;
+    if (ConstellationEngine.isApexPassiveActive('paradoxOverload', 'mage')
+        && player?.className === 'mage'
+        && paradoxRewards) {
+      const total = Object.values(paradoxRewards).reduce((a, b) => a + b, 0);
+      if (total > 0) {
+        entries.push({
+          id: 'apex-paradox-rewards',
+          name: 'Paradoxe Absolu',
+          desc: `Bonus permanents accumulés (+${(total * 100).toFixed(2)} % cumulé).`,
+          icon: 'fa-infinity',
+          color: '#3498db',
+          type: 'synergie',
+          stacks: Math.floor((p._paradoxKillCount as number) || 0),
+          maxStacks: 5,
+        });
+      }
     }
 
     return entries;

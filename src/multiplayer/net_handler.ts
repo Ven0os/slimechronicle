@@ -8,6 +8,9 @@ import { Network } from './network';
 import { NetSync } from './net_sync';
 import { NetSkills } from './net_skills';
 import { WorldEvents } from '../gameplay/events';
+import { handleRequestDamage } from './net_combat';
+import { NetChrono } from './net_chrono';
+import { NetClassState } from './net_class_state';
 
 export function handleNetworkMessage(data) {
     if (data.type === 'world-update') { 
@@ -30,9 +33,43 @@ export function handleNetworkMessage(data) {
     } 
     else if (data.type === 'client-input') {
         if (STATE.multiplayer.isHost) { 
-            NetSync.updateRemotePlayer(data.id, data.pos, data.rot, data.class, data.dead); 
+            NetChrono.ingestClientInput(data.id, data);
+            NetSync.updateRemotePlayer(data.id, data.pos, data.rot, data.class, data.dead, data.stun, NetSync._lastDt); 
         }
-    } 
+    }
+    else if (data.type === 'chrono-intent') {
+        const localId = String(STATE.multiplayer.id);
+        if (localId === String(data.id) && !data.relay) return;
+
+        if (STATE.multiplayer.isHost && !data.relay) {
+            NetChrono.handleIntent(data);
+        } else if (data.relay) {
+            const remoteP = STATE.multiplayer.remotePlayers[data.id];
+            if (remoteP && data.intent === 'lens-place' && typeof remoteP.spawnAuthoritativeLens === 'function') {
+                const dir = data.dir ? new THREE.Vector3(data.dir.x, 0, data.dir.z).normalize() : null;
+                if (dir) remoteP.netAimDir = dir;
+                remoteP.spawnAuthoritativeLens({ serverId: `${data.id}_lens_relay`, skipAuthorityCheck: true });
+            } else if (remoteP) {
+                if (data.intent === 'beam-start' && data.dir) {
+                    remoteP.netAimDir = new THREE.Vector3(data.dir.x, 0, data.dir.z).normalize();
+                    remoteP.startDistortionBeamNetwork?.();
+                } else if (data.intent === 'beam-stop') {
+                    remoteP.stopDistortionBeamNetwork?.();
+                } else if (data.intent === 'beam-aim' && data.dir) {
+                    remoteP.netAimDir = new THREE.Vector3(data.dir.x, 0, data.dir.z).normalize();
+                }
+            }
+        }
+    }
+    else if (data.type === 'skill-intent') {
+        const localId = String(STATE.multiplayer.id);
+        if (localId === String(data.id) && !data.relay) return;
+
+        if (STATE.multiplayer.isHost && !data.relay) {
+            NetClassState.handleSkillIntent(data);
+            Network.send({ ...data, relay: true });
+        }
+    }
     else if (data.type === 'net-action') { 
         const localId = String(STATE.multiplayer.id);
         const remoteId = String(data.id);
@@ -133,7 +170,7 @@ export function handleNetworkMessage(data) {
             }
             else if (data.pid !== undefined && ev.userData.rotatePillar) {
                 ev.userData.rotatePillar(data.pid);
-                EventUtils.broadcast({ type: 'event-update', id: data.id, pid: data.pid, rot: ev.userData.targetRot }); // Corrigé pour renvoyer aussi la rot si besoin
+                WorldEvents.broadcast({ type: 'event-update', id: data.id, pid: data.pid, rot: ev.userData.targetRot });
             }
             else if (data.action === 'hit' && ev.userData.interact) {
                 ev.userData.interact(); 
@@ -191,10 +228,14 @@ export function handleNetworkMessage(data) {
              if(STATE.enemiesKilled >= cost && GameActions.spawnBoss) GameActions.spawnBoss(data.bossType); 
         }
     } 
+    else if (data.type === 'request-damage') {
+        if (STATE.multiplayer.isHost) handleRequestDamage(data);
+    }
     else if (data.type === 'damage-player') {
         if (data.targetId === STATE.multiplayer.id && Globals.player) { 
             Globals.player.takeDamage(data.amount); 
-            if(data.knockback) Globals.player.knockback.add(new THREE.Vector3(data.knockback.x, data.knockback.y, data.knockback.z));
+            if (data.knockback) Globals.player.knockback.add(new THREE.Vector3(data.knockback.x, data.knockback.y, data.knockback.z));
+            if (data.stunDuration && Globals.player.applyStun) Globals.player.applyStun(data.stunDuration);
         }
     }
     else if (data.type === 'heal-player') { 
@@ -209,25 +250,8 @@ export function handleNetworkMessage(data) {
     }
     else if (data.type === 'telegraph-spawn') {
         const tPos = new THREE.Vector3(data.pos.x, data.pos.y, data.pos.z);
-        const onHit = () => {
-            if (Globals.player && !Globals.player.dead) {
-                let hit = false;
-                if (data.shape === 'circle') {
-                    if (Globals.player.position.distanceTo(tPos) < data.size) hit = true;
-                } else if (data.shape === 'rect') {
-                    const dist = Globals.player.position.distanceTo(tPos);
-                    if (dist < Math.max(data.size.x, data.size.y)) hit = true; 
-                } else {
-                    if (Globals.player.position.distanceTo(tPos) < data.size) hit = true;
-                }
-
-                if (hit) {
-                    const dmg = 15 + (STATE.level * 2); 
-                    Globals.player.takeDamage(dmg); 
-                }
-            }
-        };
-        createTelegraph(tPos, data.shape, data.size, data.duration, data.color, onHit, data.rotationY, true);
+        // Client : télégraphe visuel uniquement — dégâts appliqués côté hôte
+        createTelegraph(tPos, data.shape, data.size, data.duration, data.color, null, data.rotationY, true);
     } 
     else if (data.type === 'player-ready') {
         if (STATE.multiplayer.isHost) { 

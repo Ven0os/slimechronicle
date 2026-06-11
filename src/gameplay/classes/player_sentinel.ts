@@ -8,6 +8,8 @@ import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
+import { dealDamageToEnemy } from '../combat/damage_helpers';
+import { canApplyGameplay } from '../../multiplayer/net_authority';
 
 export class Sentinel extends PlayerBase {
     // ... (Constructeur et createModel inchangés) ...
@@ -247,8 +249,9 @@ export class Sentinel extends PlayerBase {
             this.addLocalVisual(zone, fieldDuration, (m, t) => { 
                 m.rotation.z -= 0.02; m.scale.setScalar(1 + Math.sin(t*5)*0.05);
                 if (Math.floor(t * 10) !== Math.floor((t + 0.016) * 10)) { 
+                     if (!canApplyGameplay()) return;
                      const fieldDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.1, { skill: true, skillKey: 'shift' });
-                     Globals.enemies.forEach(e => { if(e.position.distanceTo(zonePos) < fieldRadius) e.takeDamage(fieldDmg); });
+                     Globals.enemies.forEach(e => { if(e.position.distanceTo(zonePos) < fieldRadius) dealDamageToEnemy(e, fieldDmg, { pos: e.position, skillKey: 'shift' }); });
                      if(this.position.distanceTo(zonePos) < fieldRadius) this.heal(healTick);
                 }
             });
@@ -345,7 +348,7 @@ export class Sentinel extends PlayerBase {
         
         Globals.enemies.forEach(e => {
             if(e.position.distanceTo(targetPos) < hitRadius) { 
-                e.takeDamage(beamDmg); 
+                dealDamageToEnemy(e, beamDmg, { pos: e.position }); 
                 spawnParticles(e.position, 0xf1c40f, beamMods.sizeMult > 1 ? 22 : 15);
                 e.pushBack(targetPos, 5 * beamMods.sizeMult); 
             }

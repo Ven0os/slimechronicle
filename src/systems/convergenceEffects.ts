@@ -3,10 +3,47 @@
 
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
+import { CHRONO_FRACTURE, CHRONO_SKILLS } from '@/gameplay/classes/chrono/constants';
+import {
+  getFractureDamageMult as computeFractureDamageMult,
+  getMaxFracture as resolveMaxFracture,
+  isChronoFractureApexActive,
+} from '@/gameplay/classes/chrono/fractureHelpers';
 import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
 
+/** Passif Apex unique par classe — doit correspondre au nœud `{class}-apex`. */
+export const APEX_PASSIVE_BY_CLASS: Record<string, string> = {
+  warrior: 'runicColossus',
+  mage: 'paradoxOverload',
+  sentinel: 'solarInspiration',
+  blade: 'eternalThirst',
+  pacifier: 'bloodPact',
+  eclipse: 'celestialConvergence',
+  chronoregulator: 'continuumMastery',
+};
+
+export function isApexNodeUnlocked(classId = STATE.class): boolean {
+  if (!classId) return false;
+  return STATE.unlockedNodes?.includes(`${classId}-apex`) ?? false;
+}
+
+/** Apex Chronoregent actif : classe chrono + Apex débloqué ou passif continuumMastery ≥ 2. */
+export function isChronoApexActive(): boolean {
+  return isChronoFractureApexActive();
+}
+
+/** Rang effectif du passif Apex : 0 si nœud verrouillé, mauvaise classe, ou rang insuffisant. */
+export function getApexPassiveRank(passiveKey: string, classId = STATE.class): number {
+  const r = (STATE.passives?.[passiveKey] as number) || 0;
+  if (r < 2) return 0;
+  if (!classId || APEX_PASSIVE_BY_CLASS[classId] !== passiveKey) return 0;
+  if (!isApexNodeUnlocked(classId)) return 0;
+  return r;
+}
+
 function rank(key: string): number {
-  return (STATE.passives?.[key] as number) || 0;
+  const classId = Globals.player?.className || STATE.class;
+  return getApexPassiveRank(key, classId);
 }
 
 function passives() {
@@ -17,6 +54,8 @@ function passives() {
 const PARADOX_STAT_KEYS = ['atk', 'maxHp', 'speed', 'crit', 'critDmg', 'def', 'regen', 'lifesteal'] as const;
 
 export const ConvergenceEffects = {
+  isChronoApexActive,
+
   // ——— Pacificateur : Méga-Critique ———
   applyPacifierConvergenceStats() {
     if (rank('bloodPact') < 2) return;
@@ -24,6 +63,9 @@ export const ConvergenceEffects = {
   },
 
   getPacifierShotIndex(player: { _convergenceShotIndex?: number }): number {
+    if (STATE.multiplayer.active) {
+      return (player?._convergenceShotIndex as number) || 0;
+    }
     const idx = player?._convergenceShotIndex || 0;
     if (player) player._convergenceShotIndex = idx + 1;
     return idx;
@@ -35,6 +77,13 @@ export const ConvergenceEffects = {
 
   getMegaCritMult(): number {
     return 1.5;
+  },
+
+  getPacifierShotsUntilMegaCrit(player: { _convergenceShotIndex?: number }): number {
+    if (rank('bloodPact') < 2) return 0;
+    const current = player?._convergenceShotIndex || 0;
+    const until = 3 - (current % 3);
+    return until === 0 ? 3 : until;
   },
 
   // ——— Guerrier : Parade réfléchissante ———
@@ -85,7 +134,9 @@ export const ConvergenceEffects = {
   // ——— Blade : Soif critique ———
   syncBladeThirstCrit(player: { hp: number; maxHp: number; className?: string }) {
     if (!player || player.className !== 'blade' || rank('eternalThirst') < 2) return;
-    const missingPct = Math.max(0, 1 - player.hp / Math.max(1, player.maxHp));
+    let missingPct = Math.max(0, 1 - player.hp / Math.max(1, player.maxHp));
+    const earlyBonus = (STATE.passives?.earlyThirst as number) ? 0.3 : 0;
+    if (earlyBonus > 0) missingPct = Math.min(1, missingPct + earlyBonus);
     const bonus = missingPct * 0.003;
     const p = passives();
     const baseCrit = (p._bladeBaseCrit as number) ?? STATE.stats.crit;
@@ -108,16 +159,19 @@ export const ConvergenceEffects = {
 
   // ——— Chrono : Prismes affinés + Fracture ———
   hasRefinedPrisms(): boolean {
-    return rank('continuumMastery') >= 2;
+    return isChronoFractureApexActive();
   },
 
   getFractureMax(): number {
-    return this.hasRefinedPrisms() ? 150 : 100;
+    return resolveMaxFracture();
+  },
+
+  getFractureOverheatThreshold(): number {
+    return resolveMaxFracture();
   },
 
   getFractureDamageMult(fractureGauge: number): number {
-    if (!this.hasRefinedPrisms()) return 1;
-    return 1 + (fractureGauge / 100) * 0.33;
+    return computeFractureDamageMult(fractureGauge);
   },
 
   getPrismBeamDmgMult(prismDepth: number): number {
@@ -134,6 +188,39 @@ export const ConvergenceEffects = {
 
   getMaxRefinedPrisms(): number {
     return this.hasRefinedPrisms() ? 3 : Infinity;
+  },
+
+  getLensBaseDuration(): number {
+    return CHRONO_SKILLS.lens.baseDuration;
+  },
+
+  getLensApexExtension(): number {
+    return CHRONO_SKILLS.refinedLens.apexExtension;
+  },
+
+  /** Durée initiale d'un nouveau prisme Apex : 5 s + 3,5 s = 8,5 s. */
+  getRefinedLensFullDuration(): number {
+    return this.getLensBaseDuration() + this.getLensApexExtension();
+  },
+
+  /** Durée affichée / initiale selon Apex. */
+  getLensDuration(): number {
+    return this.hasRefinedPrisms()
+      ? this.getRefinedLensFullDuration()
+      : this.getLensBaseDuration();
+  },
+
+  /**
+   * Chaque prisme déjà actif gagne +3,5 s (empilable à chaque nouveau prisme posé).
+   * Ne remplace pas la durée restante.
+   */
+  extendActiveRefinedLenses(lenses: Array<{ timer: number; maxTimer?: number }>) {
+    if (!this.hasRefinedPrisms() || !lenses?.length) return;
+    const bonus = this.getLensApexExtension();
+    for (const lens of lenses) {
+      lens.timer += bonus;
+      lens.maxTimer = (lens.maxTimer ?? lens.timer) + bonus;
+    }
   },
 
   // ——— Éclipse : Fenêtre Cataclysme ———
@@ -156,7 +243,8 @@ export const ConvergenceEffects = {
   },
 
   consumeEmpoweredAttack(player: { _empoweredAttacksLeft?: number }): boolean {
-    if (!player || (player._empoweredAttacksLeft || 0) <= 0) return false;
+    if (rank('celestialConvergence') < 2 || !player || (player._empoweredAttacksLeft || 0) <= 0) return false;
+    if (STATE.multiplayer.active && !STATE.multiplayer.isHost) return false;
     player._empoweredAttacksLeft -= 1;
     return true;
   },

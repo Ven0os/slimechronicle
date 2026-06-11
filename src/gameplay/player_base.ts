@@ -7,6 +7,8 @@ import { AudioSys } from '../core/ressources';
 import { createDamageText, spawnParticles } from '../visual/effects';
 import { Network } from '../multiplayer/network';
 import { NetSkills } from '../multiplayer/net_skills';
+import { isServerAuthority } from '../multiplayer/net_combat';
+import { dealDamageToEnemy } from './combat/damage_helpers';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt } from './world/worldZones';
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
@@ -574,8 +576,8 @@ export class PlayerBase extends THREE.Group {
                         if(d < minD) { minD = d; closest = e; }
                     });
                     
-                    if(closest && minD < 5 && closest.takeDamage) {
-                        closest.takeDamage(reflectDmg);
+                    if (closest && minD < 5 && isServerAuthority()) {
+                        dealDamageToEnemy(closest, reflectDmg, { pos: closest.position, noCrit: true, maxRange: 6 });
                         createDamageText("RETOUR: " + Math.floor(reflectDmg), closest.position, "#aaaaaa");
                     }
                 }

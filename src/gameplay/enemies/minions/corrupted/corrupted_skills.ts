@@ -5,6 +5,7 @@ import { STATE } from '@/core/config';
 import { AudioSys } from '@/core/ressources';
 import { createDamageText, createTelegraph } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
+import { damagePlayer, damageAllPlayersInRadius } from '@/multiplayer/net_combat';
 
 export class CorruptedSkills {
     constructor(enemy) {
@@ -32,12 +33,13 @@ export class CorruptedSkills {
             this.enemy.animState = 'strike_corrupt';
             if (cfg.sound && AudioSys.play) AudioSys.play(cfg.sound);
 
-            if (Globals.player && Globals.player.position.distanceTo(this.enemy.position) < cfg.range) {
-                const toP = Globals.player.position.clone().sub(this.enemy.position).normalize();
+            if (target.position.distanceTo(this.enemy.position) < cfg.range) {
+                const toP = target.position.clone().sub(this.enemy.position).normalize();
                 if (toP.dot(this.enemy.getWorldDirection(new THREE.Vector3())) > 0.45) {
-                    Globals.player.takeDamage(cfg.damage);
-                    createDamageText('CORRUPTION', Globals.player.position, '#a855f7');
-                    Globals.player.knockback.add(dir.multiplyScalar(cfg.pushForce));
+                    const push = dir.clone().multiplyScalar(cfg.pushForce);
+                    push.y = 0;
+                    damagePlayer(target, cfg.damage, { knockback: push });
+                    createDamageText('CORRUPTION', target.position, '#a855f7');
                 }
             }
 
@@ -58,10 +60,8 @@ export class CorruptedSkills {
         this.spawnTelegraphNetwork(this.enemy.position, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
             if (cfg.sound && AudioSys.play) AudioSys.play(cfg.sound);
 
-            if (Globals.player && Globals.player.position.distanceTo(this.enemy.position) < cfg.radius) {
-                Globals.player.takeDamage(cfg.damage);
-                createDamageText('PULSE', Globals.player.position, '#a855f7');
-            }
+            damageAllPlayersInRadius(this.enemy.position, cfg.radius, cfg.damage);
+            createDamageText('PULSE', this.enemy.position, '#a855f7');
 
             setTimeout(() => {
                 this.enemy.animState = 'idle';

@@ -24,7 +24,8 @@ import {
   getUnlockedPassiveDetails,
 } from '@/data/passiveScalingConfig';
 import { getWarriorDefPower } from '@/data/classStatsConfig';
-import { ConvergenceEffects } from '@/systems/convergenceEffects';
+import { APEX_PASSIVE_BY_CLASS, ConvergenceEffects, getApexPassiveRank, isChronoApexActive } from '@/systems/convergenceEffects';
+import { clampFracture } from '@/gameplay/classes/chrono/fractureHelpers';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText } from '@/visual/effects';
 
@@ -149,6 +150,19 @@ export const ConstellationEngine = {
     STATE.skillPoints -= node.cost;
     STATE.unlockedNodes.push(nodeId);
     applyNode(node);
+    if (nodeId === 'chronoregulator-apex' && Globals.player?.className === 'chronoregulator') {
+      Globals.player.overheatTriggered = false;
+      const p = ensurePassives();
+      p.continuumMastery = 2;
+    }
+    ConvergenceEffects.applyPacifierConvergenceStats();
+    ConvergenceEffects.reapplyParadoxRewards();
+    if (this.isApexPassiveActive('eternalThirst', 'blade') && Globals.player?.className === 'blade') {
+      ConvergenceEffects.syncBladeThirstCrit(Globals.player);
+    } else {
+      ConvergenceEffects.resetBladeThirstCrit();
+    }
+    this.clearStaleApexPlayerState();
     this.syncPlayerStats();
     if (typeof window !== 'undefined' && window.BuffBar) window.BuffBar.render();
     return true;
@@ -159,6 +173,13 @@ export const ConstellationEngine = {
     const classId = this.getActiveClass();
     const prefix = `${classId}-`;
     const nodes = STATE.unlockedNodes.filter((id) => id.startsWith(prefix) || id === `${classId}-apex`);
+
+    const paradoxBackup = {
+      _paradoxKillCount: STATE.passives?._paradoxKillCount as number | undefined,
+      _paradoxRewards: STATE.passives?._paradoxRewards
+        ? { ...(STATE.passives._paradoxRewards as Record<string, number>) }
+        : undefined,
+    };
 
     STATE.passives = {};
     STATE.stats.skillMods = createDefaultSkillMods();
@@ -176,13 +197,21 @@ export const ConstellationEngine = {
       const node = getNodeById(id);
       if (node) applyNode(node, true);
     }
+
+    if (paradoxBackup._paradoxRewards) {
+      const p = ensurePassives();
+      p._paradoxKillCount = paradoxBackup._paradoxKillCount ?? 0;
+      p._paradoxRewards = paradoxBackup._paradoxRewards;
+    }
+
     ConvergenceEffects.applyPacifierConvergenceStats();
     ConvergenceEffects.reapplyParadoxRewards();
-    if (Globals.player?.className === 'blade') {
+    if (this.isApexPassiveActive('eternalThirst', 'blade') && Globals.player?.className === 'blade') {
       ConvergenceEffects.syncBladeThirstCrit(Globals.player);
     } else {
       ConvergenceEffects.resetBladeThirstCrit();
     }
+    this.clearStaleApexPlayerState();
     this.syncPlayerStats();
   },
 
@@ -224,13 +253,47 @@ export const ConstellationEngine = {
     return this.isNodeUnlocked(`${cid}-apex`);
   },
 
+  /** Passif Apex actif : nœud apex débloqué + rang ≥ 2 + bonne classe. */
+  isApexPassiveActive(passiveKey: string, classId?: ClassId): boolean {
+    const cid = classId || this.getActiveClass();
+    if (passiveKey === 'continuumMastery' && cid === 'chronoregulator') {
+      return isChronoApexActive();
+    }
+    return getApexPassiveRank(passiveKey, cid) >= 2;
+  },
+
+  getApexPassiveKeyForClass(classId?: ClassId): string | null {
+    const cid = classId || this.getActiveClass();
+    return APEX_PASSIVE_BY_CLASS[cid] || null;
+  },
+
+  /** Nettoie état joueur / jauges Apex lorsque le passif n'est plus actif. */
+  clearStaleApexPlayerState(): void {
+    const player = Globals.player;
+    if (!player) return;
+
+    if (!this.isApexPassiveActive('celestialConvergence', 'eclipse')) {
+      player._empoweredAttacksLeft = 0;
+      player._cataclysmHasteUntil = 0;
+    }
+    if (!this.isApexPassiveActive('bloodPact', 'pacifier')) {
+      player._convergenceShotIndex = 0;
+    }
+    if (player.className === 'chronoregulator' && player.fractureGauge != null) {
+      player.fractureGauge = clampFracture(player.fractureGauge);
+    }
+    if (!this.isApexPassiveActive('eternalThirst', 'blade')) {
+      ConvergenceEffects.resetBladeThirstCrit();
+    }
+  },
+
   /** @deprecated Utiliser isConvergenceUnlocked */
   isApexUnlocked(classId?: ClassId): boolean {
     return this.isConvergenceUnlocked(classId);
   },
 
   hasSolarWellCurse(): boolean {
-    return this.getPassiveRank('solarInspiration') >= 2;
+    return this.isApexPassiveActive('solarInspiration', 'sentinel');
   },
 
   /** Boucle de passifs (regen, titan, fureur, inspiration…). */
@@ -253,7 +316,7 @@ export const ConstellationEngine = {
     this.tickSolarLightField(dt);
     PassiveKeystoneHooks.tickOrbitalWeave();
 
-    if (player.className === 'blade') {
+    if (player.className === 'blade' && this.isApexPassiveActive('eternalThirst', 'blade')) {
       ConvergenceEffects.syncBladeThirstCrit(player);
     }
 
@@ -482,7 +545,7 @@ export const ConstellationEngine = {
 
   getSolarInspirationSource() {
     const local = Globals.player;
-    if (local?.className === 'sentinel' && this.getPassiveRank('solarInspiration')) {
+    if (local?.className === 'sentinel' && this.isApexPassiveActive('solarInspiration', 'sentinel')) {
       return local;
     }
     return null;

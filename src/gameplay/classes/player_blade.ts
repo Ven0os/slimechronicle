@@ -9,6 +9,7 @@ import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
+import { canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
 import { calcSkillBaseDamage } from '../../data/classStatsConfig';
 
 export class Blade extends PlayerBase {
@@ -317,14 +318,17 @@ export class Blade extends PlayerBase {
 
         setTimeout(() => {
             const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
-            
-            // --- FIX CRITIQUE : NE PAS ENVOYER SI REMOTE ---
-            if(STATE.multiplayer.active && this.isLocalPlayer()) {
+            dir.y = 0; dir.normalize();
+
+            if (shouldSendSkillIntent()) {
+                sendSkillIntent({ intent: 'attack-melee', dir, pos: this.position.clone() });
+            } else if (STATE.multiplayer.active && this.isLocalPlayer()) {
                 Network.send({ type: 'net-action', action: 'attack-melee', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.blade, class: 'blade' });
             }
             
             const offset = new THREE.Vector3((Math.random()-0.5)*1.5, 0.5 + (Math.random()-0.5), (Math.random()-0.5)*1.5);
             createSkillVisual('slash', this.position.clone().add(offset).add(dir), 2.0, 0xccffff, dir);
+            if (!canDealDamageDirectly()) return;
             
             const multiplier = this.getPassiveMultiplier();
 
@@ -392,7 +396,7 @@ export class Blade extends PlayerBase {
 
             Globals.enemies.forEach(e => {
                 if(e.position.distanceTo(this.position) < 5) {
-                    e.takeDamage(this.getBladeDamage('space', multiplier));
+                    dealDamageToEnemy(e, this.getBladeDamage('space', multiplier), { pos: e.position });
                     spawnParticles(e.position, 0x1abc9c, 5);
                 }
             });
@@ -508,7 +512,7 @@ export class Blade extends PlayerBase {
 
         Globals.enemies.forEach(e => { 
             if(e.position.distanceTo(this.position) <= 15) {
-                e.takeDamage(this.getBladeDamage('e', multiplier)); 
+                dealDamageToEnemy(e, this.getBladeDamage('e', multiplier), { pos: e.position }); 
                 e.pushBack(this.position, 18); 
                 e.speed *= 0.5;
                 setTimeout(() => { if(!e.dead) e.speed *= 2.0; }, 2500);

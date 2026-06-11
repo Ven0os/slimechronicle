@@ -3,6 +3,8 @@ import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { ConvergenceEffects } from '@/systems/convergenceEffects';
 import { createDamageText, createSkillVisual } from '@/visual/effects';
+import { NetClassState } from '@/multiplayer/net_class_state';
+import { isServerAuthority } from '@/multiplayer/net_combat';
 
 function rank(key: string): number {
   const p = STATE.passives as Record<string, number> | undefined;
@@ -97,8 +99,7 @@ export const PassiveKeystoneHooks = {
   },
 
   getEternalThirstThreshold(): number {
-    if (rank('earlyThirst')) return 0.3;
-    return 0.3;
+    return rank('earlyThirst') ? 0.3 : 0;
   },
 
   // ——— Pacificateur ———
@@ -225,6 +226,15 @@ export const PassiveKeystoneHooks = {
     if (!player || player.dead) return;
     if (player.className === 'blade') this.onBladeKill(player);
     if (player.className === 'pacifier') this.onPacifierFrenzyKill(player);
-    if (player.className === 'mage') ConvergenceEffects.onParadoxKill(player);
+    if (player.className === 'mage') {
+      if (!STATE.multiplayer.active) {
+        ConvergenceEffects.onParadoxKill(player);
+      } else if (isServerAuthority()) {
+        const pid = player === Globals.player
+          ? String(STATE.multiplayer.id)
+          : (player.userData?.id ? String(player.userData.id) : null);
+        if (pid) NetClassState.onParadoxKill(pid);
+      }
+    }
   },
 };

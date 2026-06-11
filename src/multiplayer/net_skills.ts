@@ -4,7 +4,9 @@ import { Globals } from '../core/globals';
 import { AudioSys } from '../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual } from '../visual/effects';
 import { Network } from './network';
-import { Projectile } from '../gameplay/entities';
+import { runVisualOnly, isServerAuthority } from './net_combat';
+import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
+import { NetClassState } from './net_class_state';
 
 function safePlay(soundName) {
     if (AudioSys && AudioSys.sfx) {
@@ -19,34 +21,36 @@ function safePlay(soundName) {
 export const NetSkills = {
     // --- HOST LOGIC (Dégâts réels) ---
     applyRemoteSkillLogic: function(data, pos, dir) {
-        // La logique de dégâts reste gérée par le Host ici (inchangée)
-        // car les méthodes de classes sont visuelles ou locales.
-        // On garde la logique simplifiée ou on peut appeler des méthodes "calculDmg" si elles existent.
-        
-        const baseDmg = 30; 
-        
-        // Attaques de base (Mêlée/Distance)
+        if (!isServerAuthority()) return;
+
+        const playerId = String(data.id);
+        const flatDir = dir.clone();
+        flatDir.y = 0;
+        if (flatDir.lengthSq() > 0.001) flatDir.normalize();
+
         if (data.action === 'attack-melee') {
-             const range = 3.5;
-             const damage = 20; 
-             Globals.enemies.forEach(e => {
-                if(e.position.distanceTo(pos) < range) {
-                    const toE = e.position.clone().sub(pos).normalize();
-                    if(dir.dot(toE) > 0.5) {
-                         e.takeDamage(damage);
-                         spawnParticles(e.position, data.color || 0xffffff, 5);
-                    }
-                }
-             });
+            if (data.class === 'warrior') {
+                NetClassState.resolveMeleeHit(playerId, pos, flatDir, 4.5, 30 * 2.5, 0.4);
+            } else if (data.class === 'pacifier') {
+                NetClassState.resolveMeleeHit(playerId, pos, flatDir, 3.5, 20 * 1.5, 0.5);
+            } else if (data.class === 'blade') {
+                NetClassState.resolveMeleeHit(playerId, pos, flatDir, 3.0, 30, 0.4);
+            }
+            return;
         }
-        
-        // Warrior Space (Exemple conservé pour compatibilité)
+
+        if (data.action === 'attack-range' && data.class === 'pacifier') {
+            NetClassState.resolvePacifierShot(playerId, pos, flatDir);
+            return;
+        }
+
         if (data.class === 'warrior' && data.key === 'space') {
-            Globals.enemies.forEach(e => { 
-                if(e.position.distanceTo(pos) <= 8) { 
-                    e.takeDamage(baseDmg * 2.5); 
-                    if(typeof e.pushBack === 'function') e.pushBack(pos.clone().sub(e.position).normalize().multiplyScalar(-10));
-                } 
+            const baseDmg = 30;
+            Globals.enemies.forEach(e => {
+                if (e.position.distanceTo(pos) <= 8) {
+                    dealDamageToEnemy(e, baseDmg * 2.5, { pos: e.position, maxRange: 10 });
+                    if (typeof e.pushBack === 'function') e.pushBack(pos.clone().sub(e.position).normalize().multiplyScalar(-10));
+                }
             });
         }
     },
@@ -56,33 +60,29 @@ export const NetSkills = {
         const pos = new THREE.Vector3(data.pos.x, data.pos.y, data.pos.z);
         const dir = data.dir ? new THREE.Vector3(data.dir.x, data.dir.y, data.dir.z) : new THREE.Vector3(0,0,1);
 
-        // SI ON A UNE INSTANCE DE CLASSE RÉELLE (Warrior, Mage...)
         if (remotePlayer && typeof remotePlayer.performAttack === 'function') {
-            
-            // 1. Orienter le joueur vers l'action
-            if (remotePlayer.mesh) {
-                // Orienter le mesh dans la direction du skill
-                const angle = Math.atan2(dir.x, dir.z);
-                // On anime la rotation ou on set direct ? 
-                // Set direct pour être réactif sur le skill
-                remotePlayer.mesh.rotation.y = angle; 
-                remotePlayer.netRotation = angle;
-            }
+            runVisualOnly(() => {
+                if (remotePlayer.mesh) {
+                    const angle = Math.atan2(dir.x, dir.z);
+                    remotePlayer.mesh.rotation.y = angle;
+                    remotePlayer.netRotation = angle;
+                }
 
-            // 2. Déclencher l'animation spécifique
-            if (data.action === 'attack-melee' || data.action === 'attack-range') {
-                // Déclenche performAttack() de la sous-classe (Warrior.performAttack, etc.)
-                // Grâce à isRemote=true, cela ne renverra pas de paquet réseau, mais jouera son, anim et projectile.
-                console.log(`[NET] Anim Attack sur ${remotePlayer.className}`);
-                remotePlayer.performAttack(); 
-            
-            } else if (data.action === 'skill') {
-                console.log(`[NET] Anim Skill ${data.key} sur ${remotePlayer.className}`);
-                // Déclenche useSkill() de la sous-classe
-                // Cela lance l'anim (Space/Shift/E)
-                remotePlayer.useSkill(data.key);
-            }
+                if (data.class === 'chronoregulator') {
+                    if (data.action === 'skill' && data.key === 'space') {
+                        return;
+                    }
+                    if (data.action === 'attack-range') {
+                        return;
+                    }
+                }
 
+                if (data.action === 'attack-melee' || data.action === 'attack-range') {
+                    remotePlayer.performAttack();
+                } else if (data.action === 'skill') {
+                    remotePlayer.useSkill(data.key);
+                }
+            });
         } 
         
         // IMPORTANT : AUCUN FALLBACK ICI
