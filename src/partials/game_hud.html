@@ -7,7 +7,11 @@
             <div class="bar-text"><span id="hp-text">100/100</span></div>
         </div>
 
-        <div id="chrono-fracture" class="chrono-fracture" style="display:none" title="Jauge de Fracture — 100% de base, 150% avec Apex">
+        <div class="bar-container bar-xp" style="border-color: var(--xp); height: 8px;">
+            <div id="xp-bar" class="bar-fill"></div>
+        </div>
+
+        <div id="chrono-fracture" class="chrono-fracture" style="display:none" title="Jauge de Fracture — surchauffe à 100%">
             <div class="chrono-fracture-header">
                 <i class="fas fa-bolt chrono-fracture-icon"></i>
                 <span id="chrono-fracture-label" class="chrono-fracture-label">Fracture 0%</span>
@@ -33,9 +37,6 @@
         </div>
         <div id="buff-hover-tooltip" class="buff-hover-tooltip"></div>
 
-        <div class="bar-container bar-xp" style="border-color: var(--xp); height: 8px;">
-            <div id="xp-bar" class="bar-fill"></div>
-        </div>
         <div class="hud-level-row">
             <span>LVL <span id="level-text" class="hud-level-val">1</span></span>
         </div>
@@ -100,24 +101,24 @@
         <div class="skill-icon" id="skill-space">
             <span id="icon-space"></span>
             <div class="skill-cd" id="cd-space">0</div>
-            <div class="tooltip" id="tooltip-space"><h4>Compétence 1</h4><div>Description</div></div>
         </div>
+        <div class="tooltip" id="tooltip-space"><h4>Compétence 1</h4><div>Description</div></div>
         <div class="key-hint">ESPACE</div>
     </div>
     <div class="skill-group">
         <div class="skill-icon" id="skill-shift">
             <span id="icon-shift"></span>
             <div class="skill-cd" id="cd-shift">0</div>
-            <div class="tooltip" id="tooltip-shift"><h4>Compétence 2</h4><div>Description</div></div>
         </div>
+        <div class="tooltip" id="tooltip-shift"><h4>Compétence 2</h4><div>Description</div></div>
         <div class="key-hint">SHIFT</div>
     </div>
     <div class="skill-group">
         <div class="skill-icon" id="skill-e">
             <span id="icon-e"></span>
             <div class="skill-cd" id="cd-e">0</div>
-            <div class="tooltip" id="tooltip-e"><h4>Compétence 3</h4><div>Description</div></div>
         </div>
+        <div class="tooltip" id="tooltip-e"><h4>Compétence 3</h4><div>Description</div></div>
         <div class="key-hint">E</div>
     </div>
 </div>

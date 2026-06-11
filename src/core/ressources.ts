@@ -6,7 +6,7 @@ export const AudioSys = {
     activeLoops: {},
     
     musicTracks: {
-        'menu': '/songs/musics/music_menu.mp3',
+        'menu': '/songs/musics/music_menu.wav',
         'explore': '/songs/musics/music_explore.mp3',
         'boss_king': '/songs/musics/music_boss_king.mp3',
         'boss_void': '/songs/musics/music_boss_void.mp3',

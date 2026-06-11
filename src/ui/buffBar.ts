@@ -9,6 +9,44 @@ const MALUS_BUFF_NAMES = new Set([
   'Malus', 'Malédiction', 'Curse', 'Ralenti', 'Slow', 'Poison', 'Saignée', 'Affaibli', 'Brûlure',
 ]);
 
+function getBuffIcon(icon: any): string {
+  if (!icon || typeof icon !== 'string') return 'fa-sparkles';
+  
+  const trimmed = icon.trim();
+  
+  // If it's a full HTML tag like <i class="fas fa-wind"></i>
+  if (trimmed.includes('<i') || trimmed.includes('fa-')) {
+    const match = trimmed.match(/fa-[a-z0-9-]+/i);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  // Emoji map
+  const emojiMap: Record<string, string> = {
+    '💪': 'fa-dumbbell',
+    '🛡️': 'fa-shield-halved',
+    '⚔️': 'fa-crossed-swords',
+    '🔥': 'fa-fire',
+    '⚡': 'fa-bolt',
+    '❤️': 'fa-heart',
+    '🧪': 'fa-flask',
+    '✨': 'fa-sparkles',
+    '💥': 'fa-burst',
+  };
+  
+  if (emojiMap[trimmed]) {
+    return emojiMap[trimmed];
+  }
+  
+  // If it's just the icon name (without fa- prefix)
+  if (!trimmed.startsWith('fa-') && trimmed.length > 2) {
+    return `fa-${trimmed}`;
+  }
+  
+  return 'fa-sparkles';
+}
+
 export interface BuffEntry {
   id: string;
   name: string;
@@ -234,6 +272,10 @@ export const BuffBar = {
       }
     }
 
+    for (const e of entries) {
+      e.icon = getBuffIcon(e.icon);
+    }
+
     return entries;
   },
 
@@ -283,10 +325,7 @@ export const BuffBar = {
       el.dataset.buffId = e.id;
       el.style.setProperty('--buff-color', e.color);
 
-      const iconContent =
-        e.extra && e.extra.length <= 2
-          ? `<span class="buff-chip-emoji">${e.extra}</span>`
-          : `<i class="fas ${e.icon}"></i>`;
+      const iconContent = `<i class="fas ${e.icon}"></i>`;
 
       let stackHtml = '';
       if (e.stacks != null && e.stacks > 0) {

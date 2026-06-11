@@ -250,7 +250,17 @@ export class Mage extends PlayerBase {
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
             const cdr = Math.floor((1.0 - ConstellationEngine.getSkillCdMult('space')) * 100);
-            resourceEl.innerHTML = `<div style="color:#3498db; font-weight:bold; text-shadow:0 0 5px #00ffff;">✦ ARCHIMAGE (CDR): ${cdr}%</div>`;
+            resourceEl.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#3498db;">
+                        <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-wand-magic-sparkles"></i> ARCHIMAGE (CDR)</span>
+                        <span>${cdr}%</span>
+                    </div>
+                    <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width:${cdr}%; height:100%; background:#3498db; box-shadow:0 0 6px #00ffff; transition: width 0.2s;"></div>
+                    </div>
+                </div>
+            `;
             resourceEl.style.display = 'block';
         }
     }

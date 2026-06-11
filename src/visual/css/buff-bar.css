@@ -1,21 +1,22 @@
-/* --- Buffs compacts sous la vie (visible uniquement si actifs) --- */
+/* --- HUD VITALS WRAPPER --- */
 .hud-vitals-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  backdrop-filter: blur(4px);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
 }
 
+/* --- BUFF STRIP --- */
 .buff-strip {
   display: none;
   position: relative;
   padding: 0;
-  margin: 1px 0 0;
+  margin: 6px 0 0;
   background: none;
   border: none;
   min-height: 0;
@@ -28,41 +29,42 @@
 .buffs-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 6px;
   align-items: center;
-  max-width: 220px;
+  max-width: 280px; /* Matches HP Bar width */
 }
 
+/* --- BUFF CHIPS (MODERN FLOATING CIRCLES) --- */
 .buff-chip {
   --buff-color: #d4af37;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 18px;
-  padding: 0 2px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid color-mix(in srgb, var(--buff-color) 55%, #333);
-  box-shadow: 0 0 4px color-mix(in srgb, var(--buff-color) 25%, transparent);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(15, 15, 20, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
   cursor: help;
   overflow: visible;
   flex-shrink: 0;
-  transition: transform 0.12s, box-shadow 0.12s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .buff-chip:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.08);
+  border-color: var(--buff-color);
+  box-shadow: 0 0 8px var(--buff-color);
   z-index: 10;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--buff-color) 45%, transparent);
 }
 
 .buff-chip-malusr {
   --buff-color: #e74c3c;
-  border-color: rgba(231, 76, 60, 0.75);
-  background: rgba(40, 8, 8, 0.85);
-  box-shadow: 0 0 5px rgba(231, 76, 60, 0.35);
+  border-color: rgba(231, 76, 60, 0.4);
+  background: rgba(30, 10, 10, 0.8);
+  box-shadow: 0 3px 8px rgba(231, 76, 60, 0.2);
 }
 
 .buff-chip-icon {
@@ -88,23 +90,23 @@
   padding: 0 2px;
   font-size: 7px;
   font-weight: 800;
-  line-height: 11px;
+  line-height: 10px;
   text-align: center;
-  background: #111;
+  background: #000;
   border: 1px solid var(--buff-color);
-  border-radius: 2px;
+  border-radius: 50%;
   color: #fff;
   z-index: 2;
 }
 
 .buff-chip-timer-bar {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
+  bottom: -1px;
+  left: 3px;
+  width: calc(100% - 6px);
   height: 2px;
   background: rgba(0, 0, 0, 0.5);
-  border-radius: 0 0 2px 2px;
+  border-radius: 1px;
   overflow: hidden;
 }
 
@@ -115,20 +117,22 @@
   transition: width 0.15s linear;
 }
 
+/* --- BUFF TOOLTIP --- */
 .buff-hover-tooltip {
   position: fixed;
   z-index: 10000;
   min-width: 180px;
   max-width: 260px;
   padding: 10px 12px;
-  background: rgba(8, 10, 18, 0.98);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  border-radius: 6px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.9);
+  background: rgba(10, 12, 20, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
   pointer-events: none;
   opacity: 0;
-  transform: translateY(3px);
-  transition: opacity 0.12s, transform 0.12s;
+  transform: translateY(4px);
+  transition: all 0.2s ease;
 }
 
 .buff-hover-tooltip.visible {
@@ -137,7 +141,7 @@
 }
 
 .buff-hover-tooltip.buff-tip-malusr {
-  border-color: rgba(231, 76, 60, 0.55);
+  border-color: rgba(231, 76, 60, 0.4);
 }
 
 .buff-tip-header {
@@ -155,15 +159,17 @@
 
 .buff-tip-name {
   font-family: 'Cinzel', serif;
-  font-size: 0.85rem;
+  font-size: 11px;
+  font-weight: 700;
   color: #fff;
+  letter-spacing: 0.5px;
 }
 
 .buff-tip-type {
-  font-size: 0.6rem;
+  font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #888;
+  color: rgba(255, 255, 255, 0.4);
   margin-top: 1px;
 }
 
@@ -172,24 +178,63 @@
 }
 
 .buff-tip-desc {
-  font-size: 0.75rem;
-  color: #bbb;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
   line-height: 1.4;
   margin-bottom: 4px;
 }
 
 .buff-tip-stat {
-  font-size: 0.7rem;
-  color: #d4af37;
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
 }
 
 .hud-level-row {
-  font-size: 10px;
-  color: #aaa;
+  position: absolute;
+  top: 8px; /* Centered vertically between HP and XP bars */
+  left: -52px;
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, rgba(20, 20, 25, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.45), inset 0 2px 4px rgba(0, 0, 0, 0.9);
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.hud-level-row:hover {
+  transform: scale(1.05);
+  border-color: #fff;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.hud-level-row span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+  line-height: 1;
+  margin-bottom: -1px;
 }
 
 .hud-level-val {
-  color: var(--gold);
+  font-size: 18px !important;
+  color: var(--gold) !important;
+  font-weight: 700;
+  margin-top: 1px;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.8) !important;
+  letter-spacing: 0;
 }
 
 .skill-point-badge {
@@ -197,59 +242,61 @@
   position: absolute;
   top: -5px;
   right: -5px;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   background: #e74c3c;
   color: white;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  box-shadow: 0 0 10px #e74c3c;
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 8px #e74c3c;
   z-index: 21;
 }
 
+/* --- PASSIFS COMPACTS --- */
 .passive-hud-compact {
-  bottom: 40px;
-  left: 30px;
+  bottom: 24px;
+  left: 24px;
   padding: 8px 12px;
 }
 
 .passive-hud-label {
-  color: var(--gold);
-  font-size: 9px;
-  letter-spacing: 2px;
-  opacity: 0.85;
-  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
 }
 
 .passive-tooltip-footer {
   margin-top: 5px;
-  color: #aaa;
+  color: rgba(255, 255, 255, 0.4);
   font-style: italic;
-  font-size: 0.75rem;
+  font-size: 9px;
 }
 
-/* Jauge de Fracture — Chronorégisseur */
+/* --- CHRONO FRACTURE (DESIGN MODERNE SANS FOND) --- */
 .chrono-fracture {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  width: 100%;
-  max-width: 240px;
-  margin-top: 4px;
-  padding: 6px 8px;
-  background: rgba(8, 16, 24, 0.75);
-  border: 1px solid rgba(72, 201, 176, 0.35);
-  border-radius: 6px;
+  gap: 4px;
+  width: 260px; /* Matches HP Bar width */
+  margin-top: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .chrono-fracture-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .chrono-fracture-icon {
@@ -259,10 +306,10 @@
 
 .chrono-fracture-track {
   position: relative;
-  height: 12px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(72, 201, 176, 0.45);
-  border-radius: 6px;
+  height: 6px;
+  background: rgba(20, 20, 25, 0.6);
+  border: 1px solid rgba(72, 201, 176, 0.2);
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -271,28 +318,32 @@
   width: 0%;
   background: linear-gradient(90deg, #48c9b0, #7df9ff);
   transition: width 0.08s linear, background 0.2s;
+  box-shadow: 0 0 6px rgba(72, 201, 176, 0.6);
 }
 
 .chrono-fracture-danger .chrono-fracture-fill {
   background: linear-gradient(90deg, #f39c12, #ffd93d);
+  box-shadow: 0 0 6px rgba(243, 156, 18, 0.6);
 }
 
 .chrono-fracture-critical .chrono-fracture-fill {
   background: linear-gradient(90deg, #e74c3c, #ff6b6b);
-  box-shadow: 0 0 8px rgba(231, 76, 60, 0.6);
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.7);
 }
 
 .chrono-fracture-label {
   font-size: 10px;
+  font-family: 'Cinzel', serif;
   font-weight: 700;
   color: #7df9ff;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .chrono-fracture-hint {
   font-size: 8px;
-  color: #88a8a0;
-  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Lato', sans-serif;
+  margin-top: 2px;
 }
 
 .chrono-fracture-danger .chrono-fracture-label,
