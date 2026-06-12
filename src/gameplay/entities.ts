@@ -50,7 +50,7 @@ export class Projectile {
         this.life -= dt; 
         if(this.life <= 0) { this.destroy(); return; }
         
-        this.mesh.position.add(this.dir.clone().multiplyScalar(this.speed * dt));
+        this.mesh.position.add(this.dir.clone().multiplyScalar(this.speed * 60 * dt));
         
         // Effet de rotation sur lui-même (pour les orbes magiques)
         this.mesh.rotateZ(this.rotSpeed * dt);
