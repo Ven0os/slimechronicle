@@ -1,228 +1,105 @@
 // @ts-nocheck
 
-import * as THREE from 'three';
+import {
+  grantMiniBossOvershield,
+  MINI_BOSS_HP_MULT,
+  MINI_BOSS_OVERSHIELD_RATIO,
+  MINI_BOSS_SPEED_MULT,
+  MINI_BOSS_GLOBAL_DURABILITY_MULT,
+} from './mini_boss_combat_core';
+import { setupMiniBossUi } from './mini_boss_ui';
+import {
+  applyMiniBossTierState,
+  dedupeMiniBossTiers,
+  normalizeMiniBossTiers,
+  rollMiniBossTiers,
+  type MiniBossTierId,
+} from './mini_boss_tiers';
 
-
-
-const MINI_BOSS_STYLES: Record<string, { color: number; emissive: number; scale: number; label: string }> = {
-
-  verdant_stalker: { color: 0x1e5631, emissive: 0x27ae60, scale: 1.45, label: 'Traqueur' },
-
-  iron_warden: { color: 0x566573, emissive: 0xbdc3c7, scale: 1.5, label: 'Gardien' },
-
-  arcane_herald: { color: 0x5b2c6f, emissive: 0x9b59b6, scale: 1.45, label: 'Héraut' },
-
-  corrupt_warden: { color: 0x2e1065, emissive: 0xa855f7, scale: 1.55, label: 'Gardien corrompu' },
-
+const MINI_BOSS_STYLES: Record<
+  string,
+  { color: number; emissive: number; scale: number; label: string }
+> = {
+  verdant_stalker: { color: 0x1e5631, emissive: 0x27ae60, scale: 1.35, label: 'Traqueur' },
+  iron_warden: { color: 0x566573, emissive: 0xbdc3c7, scale: 1.38, label: 'Gardien de fer' },
+  arcane_herald: { color: 0x5b2c6f, emissive: 0x9b59b6, scale: 1.35, label: 'Héraut arcanique' },
+  corrupt_warden: { color: 0x2e1065, emissive: 0xa855f7, scale: 1.4, label: 'Gardien corrompu' },
 };
 
+export type MiniBossApplyOpts = {
+  fromNetwork?: boolean;
+  maxHp?: number;
+  overshieldHp?: number;
+  maxOvershieldHp?: number;
+  tiers?: MiniBossTierId[] | string;
+};
 
-
-function drawRoundedRect(
-
-  ctx: CanvasRenderingContext2D,
-
-  x: number,
-
-  y: number,
-
-  w: number,
-
-  h: number,
-
-  r: number,
-
-): void {
-
-  ctx.beginPath();
-
-  ctx.moveTo(x + r, y);
-
-  ctx.lineTo(x + w - r, y);
-
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-
-  ctx.lineTo(x + w, y + h - r);
-
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-
-  ctx.lineTo(x + r, y + h);
-
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-
-  ctx.lineTo(x, y + r);
-
-  ctx.quadraticCurveTo(x, y, x + r, y);
-
-  ctx.closePath();
-
+function resolveTiers(miniId: string, opts: MiniBossApplyOpts): MiniBossTierId[] {
+  if (opts.tiers) return dedupeMiniBossTiers(normalizeMiniBossTiers(opts.tiers));
+  return rollMiniBossTiers(miniId);
 }
 
+function applyTierStatsToEnemy(enemy, tiers: MiniBossTierId[], style): void {
+  applyMiniBossTierState(enemy, tiers);
+  const stats = enemy.miniBossStats;
 
-
-function createMiniBossLabel(label: string, accent: string): THREE.Sprite {
-
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 200;
-
-  canvas.height = 36;
-
-  const ctx = canvas.getContext('2d');
-
-
-
-  drawRoundedRect(ctx, 4, 4, 192, 28, 10);
-
-  ctx.fillStyle = 'rgba(6, 8, 12, 0.88)';
-
-  ctx.fill();
-
-  ctx.strokeStyle = accent;
-
-  ctx.lineWidth = 1.5;
-
-  ctx.stroke();
-
-
-
-  ctx.fillStyle = accent;
-
-  ctx.font = '600 13px Cinzel, serif';
-
-  ctx.textAlign = 'center';
-
-  ctx.textBaseline = 'middle';
-
-  ctx.fillText(`◆  ${label}`, 100, 18);
-
-
-
-  const tex = new THREE.CanvasTexture(canvas);
-
-  tex.minFilter = THREE.LinearFilter;
-
-  const sprite = new THREE.Sprite(
-
-    new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }),
-
+  enemy.hp = Math.floor(
+    enemy.hp * MINI_BOSS_HP_MULT * stats.hpTierMult * (1 + stats.hpBonus) * MINI_BOSS_GLOBAL_DURABILITY_MULT,
   );
-
-  sprite.scale.set(2.1, 0.38, 1);
-
-  return sprite;
-
-}
-
-
-
-export function applyMiniBossVariant(enemy, miniId: string): void {
-
-  const style = MINI_BOSS_STYLES[miniId] || MINI_BOSS_STYLES.corrupt_warden;
-
-  const accent = `#${style.emissive.toString(16).padStart(6, '0')}`;
-
-
-
-  enemy.isMiniBoss = true;
-
-  enemy.miniBossId = miniId;
-
-  enemy._overrideXp = Math.floor(35 * 1.25);
-
-  enemy.hp *= 2.8;
-
   enemy.maxHp = enemy.hp;
 
-  enemy.speed *= 0.82;
+  const shieldMult = (1 + stats.overshieldBonus) * MINI_BOSS_GLOBAL_DURABILITY_MULT;
+  grantMiniBossOvershield(enemy, MINI_BOSS_OVERSHIELD_RATIO, shieldMult);
 
-  enemy.scaleVal *= style.scale;
+  enemy.speed *= MINI_BOSS_SPEED_MULT * stats.speedMult;
+  enemy.scaleVal *= style.scale * stats.sizeMult;
+  enemy.radius = 1.15 + stats.sizeMult * 0.25;
 
-  enemy.radius = 1.35;
-
-
-
-  if (enemy.mesh) {
-
-    enemy.mesh.scale.setScalar(enemy.scaleVal);
-
-    enemy.traverse((child) => {
-
-      if (child.isMesh && child.material?.color) {
-
-        child.material = child.material.clone();
-
-        child.material.color.setHex(style.color);
-
-        if (child.material.emissive) {
-
-          child.material.emissive.setHex(style.emissive);
-
-          child.material.emissiveIntensity = 0.35;
-
-        }
-
-      }
-
-    });
-
-  }
-
-
-
-  const marker = new THREE.Mesh(
-
-    new THREE.RingGeometry(0.42, 0.48, 4),
-
-    new THREE.MeshBasicMaterial({
-
-      color: style.emissive,
-
-      transparent: true,
-
-      opacity: 0.55,
-
-      side: THREE.DoubleSide,
-
-    }),
-
-  );
-
-  marker.rotation.x = -Math.PI / 2;
-
-  marker.position.y = 0.06;
-
-  enemy.add(marker);
-
-  enemy.miniMarker = marker;
-
-
-
-  const sprite = createMiniBossLabel(style.label, accent);
-
-  sprite.position.y = enemy.scaleVal * 2.35;
-
-  enemy.add(sprite);
-
-  enemy.nameSprite = sprite;
-
-
-
-  const origUpdate = enemy.update?.bind(enemy);
-
-  enemy.update = function updateMini(dt) {
-
-    if (origUpdate) origUpdate(dt);
-
-    if (this.miniMarker) this.miniMarker.rotation.z += dt * 0.8;
-
-    if (this.nameSprite) {
-
-      this.nameSprite.position.y = this.scaleVal * 2.35 + Math.sin(performance.now() * 0.002) * 0.04;
-
-    }
-
-  };
-
+  const baseXp = Math.floor(35 * 1.25);
+  enemy._overrideXp = Math.floor(baseXp * stats.rewardMult);
 }
 
+export function applyMiniBossVariant(enemy, miniId: string, opts: MiniBossApplyOpts = {}): void {
+  const style = MINI_BOSS_STYLES[miniId] || MINI_BOSS_STYLES.corrupt_warden;
+  const tiers = resolveTiers(miniId, opts);
+
+  enemy.isMiniBoss = true;
+  enemy.miniBossId = miniId;
+  enemy.miniBossName = style.label;
+
+  if (opts.fromNetwork && opts.maxHp != null) {
+    enemy.maxHp = opts.maxHp;
+    enemy.hp = Math.min(enemy.hp ?? opts.maxHp, opts.maxHp);
+    if (opts.maxOvershieldHp != null) {
+      enemy.overshieldHp = opts.overshieldHp ?? opts.maxOvershieldHp;
+      enemy.maxOvershieldHp = opts.maxOvershieldHp;
+      enemy.barrierHp = enemy.overshieldHp;
+      enemy.maxBarrierHp = opts.maxOvershieldHp;
+    }
+    applyMiniBossTierState(enemy, tiers);
+  } else {
+    applyTierStatsToEnemy(enemy, tiers, style);
+  }
+
+  if (enemy.mesh) {
+    enemy.mesh.scale.setScalar(enemy.scaleVal);
+    enemy.traverse((child) => {
+      if (child.isMesh && child.material?.color) {
+        child.material = child.material.clone();
+        child.material.color.setHex(style.color);
+        if (child.material.emissive) {
+          child.material.emissive.setHex(style.emissive);
+          child.material.emissiveIntensity = 0.32;
+        }
+      }
+    });
+  }
+
+  setupMiniBossUi(enemy, {
+    name: style.label,
+    tiers: enemy.miniBossTiers,
+    accentHex: style.emissive,
+  });
+}
+
+export { rollMiniBossTiers, normalizeMiniBossTiers, applyMiniBossTierState };

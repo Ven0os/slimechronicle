@@ -41,7 +41,7 @@ export class RoyalGuardSkills {
                 if (toP.dot(dir) > 0.5) {
                     const push = dir.clone().multiplyScalar(cfg.pushForce);
                     push.y = 0;
-                    damagePlayer(target, cfg.damage, { knockback: push });
+                    this.enemy.dealPlayerDamage(target, cfg.damage, { knockback: push });
                 }
             }
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 300);
@@ -63,7 +63,7 @@ export class RoyalGuardSkills {
                 if (this.enemy.position.distanceTo(t.position) < cfg.radius) {
                     const push = t.position.clone().sub(this.enemy.position).normalize().multiplyScalar(cfg.pushForce);
                     push.y = 0;
-                    damagePlayer(t, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
+                    this.enemy.dealPlayerDamage(t, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
                     createDamageText("STOMP", t.position, '#ffaa00');
                 }
             });

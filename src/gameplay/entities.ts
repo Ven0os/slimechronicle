@@ -33,6 +33,8 @@ export class Projectile {
         this.hitIds = new Set();
         this.onHitEnemy = null;
         this.visualOnly = isVisualOnlyMode();
+        this.sourceEnemy = null;
+        this.isAbility = false;
 
         // Glow (Lueur) ajustée selon la forme
         const glowGeo = (geo.type === 'CylinderGeometry' || geo.type === 'CapsuleGeometry') 
@@ -96,7 +98,14 @@ export class Projectile {
                 const dx = hitPos.x - t.position.x;
                 const dz = hitPos.z - t.position.z;
                 if (Math.sqrt(dx * dx + dz * dz) < 1.2) {
-                    damageClosestPlayerInRadius(hitPos, 1.2, this.dmg);
+                    if (this.sourceEnemy?.dealPlayerDamage) {
+                        this.sourceEnemy.dealPlayerDamage(t, this.dmg, {
+                            isRanged: true,
+                            isAbility: !!this.isAbility,
+                        });
+                    } else {
+                        damageClosestPlayerInRadius(hitPos, 1.2, this.dmg);
+                    }
                     spawnParticles(hitPos, this.color, 8);
                     this.destroy();
                     return;

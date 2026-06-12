@@ -36,6 +36,9 @@ export class WarlockSkills {
             const projGeo = new THREE.TorusKnotGeometry(0.25, 0.08, 64, 8);
             const projMat = new THREE.MeshStandardMaterial({ color: 0x220022, emissive: 0xbd00ff, emissiveIntensity: 2.0 });
             Globals.projectiles.push(new Projectile(projGeo, projMat, startPos, dir, cfg.speed, cfg.damage, 'enemy', 0xbd00ff));
+            const proj = Globals.projectiles[Globals.projectiles.length - 1];
+            proj.sourceEnemy = this.enemy;
+            proj.isAbility = true;
             this.enemy.isAttacking = false;
             this.enemy.animState = 'idle';
         }, cfg.castTime * 1000); 
@@ -56,7 +59,11 @@ export class WarlockSkills {
                 if (zonePos.distanceTo(t.position) < cfg.radius) {
                     const pull = zonePos.clone().sub(t.position).normalize().multiplyScalar(cfg.pullForce || 0);
                     pull.y = 0;
-                    damagePlayer(t, cfg.damage, { knockback: pull, stunDuration: cfg.stunDuration });
+                    this.enemy.dealPlayerDamage(t, cfg.damage, {
+                        knockback: pull,
+                        stunDuration: cfg.stunDuration,
+                        isAbility: true,
+                    });
                 }
             });
             this.enemy.isAttacking = false;
@@ -77,7 +84,19 @@ export class WarlockSkills {
         this.spawnTelegraphNetwork(offsetPos, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
             createSkillVisual('beam', this.enemy.position.clone().add(new THREE.Vector3(0,1,0)), cfg.length, 0xff00ff, dir);
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
-            damagePlayersInBeam(this.enemy.position, dir, cfg.length, cfg.damage, 0.9);
+            const beamDir = dir.clone();
+            beamDir.y = 0;
+            if (beamDir.lengthSq() >= 0.001) {
+                beamDir.normalize();
+                getAllLivingPlayers().forEach((t) => {
+                    const toP = t.position.clone().sub(this.enemy.position);
+                    toP.y = 0;
+                    const dist = toP.length();
+                    if (dist < cfg.length && dist > 0 && toP.normalize().dot(beamDir) > 0.9) {
+                        this.enemy.dealPlayerDamage(t, cfg.damage, { isAbility: true, isRanged: true });
+                    }
+                });
+            }
             this.enemy.isAttacking = false;
             this.enemy.animState = 'idle';
         }, Math.atan2(dir.x, dir.z));

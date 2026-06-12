@@ -38,7 +38,7 @@ export class CorruptedSkills {
                 if (toP.dot(this.enemy.getWorldDirection(new THREE.Vector3())) > 0.45) {
                     const push = dir.clone().multiplyScalar(cfg.pushForce);
                     push.y = 0;
-                    damagePlayer(target, cfg.damage, { knockback: push });
+                    this.enemy.dealPlayerDamage(target, cfg.damage, { knockback: push });
                     createDamageText('CORRUPTION', target.position, '#a855f7');
                 }
             }
