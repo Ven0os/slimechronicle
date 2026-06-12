@@ -34,9 +34,10 @@ export class Corrupted extends BaseEnemy {
 
         this.maxHp = this.hp;
 
-        this.maxBarrierHp = this.maxHp * 0.5;
-
-        this.barrierHp = this.maxBarrierHp;
+        this.maxOvershieldHp = Math.floor(this.maxHp * 0.5);
+        this.overshieldHp = this.maxOvershieldHp;
+        this.maxBarrierHp = this.maxOvershieldHp;
+        this.barrierHp = this.overshieldHp;
 
 
 
@@ -84,37 +85,7 @@ export class Corrupted extends BaseEnemy {
 
 
     takeDamage(amount) {
-
-        let hpDamage = amount;
-
-
-
-        if (this.barrierHp > 0) {
-
-            const absorbed = Math.min(this.barrierHp, hpDamage);
-
-            this.barrierHp -= absorbed;
-
-            hpDamage -= absorbed;
-
-
-
-            if (absorbed > 0) {
-
-                createDamageText(Math.floor(absorbed), this.position, '#a855f7');
-
-            }
-
-        }
-
-
-
-        if (hpDamage > 0) {
-
-            super.takeDamage(hpDamage);
-
-        }
-
+        super.takeDamage(amount);
     }
 
 
@@ -174,6 +145,7 @@ export class Corrupted extends BaseEnemy {
             if (!this.isAttacking && target) {
 
                 let moveDir = this.ai.update(dt, target);
+                moveDir = this.ai.applyMiniBossPursuit(moveDir);
 
                 moveDir = this.ai.avoidance(moveDir);
 

@@ -1,94 +1,211 @@
 // @ts-nocheck
+
 import { STATE } from '@/core/config';
+
 import { AudioSys } from '@/core/ressources';
-import { ConvergenceEffects } from '@/systems/convergenceEffects';
-import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
-import { createDamageText } from '@/visual/effects';
-import { Network } from '@/multiplayer/network';
-import { Globals } from '@/core/globals';
-import { isServerAuthority, isVisualOnlyMode, findEnemyByNetId, getPlayerByPeerId } from '@/multiplayer/net_combat';
-import { NetClassState } from '@/multiplayer/net_class_state';
-import { NetAuthority, registerDamageEvent, makeDamageEventKey } from '@/multiplayer/net_authority';
+
 import { ConvergenceEffects } from '@/systems/convergenceEffects';
 
-/** La barrière corrompue absorbe les dégâts sans recevoir de coups critiques. */
+import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
+
+import { createDamageText } from '@/visual/effects';
+
+import { Network } from '@/multiplayer/network';
+
+import { Globals } from '@/core/globals';
+
+import { isServerAuthority, isVisualOnlyMode, findEnemyByNetId, getPlayerByPeerId } from '@/multiplayer/net_combat';
+
+import { NetClassState } from '@/multiplayer/net_class_state';
+
+import { NetAuthority, registerDamageEvent, makeDamageEventKey } from '@/multiplayer/net_authority';
+
+import {
+
+  blocksCriticalHits,
+
+  shouldApplyMarkedBonus,
+
+  shouldApplyCataclysmVuln,
+
+} from '@/gameplay/enemies/minions/mini_boss_combat';
+
+
+
+/** Overshield Corrompu standard (non Mini-Boss) bloque les crits. */
+
 export function enemyHasCorruptBarrier(enemy) {
-    return enemy && enemy.barrierHp > 0;
+
+    return blocksCriticalHits(enemy);
+
 }
+
+
 
 export function computeDamageToEnemy(enemy, baseDmg, opts = {}) {
+
     let dmg = baseDmg;
+
     let isCrit = false;
+
     let critMult = STATE.stats.critDmg;
 
+
+
     if (opts.megaCrit) {
+
         critMult *= ConvergenceEffects.getMegaCritMult();
+
     }
+
     if (opts.critDmgMult) {
+
         critMult *= opts.critDmgMult;
+
     }
+
+
 
     if (opts.forceCrit || opts.megaCrit) {
+
         dmg *= critMult;
+
         isCrit = true;
+
     } else if (!opts.noCrit && !enemyHasCorruptBarrier(enemy) && Math.random() < STATE.stats.crit) {
+
         dmg *= critMult;
+
         isCrit = true;
+
     }
+
+
 
     return { dmg, isCrit, isMegaCrit: !!opts.megaCrit && isCrit };
+
 }
+
+
 
 export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
+
     if (!enemy || enemy.dead) return { dmg: 0, isCrit: false };
 
+
+
     let scaled = baseDmg;
-    if (PassiveKeystoneHooks.isEnemyMarked(enemy)) {
+
+
+
+    if (shouldApplyMarkedBonus(enemy) && PassiveKeystoneHooks.isEnemyMarked(enemy)) {
+
         scaled = baseDmg * 1.35;
+
     }
+
+
+
+    if (shouldApplyCataclysmVuln(enemy) && enemy._cataclysmVuln) {
+
+        scaled *= ConvergenceEffects.getCataclysmVulnMult(enemy);
+
+    }
+
+
 
     const { dmg, isCrit, isMegaCrit } = computeDamageToEnemy(enemy, scaled, opts);
+
     const pos = opts.pos || enemy.position;
 
+
+
     if (isMegaCrit) {
+
         createDamageText('MÉGA CRIT!', pos, '#ff0066');
+
         if (AudioSys?.sfx?.crit) AudioSys.sfx.crit();
+
     } else if (isCrit) {
+
         createDamageText('CRIT!', pos, '#ff0');
-        PassiveKeystoneHooks.onCritApplyHemorrhage(enemy, dmg);
+
+        if (!enemy.isMiniBoss) {
+
+            PassiveKeystoneHooks.onCritApplyHemorrhage(enemy, dmg);
+
+        }
+
         if (opts.onCrit && typeof opts.onCrit === 'function') opts.onCrit();
+
     }
+
+
 
     if (isVisualOnlyMode()) {
+
         NetAuthority.logAuthViolation('visual_damage_attempt', 'dealDamageToEnemy in visual-only mode');
+
         return { dmg: 0, isCrit: false };
+
     }
+
+
 
     if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
+
         createDamageText(Math.floor(dmg), pos);
+
         Network.send({
+
             type: 'request-damage',
+
             enemyId: enemy.netId,
+
             playerId: STATE.multiplayer.id,
+
             baseDmg: scaled,
+
             skillKey: opts.skillKey || 'primary',
+
             tick: NetClassState.getServerTick(),
+
             opts: {
+
                 forceCrit: !!opts.forceCrit,
+
                 megaCrit: !!opts.megaCrit,
+
                 noCrit: !!opts.noCrit,
+
                 critDmgMult: opts.critDmgMult,
+
             },
+
             amount: dmg,
+
             maxRange: opts.maxRange ?? 25,
+
         });
+
     } else if (!isServerAuthority()) {
+
         return { dmg: 0, isCrit: false };
+
     } else if (opts.onHitEnemy) {
+
         opts.onHitEnemy(enemy, dmg);
+
     } else {
-        enemy.takeDamage(dmg);
+
+        enemy.takeDamage(dmg, { isRanged: !!(opts.isRanged || opts.ranged) });
+
     }
 
+
+
     return { dmg, isCrit };
+
 }
+
+

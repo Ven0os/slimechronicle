@@ -67,6 +67,14 @@ export class AIBrain {
         return dirToTarget.multiplyScalar(0.7);
     }
 
+    /** Boost de poursuite Mini-Boss (tier Prédateur). */
+    applyMiniBossPursuit(moveDir) {
+        if (!this.enemy.isMiniBoss || !this.enemy.miniBossStats) return moveDir;
+        const extra = (this.enemy.miniBossStats.pursuitMult || 1) - 1;
+        if (extra <= 0 || moveDir.lengthSq() <= 0.0001) return moveDir;
+        return moveDir.clone().multiplyScalar(1 + extra * 0.85);
+    }
+
     avoidance(velocity) {
         if (!Globals.enemies) return velocity;
         const repulse = new THREE.Vector3();

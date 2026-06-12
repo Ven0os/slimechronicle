@@ -69,6 +69,7 @@ export class Sentinel extends BaseEnemy {
             if (this.isAttacking) { } 
             else if (target) {
                 let moveDir = this.ai.update(dt, target);
+                moveDir = this.ai.applyMiniBossPursuit(moveDir);
                 moveDir = this.ai.avoidance(moveDir);
                 if (moveDir.length() > 0.1) {
                     this.position.add(moveDir.multiplyScalar(this.speed * STATE.timeScale * dt));
