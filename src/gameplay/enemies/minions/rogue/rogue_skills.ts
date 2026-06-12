@@ -41,7 +41,7 @@ export class RogueSkills {
                 if (toP.dot(this.enemy.getWorldDirection(new THREE.Vector3())) > 0.5) {
                     const push = dir.clone().multiplyScalar(cfg.pushForce);
                     push.y = 0;
-                    damagePlayer(target, cfg.damage, { knockback: push });
+                    this.enemy.dealPlayerDamage(target, cfg.damage, { knockback: push });
                     createDamageText("CRITIQUE", target.position, '#ff0000');
                 }
             }
@@ -72,6 +72,9 @@ export class RogueSkills {
                     daggerGeo, daggerMat, this.enemy.position.clone().add(new THREE.Vector3(0,1,0)), 
                     spreadDir, cfg.speed, cfg.damage, 'enemy', 0xffffff, false 
                 ));
+                const proj = Globals.projectiles[Globals.projectiles.length - 1];
+                proj.sourceEnemy = this.enemy;
+                proj.isRanged = true;
             }
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 300);
         }, cfg.windup * 1000); 
@@ -101,7 +104,7 @@ export class RogueSkills {
                 createSkillVisual('shockwave', this.enemy.position, cfg.range, 0x000000);
                 
                 if (target.position.distanceTo(this.enemy.position) < cfg.range) {
-                    damagePlayer(target, cfg.damage, { stunDuration: cfg.stunDuration });
+                    this.enemy.dealPlayerDamage(target, cfg.damage, { stunDuration: cfg.stunDuration });
                     createDamageText("DOS !", target.position, '#cc0000');
                     if (cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact);
                 }

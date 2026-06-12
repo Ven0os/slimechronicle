@@ -6,6 +6,14 @@ import { NetChrono } from './net_chrono';
 import { NetClassState } from './net_class_state';
 import { Enemy } from '../gameplay/enemy';
 import { BaseEnemy } from '../gameplay/enemies/base_enemy';
+import { applyMiniBossVariant } from '../gameplay/enemies/minions/mini_boss';
+import { setOvershield } from '../gameplay/enemies/minions/mini_boss_combat';
+import {
+  applyMiniBossTierState,
+  parseMiniBossTiers,
+  serializeMiniBossTiers,
+} from '../gameplay/enemies/minions/mini_boss_tiers';
+import { syncMiniBossUiTiers } from '../gameplay/enemies/minions/mini_boss_ui';
 import { Player } from '../gameplay/player';
 
 export const NetSync = {
@@ -96,8 +104,15 @@ export const NetSync = {
                     z: parseFloat(e.position.z.toFixed(2)),
                     rot: parseFloat(e.rotation.y.toFixed(2)),
                     hp: Math.ceil(e.hp),
+                    maxHp: Math.ceil(e.maxHp),
+                    overshieldHp: Math.ceil(e.overshieldHp ?? e.barrierHp ?? 0),
+                    maxOvershieldHp: Math.ceil(e.maxOvershieldHp ?? e.maxBarrierHp ?? 0),
                     barrierHp: Math.ceil(e.barrierHp || 0),
                     maxBarrierHp: Math.ceil(e.maxBarrierHp || 0),
+                    isMiniBoss: e.isMiniBoss ? 1 : 0,
+                    miniBossId: e.miniBossId || '',
+                    miniBossTiers: serializeMiniBossTiers(e.miniBossTiers || []),
+                    stateVer: (e.stateVersion = (e.stateVersion || 0) + 1),
                     atk: e.isAttacking ? 1 : 0,
                     anim: e.animState || 'idle',
                     atkType: atkType
@@ -157,10 +172,24 @@ export const NetSync = {
             if (enemy) { 
                 enemy.networkTargetPos = targetPos;
                 enemy.networkTargetRot = eData.rot;
-                enemy.hp = eData.hp;
-                if (eData.maxBarrierHp > 0) {
-                    enemy.maxBarrierHp = eData.maxBarrierHp;
-                    enemy.barrierHp = eData.barrierHp ?? 0;
+
+                if (eData.stateVer == null || eData.stateVer >= (enemy.stateVersion || 0)) {
+                    if (eData.stateVer != null) enemy.stateVersion = eData.stateVer;
+                    enemy.hp = eData.hp;
+                    if (eData.maxHp) enemy.maxHp = eData.maxHp;
+                    const maxShield = eData.maxOvershieldHp ?? eData.maxBarrierHp ?? 0;
+                    const curShield = eData.overshieldHp ?? eData.barrierHp ?? 0;
+                    if (maxShield > 0) {
+                        setOvershield(enemy, curShield, maxShield);
+                    }
+                }
+
+                if (eData.isMiniBoss && eData.miniBossTiers) {
+                    const tiers = parseMiniBossTiers(eData.miniBossTiers);
+                    if (tiers.length > 0) {
+                        applyMiniBossTierState(enemy, tiers);
+                        syncMiniBossUiTiers(enemy);
+                    }
                 }
 
                 if (eData.anim) enemy.animState = eData.anim;
@@ -203,10 +232,22 @@ export const NetSync = {
             } else { 
                 enemy = new Enemy(eData.type, targetPos, eData.id);
                 enemy.hp = eData.hp;
-                if (eData.maxBarrierHp > 0) {
-                    enemy.maxBarrierHp = eData.maxBarrierHp;
-                    enemy.barrierHp = eData.barrierHp ?? enemy.maxBarrierHp;
+                if (eData.maxHp) enemy.maxHp = eData.maxHp;
+                const maxShield = eData.maxOvershieldHp ?? eData.maxBarrierHp ?? 0;
+                const curShield = eData.overshieldHp ?? eData.barrierHp ?? 0;
+                if (maxShield > 0) {
+                    setOvershield(enemy, curShield, maxShield);
                 }
+                if (eData.isMiniBoss && eData.miniBossId) {
+                    applyMiniBossVariant(enemy, eData.miniBossId, {
+                        fromNetwork: true,
+                        maxHp: eData.maxHp,
+                        overshieldHp: curShield,
+                        maxOvershieldHp: maxShield,
+                        tiers: parseMiniBossTiers(eData.miniBossTiers || ''),
+                    });
+                }
+                if (eData.stateVer != null) enemy.stateVersion = eData.stateVer;
                 enemy.ai = null; 
                 
                 enemy.networkTargetPos = targetPos;

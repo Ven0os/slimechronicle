@@ -276,7 +276,7 @@ export class Pacifier extends PlayerBase {
                         const dot = nx * dir.x + nz * dir.z;
                         if(dot > 0.5) { 
                              let dmg = STATE.stats.atk * 1.5;
-                             if (e.sanguineInstability) { dmg *= 1.2; this.heal(dmg * 0.1); createDamageText("LEECH!", this.position, '#e74c3c'); }
+                             if (e.sanguineInstability && !e.isMiniBoss) { dmg *= 1.2; this.heal(dmg * 0.1); createDamageText("LEECH!", this.position, '#e74c3c'); }
                              const { isCrit } = dealDamageToEnemy(e, dmg, { pos: e.position });
                              if (isCrit) AudioSys.sfx.crit();
                              this.spawnHitAura(e.position); 

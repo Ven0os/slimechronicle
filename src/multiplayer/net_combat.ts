@@ -195,5 +195,7 @@ export function handleRequestDamage(data) {
     amount = Math.max(0, Math.min(amount, maxAllowed));
 
     if (amount <= 0) return;
-    enemy.takeDamage(amount);
+    enemy.takeDamage(amount, {
+        isRanged: !!(data.opts?.isRanged || data.opts?.ranged),
+    });
 }

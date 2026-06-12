@@ -39,7 +39,7 @@ export class SentinelSkills {
                     if (this.enemy.position.distanceTo(t.position) < cfg.radius) {
                         const push = t.position.clone().sub(this.enemy.position).normalize().multiplyScalar(cfg.pushForce);
                         push.y = 0;
-                        damagePlayer(t, cfg.damage, { knockback: push });
+                        this.enemy.dealPlayerDamage(t, cfg.damage, { knockback: push });
                     }
                 });
                 createDamageText("ÉCRASEMENT", this.enemy.position, '#e74c3c');
@@ -78,7 +78,7 @@ export class SentinelSkills {
                     if (this.enemy.position.distanceTo(t.position) < cfg.hitRadius) {
                         const push = chargeDir.clone().multiplyScalar(cfg.pushForce);
                         push.y = 0;
-                        damagePlayer(t, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
+                        this.enemy.dealPlayerDamage(t, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
                         createDamageText("PERCUTÉ", t.position, '#e67e22');
                         if (cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact);
                         clearInterval(interval);
@@ -116,7 +116,7 @@ export class SentinelSkills {
                 if (toP.dot(facing) > 0.5) {
                     const push = toP.clone().multiplyScalar(cfg.pushForce);
                     push.y = 0;
-                    damagePlayer(target, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
+                    this.enemy.dealPlayerDamage(target, cfg.damage, { knockback: push, stunDuration: cfg.stunDuration });
                     createDamageText("STUN", target.position, '#3498db');
                 }
             }

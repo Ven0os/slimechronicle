@@ -249,8 +249,8 @@ export const ConvergenceEffects = {
     return true;
   },
 
-  applyCataclysmVulnerability(enemy: { _cataclysmVuln?: boolean }) {
-    if (!enemy || rank('celestialConvergence') < 2) return;
+  applyCataclysmVulnerability(enemy: { _cataclysmVuln?: boolean; isMiniBoss?: boolean }) {
+    if (!enemy || rank('celestialConvergence') < 2 || enemy.isMiniBoss) return;
     enemy._cataclysmVuln = true;
   },
 

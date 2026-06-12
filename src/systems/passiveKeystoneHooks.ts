@@ -117,8 +117,8 @@ export const PassiveKeystoneHooks = {
     return !!(enemy?.sanguineInstability && rank('executioner'));
   },
 
-  markEnemyVerdict(enemy: { sanguineInstability?: boolean }, durationSec = 6) {
-    if (!enemy) return;
+  markEnemyVerdict(enemy: { sanguineInstability?: boolean; isMiniBoss?: boolean }, durationSec = 6) {
+    if (!enemy || enemy.isMiniBoss) return;
     enemy.sanguineInstability = true;
     createDamageText('MARQUÉ', enemy.position, '#ff0000');
     setTimeout(() => {

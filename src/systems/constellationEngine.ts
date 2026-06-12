@@ -475,13 +475,14 @@ export const ConstellationEngine = {
 
   applyLightFieldDebuff(enemy: {
     dead?: boolean;
+    isMiniBoss?: boolean;
     position: THREE.Vector3;
     speed?: number;
     _lightFieldBaseSpeed?: number;
     _solarLightDebuffUntil?: number;
     _solarLightDmgTakenMult?: number;
   }, mods: { speedMult: number; dmgTakenMult: number }): void {
-    if (!enemy || enemy.dead) return;
+    if (!enemy || enemy.dead || enemy.isMiniBoss) return;
     if (enemy._lightFieldBaseSpeed == null && enemy.speed != null) {
       enemy._lightFieldBaseSpeed = enemy.speed;
     }

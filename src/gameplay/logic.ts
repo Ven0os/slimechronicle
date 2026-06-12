@@ -12,6 +12,14 @@ import { ConstellationEngine } from '@/systems/constellationEngine';
 import { pickMobSpawnType, randomWildSpawnPos, BOSS_ZONE } from './world/worldZones';
 
 const MINI_BOSS_SPAWN_CHANCE = 0.03;
+
+const MINI_BOSS_MOB_TYPE: Record<string, string> = {
+    verdant_stalker: 'rogue',
+    iron_warden: 'sentinel',
+    arcane_herald: 'warlock',
+    corrupt_warden: 'corrupted',
+};
+
 import { applyMiniBossVariant } from './enemies/minions/mini_boss';
 
 export const GameLogic = {
@@ -83,6 +91,45 @@ export const GameLogic = {
         const e = new Enemy(type, pos);
         if (spawnMini && spawnType.miniBoss) applyMiniBossVariant(e, spawnType.miniBoss);
         addEnemy(e);
+    },
+
+    /** Debug : spawn Mini-Boss. tiers optionnel : 'champion|executeur' ou tableau. */
+    spawnMiniBoss: function(miniId = 'random', tiers = null) {
+        if (STATE.bossSpawned) {
+            console.warn('[Debug] Impossible pendant un combat de boss.');
+            return null;
+        }
+        if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
+            console.warn('[Debug] spawnMiniBoss : hôte uniquement en multijoueur.');
+            return null;
+        }
+        if (!Globals.player) return null;
+
+        const ids = Object.keys(MINI_BOSS_MOB_TYPE);
+        let resolvedId = miniId;
+        if (!miniId || miniId === 'random') {
+            resolvedId = ids[Math.floor(Math.random() * ids.length)];
+        }
+        const mobType = MINI_BOSS_MOB_TYPE[resolvedId];
+        if (!mobType) {
+            console.warn(
+                `[Debug] Mini-Boss inconnu: "${miniId}". Valides: ${ids.join(', ')}, random`,
+            );
+            return null;
+        }
+
+        const pos = Globals.player.position.clone();
+        pos.x += 5;
+        pos.z += (Math.random() - 0.5) * 3;
+        pos.y = 0;
+
+        const e = new Enemy(mobType, pos);
+        applyMiniBossVariant(e, resolvedId, tiers ? { tiers } : {});
+        addEnemy(e);
+        console.log(
+            `[Debug] Mini-Boss: ${resolvedId} | ${(e.miniBossTiers || []).join('|') || 'sans tier'}`,
+        );
+        return e;
     },
 
     spawnBoss: function(type = 'king') {

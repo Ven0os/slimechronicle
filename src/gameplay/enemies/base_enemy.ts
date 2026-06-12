@@ -7,6 +7,16 @@ import { createDamageText, spawnParticles, createSkillVisual } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { isServerAuthority } from '../../multiplayer/net_combat';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
+import {
+  absorbOvershieldDamage,
+  applyAbyssalCorruptionOnHit,
+  applyMiniBossIncomingDamage,
+  resolveMiniBossOutgoingDamage,
+  shouldApplySolarLightAmp,
+  tickMiniBossCombat,
+} from './minions/mini_boss_combat';
+import { updateMiniBossUi } from './minions/mini_boss_ui';
+import { damagePlayer } from '../../multiplayer/net_combat';
 
 let enemyIdCounter = 0;
 
@@ -22,6 +32,13 @@ export class BaseEnemy extends THREE.Group {
         this.maxHp = this.hp;
         this.barrierHp = 0;
         this.maxBarrierHp = 0;
+        this.overshieldHp = 0;
+        this.maxOvershieldHp = 0;
+        this.isMiniBoss = false;
+        this.miniBossId = null;
+        this.miniBossTiers = [];
+        this.miniBossStats = null;
+        this.stateVersion = 0;
         this.speed = 4.8;
         this.attackRange = 1.5;
         this.isRanged = false;
@@ -116,22 +133,32 @@ export class BaseEnemy extends THREE.Group {
             }
         }
         
-        if (!this.isBoss && this.hudGroup && Globals.camera) {
-            if (this.barrierBar && this.maxBarrierHp > 0) {
-                const showBarrier = this.barrierHp > 0;
-                this.barrierBar.visible = showBarrier;
-                if (this.barrierBarBg) this.barrierBarBg.visible = showBarrier;
-                if (showBarrier) {
-                    this.barrierBar.scale.x = Math.max(0, this.barrierHp / this.maxBarrierHp);
+        if (!this.isBoss && Globals.camera) {
+            if (this.isMiniBoss) {
+                if (!STATE.multiplayer.active || isServerAuthority()) {
+                    tickMiniBossCombat(this, dt);
                 }
+                updateMiniBossUi(this, dt, Globals.camera);
+            } else if (this.hudGroup) {
+                if (this.barrierBar && this.maxBarrierHp > 0) {
+                    const showBarrier = this.barrierHp > 0;
+                    this.barrierBar.visible = showBarrier;
+                    if (this.barrierBarBg) this.barrierBarBg.visible = showBarrier;
+                    if (showBarrier) {
+                        this.barrierBar.scale.x = Math.max(0, this.barrierHp / this.maxBarrierHp);
+                    }
+                }
+                if (this.hpBar) this.hpBar.scale.x = Math.max(0, this.hp / this.maxHp);
+                this.hudGroup.lookAt(Globals.camera.position);
             }
-            if (this.hpBar) this.hpBar.scale.x = Math.max(0, this.hp / this.maxHp);
-            this.hudGroup.lookAt(Globals.camera.position);
         }
 
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
             this.resolveCollisions();
-            if(this.attackCooldown > 0) this.attackCooldown -= dt;
+            if(this.attackCooldown > 0) {
+                const atkSpd = this.isMiniBoss && this.miniBossStats ? this.miniBossStats.attackSpeedMult : 1;
+                this.attackCooldown -= dt * Math.max(0.5, atkSpd);
+            }
         }
         
         // Ensure position Y is updated
@@ -160,23 +187,58 @@ export class BaseEnemy extends THREE.Group {
         this.position.y = this.airY || 0;
     }
 
-    launch(velocity) {
-        this.airVelocityY = velocity;
+    pushBack(force) {
+        if (force && force instanceof THREE.Vector3) {
+            let f = force.clone();
+            if (this.isMiniBoss && this.miniBossStats?.knockbackResist) {
+                f.multiplyScalar(1 - this.miniBossStats.knockbackResist);
+            }
+            this.knockback.add(f);
+            this.position.add(f.clone().multiplyScalar(0.1));
+        }
     }
 
-    pushBack(forceOrPos, strength) {
-        if (forceOrPos && forceOrPos instanceof THREE.Vector3) {
-            if (typeof strength === 'number') {
-                const forceVec = this.position.clone().sub(forceOrPos);
-                forceVec.y = 0;
-                if (forceVec.lengthSq() > 0.001) forceVec.normalize();
-                forceVec.multiplyScalar(strength);
-                this.knockback.add(forceVec);
-                this.position.add(forceVec.clone().multiplyScalar(0.1));
-            } else {
-                this.knockback.add(forceOrPos);
-                this.position.add(forceOrPos.clone().multiplyScalar(0.1));
+    dealPlayerDamage(target, baseAmount, opts = {}) {
+        let amount = baseAmount;
+        let outOpts = { ...opts };
+
+        if (this.isMiniBoss && this.miniBossStats) {
+            const s = this.miniBossStats;
+            const resolved = resolveMiniBossOutgoingDamage(this, baseAmount, target, {
+                isAbility: !!opts.isAbility,
+            });
+            amount = resolved.damage;
+
+            let heal = resolved.lifeStealHeal;
+            if (heal > 0 && s.healRecvMult > 1) heal *= s.healRecvMult;
+            if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal);
+
+            if (outOpts.stunDuration && s.stunDurationMult > 1) {
+                outOpts.stunDuration *= s.stunDurationMult * (s.effectDurationMult > 1 ? s.effectDurationMult : 1);
+            } else if (!outOpts.stunDuration && s.stunDurationMult > 1 && s.effectDurationMult > 1) {
+                outOpts.stunDuration = 0.12 * s.stunDurationMult * s.effectDurationMult;
             }
+
+            if (s.corruptionOnHit > 0) {
+                applyAbyssalCorruptionOnHit(target, s.effectDurationMult);
+            }
+        }
+
+        damagePlayer(target, amount, outOpts);
+    }
+
+    getAggroRange() {
+        let range = ENEMY_AGGRO_RANGE;
+        if (this.isMiniBoss && this.miniBossStats?.pursuitMult > 1) {
+            range *= this.miniBossStats.pursuitMult;
+        }
+        return range;
+    }
+
+    applyStun(duration) {
+        if (this.isMiniBoss && this.miniBossStats?.ccResist > 0) {
+            duration *= 1 - this.miniBossStats.ccResist;
+            if (duration < 0.05) return;
         }
     }
 
@@ -197,75 +259,75 @@ export class BaseEnemy extends THREE.Group {
         this.activeTelegraphs = [];
     }
 
-    takeDamage(amount) {
-        if (this._solarLightDebuffUntil && Date.now() < this._solarLightDebuffUntil && this._solarLightDmgTakenMult) {
+    takeDamage(amount, opts = {}) {
+        if (
+            shouldApplySolarLightAmp(this)
+            && this._solarLightDebuffUntil
+            && Date.now() < this._solarLightDebuffUntil
+            && this._solarLightDmgTakenMult
+        ) {
             amount *= this._solarLightDmgTakenMult;
         }
 
         // Client multijoueur : HP autoritaire via world-update, feedback visuel uniquement
         if (STATE.multiplayer.active && !isServerAuthority()) {
-            createDamageText(Math.floor(amount), this.position);
-            if (this.mesh) {
-                if (this.flashTimeout) { clearTimeout(this.flashTimeout); this.flashTimeout = null; }
-                this.traverse((child) => {
-                    if (child.isMesh && child.material && child.material.emissive && typeof child.material.emissive.setHex === 'function') {
-                        if (child.userData.origEmissive === undefined) {
-                            child.userData.origEmissive = child.material.emissive.getHex();
-                        }
-                        child.material.emissive.setHex(0xffffff);
-                    }
-                });
-                this.flashTimeout = setTimeout(() => {
-                    if (this.dead) return;
-                    this.traverse((child) => {
-                        if (child.isMesh && child.material && child.material.emissive) {
-                            child.material.emissive.setHex(child.userData.origEmissive ?? 0x000000);
-                        }
-                    });
-                    this.flashTimeout = null;
-                }, 80);
-            }
+            this._flashDamageFeedback(amount);
             return;
         }
 
-        this.hp -= amount;
-        createDamageText(Math.floor(amount), this.position);
+        amount = applyMiniBossIncomingDamage(this, amount, {
+            isRanged: !!(opts.isRanged || opts.ranged),
+        });
+
+        const hpDamage = absorbOvershieldDamage(this, amount);
+        if (hpDamage <= 0) return;
+
+        this.hp -= hpDamage;
+        createDamageText(Math.floor(hpDamage), this.position);
         
         if(Globals.player && STATE.stats.lifesteal > 0 && typeof Globals.player.heal === 'function') {
-            Globals.player.heal(amount * STATE.stats.lifesteal);
+            Globals.player.heal(hpDamage * STATE.stats.lifesteal);
         }
         
         if(this.hp <= 0 && !this.dead) this.die();
         
-        if(this.mesh) {
-            if(this.flashTimeout) { clearTimeout(this.flashTimeout); this.flashTimeout = null; }
+        this._flashDamageFeedback(hpDamage);
+    }
 
+    _flashDamageFeedback(amount) {
+        if (!amount) return;
+        if (STATE.multiplayer.active && !isServerAuthority()) {
+            createDamageText(Math.floor(amount), this.position);
+        }
+        if (!this.mesh) return;
+
+        if (this.flashTimeout) { clearTimeout(this.flashTimeout); this.flashTimeout = null; }
+
+        this.traverse((child) => {
+            if (child.isMesh && child.material && child.material.emissive && typeof child.material.emissive.setHex === 'function') {
+                if (child.userData.origEmissive === undefined) {
+                    child.userData.origEmissive = child.material.emissive.getHex();
+                }
+                if (child.userData.origEmissive === 0xffffff) {
+                    child.userData.origEmissive = 0x000000;
+                }
+                child.material.emissive.setHex(0xffffff);
+            }
+        });
+
+        this.flashTimeout = setTimeout(() => {
+            if (this.dead) return;
             this.traverse((child) => {
                 if (child.isMesh && child.material && child.material.emissive && typeof child.material.emissive.setHex === 'function') {
-                    if (child.userData.origEmissive === undefined) {
-                        child.userData.origEmissive = child.material.emissive.getHex();
+                    if (child.userData.origEmissive !== undefined) {
+                        child.material.emissive.setHex(child.userData.origEmissive);
+                    } else {
+                        child.material.emissive.setHex(0x000000);
                     }
-                    if (child.userData.origEmissive === 0xffffff) {
-                        child.userData.origEmissive = 0x000000;
-                    }
-                    child.material.emissive.setHex(0xffffff); 
                 }
             });
-
-            this.flashTimeout = setTimeout(() => { 
-                if(this.dead) return;
-                this.traverse((child) => {
-                    if (child.isMesh && child.material && child.material.emissive && typeof child.material.emissive.setHex === 'function') {
-                        if (child.userData.origEmissive !== undefined) {
-                            child.material.emissive.setHex(child.userData.origEmissive);
-                        } else {
-                            child.material.emissive.setHex(0x000000);
-                        }
-                    }
-                });
-                this.flashTimeout = null;
-            }, 80); 
-        }
+            this.flashTimeout = null;
+        }, 80);
     }
     
     getClosestTarget() {
@@ -284,7 +346,7 @@ export class BaseEnemy extends THREE.Group {
                 closest = t;
             }
         });
-        if (!closest || minD > ENEMY_AGGRO_RANGE) return null;
+        if (!closest || minD > this.getAggroRange()) return null;
         return closest;
     }
 

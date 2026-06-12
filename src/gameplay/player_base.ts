@@ -553,6 +553,10 @@ export class PlayerBase extends THREE.Group {
         amount = ConstellationEngine.absorbOverhealShield(this, amount);
         amount = ConstellationEngine.modifyDamageTaken(amount);
 
+        if (this._abyssalVulnUntil && Date.now() < this._abyssalVulnUntil && this._abyssalVulnMult) {
+            amount *= this._abyssalVulnMult;
+        }
+
         if (amount > 0) {
             this.hp -= amount;
 
