@@ -15,7 +15,7 @@ export class SentinelSkills {
     checkAttackTrigger(target, dt) {
         if (this.enemy.attackCooldown > 0) return;
         const dist = this.enemy.position.distanceTo(target.position);
-        if (dist < 3.0) {
+        if (dist < 4.0) {
             if (Math.random() < 0.35) this.attackSmash(target);
             else if (Math.random() < 0.35) this.attackShieldBash(target);
         }
@@ -50,7 +50,10 @@ export class SentinelSkills {
     }
 
     attackCharge(target) {
-        this.enemy.lookAt(target.position.x, this.enemy.position.y, target.position.z);
+        let chargeDir = target.position.clone().sub(this.enemy.position).normalize();
+        chargeDir.y = 0;
+        this.enemy.lookAt(this.enemy.position.x + chargeDir.x, this.enemy.position.y, this.enemy.position.z + chargeDir.z);
+
         this.enemy.isAttacking = true;
         this.enemy.animState = 'windup_charge';
         const cfg = this.enemy.config.charge;
@@ -65,8 +68,8 @@ export class SentinelSkills {
             const endSpeed = cfg.speedEnd;    
             const maxDuration = 1.2;
             let elapsed = 0;
-            let chargeDir = target.position.clone().sub(this.enemy.position).normalize();
-            chargeDir.y = 0;
+            
+            this.enemy.lookAt(this.enemy.position.x + chargeDir.x, this.enemy.position.y, this.enemy.position.z + chargeDir.z);
             
             const interval = setInterval(() => {
                 if(this.enemy.dead || elapsed >= maxDuration) { clearInterval(interval); this.stopCharge(); return; }
@@ -74,6 +77,8 @@ export class SentinelSkills {
                 const currentSpeed = THREE.MathUtils.lerp(startSpeed, endSpeed, elapsed / maxDuration);
                 this.enemy.position.add(chargeDir.clone().multiplyScalar(currentSpeed * 0.05));
                 
+                this.enemy.lookAt(this.enemy.position.x + chargeDir.x, this.enemy.position.y, this.enemy.position.z + chargeDir.z);
+
                 getAllLivingPlayers().forEach((t) => {
                     if (this.enemy.position.distanceTo(t.position) < cfg.hitRadius) {
                         const push = chargeDir.clone().multiplyScalar(cfg.pushForce);

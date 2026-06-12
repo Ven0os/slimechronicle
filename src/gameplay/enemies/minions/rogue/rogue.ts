@@ -65,18 +65,15 @@ export class Rogue extends BaseEnemy {
 
         super.update(dt); 
         if (this.dead) return;
-        if(this.mesh) this.mesh.scale.set(this.scaleVal, this.scaleVal, this.scaleVal);
+        if(this.mesh && this.animState !== 'teleport_cast' && this.animState !== 'teleport_appear') {
+            this.mesh.scale.set(this.scaleVal, this.scaleVal, this.scaleVal);
+        }
 
         const target = this.getClosestTarget();
         this.updateMoveSpeed(dt);
         
         // Mise à jour visuelle via le modèle
         this.model.updateAnim(dt);
-
-        if (this.hudGroup && Globals.camera) {
-            this.hpBar.scale.x = Math.max(0, this.hp / this.maxHp);
-            this.hudGroup.lookAt(Globals.camera.position); 
-        }
 
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
             if (this.isAttacking) { } 

@@ -65,12 +65,19 @@ export class RogueSkills {
             
             for(let i=0; i<cfg.count; i++) {
                 const spreadDir = dir.clone().applyAxisAngle(new THREE.Vector3(0,1,0), startAngle + i * cfg.spread);
-                const daggerGeo = new THREE.ConeGeometry(0.1, 0.6, 4); daggerGeo.rotateX(Math.PI / 2); 
-                const daggerMat = new THREE.MeshStandardMaterial({color: 0xffffff, metalness:1.0, emissive: 0x333333});
+                const daggerGeo = new THREE.ConeGeometry(0.06, 0.5, 4); 
+                daggerGeo.rotateX(Math.PI / 2); 
+                const daggerMat = new THREE.MeshStandardMaterial({
+                    color: 0x39ff14,
+                    metalness: 0.9,
+                    roughness: 0.15,
+                    emissive: 0x1ebd1e,
+                    emissiveIntensity: 3.0
+                });
                 
                 Globals.projectiles.push(new Projectile(
                     daggerGeo, daggerMat, this.enemy.position.clone().add(new THREE.Vector3(0,1,0)), 
-                    spreadDir, cfg.speed, cfg.damage, 'enemy', 0xffffff, false 
+                    spreadDir, cfg.speed, cfg.damage, 'enemy', 0x39ff14, true 
                 ));
                 const proj = Globals.projectiles[Globals.projectiles.length - 1];
                 proj.sourceEnemy = this.enemy;

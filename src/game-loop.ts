@@ -236,10 +236,15 @@ function animate(): void {
     const e = Globals.enemies[i];
     e.update(dt);
     if (e.dead) {
-      if (e.mesh) Globals.scene.remove(e.mesh);
-      if (e instanceof THREE.Object3D) Globals.scene.remove(e);
-      if (e.labelSprite) Globals.scene.remove(e.labelSprite);
-      removeEnemy(e);
+      if (!e.isDying) {
+        e.startDeathAnimation();
+      }
+      if (e.deathAnimDone) {
+        if (e.mesh) Globals.scene.remove(e.mesh);
+        if (e instanceof THREE.Object3D) Globals.scene.remove(e);
+        if (e.labelSprite) Globals.scene.remove(e.labelSprite);
+        removeEnemy(e);
+      }
     }
   }
   for (let i = Globals.particles.length - 1; i >= 0; i--) {

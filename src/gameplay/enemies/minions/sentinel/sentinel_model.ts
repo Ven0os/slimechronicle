@@ -15,80 +15,201 @@ export class SentinelModel {
         this.enemy.mesh.castShadow = true;
         this.enemy.mesh.scale.setScalar(this.enemy.scaleVal);
 
-        const matArmor = new THREE.MeshStandardMaterial({ color: 0x5d6d7e, roughness: 0.35, metalness: 0.85 });
-        const matDetail = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.45, metalness: 0.92 });
-        const matCore = new THREE.MeshBasicMaterial({ color: 0xe67e22 });
-        const matDark = new THREE.MeshStandardMaterial({ color: 0x1c2833, roughness: 0.9 });
+        // Modernized stylized metallic/emissive materials
+        const matArmor = new THREE.MeshStandardMaterial({ 
+            color: 0x3b4c5e, // Rich dark blue-steel
+            roughness: 0.25, 
+            metalness: 0.85 
+        });
+        const matDetail = new THREE.MeshStandardMaterial({ 
+            color: 0xdfb73c, // Ornate bronze/gold trim
+            roughness: 0.3, 
+            metalness: 0.85 
+        });
+        const matIron = new THREE.MeshStandardMaterial({ 
+            color: 0x1d2228, // Dark base iron joints
+            roughness: 0.55, 
+            metalness: 0.75 
+        });
+        const matCore = new THREE.MeshStandardMaterial({ 
+            color: 0xff6600, 
+            emissive: 0xff3c00, 
+            emissiveIntensity: 3.5, 
+            roughness: 0.15, 
+            metalness: 0.1 
+        });
 
+        // 1. TORSO & POWER CORE
         this.parts.torso = new THREE.Group();
-        this.parts.torso.position.y = 1.0;
+        this.parts.torso.position.y = 1.05;
         this.enemy.mesh.add(this.parts.torso);
-        const chest = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.5), matArmor);
-        this.parts.torso.add(chest);
-        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.15), matCore);
-        core.position.z = 0.22;
-        this.parts.torso.add(core);
 
+        // Lower waist joint
+        const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 0.25, 6), matIron);
+        waist.position.y = -0.22;
+        this.parts.torso.add(waist);
+
+        // Main upper chest
+        const chest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.44, 0.54), matArmor);
+        chest.position.y = 0.12;
+        this.parts.torso.add(chest);
+
+        // Beveled shoulder plates on torso
+        const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.08, 8), matDetail);
+        collar.position.y = 0.36;
+        this.parts.torso.add(collar);
+
+        // Glowing Core
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.18), matCore);
+        core.position.set(0, 0.12, 0.24);
+        this.parts.torso.add(core);
+        this.parts.core = core;
+
+        // 2. HEAD & HELMET
         this.parts.head = new THREE.Group();
-        this.parts.head.position.y = 0.4;
+        this.parts.head.position.y = 0.46;
         this.parts.torso.add(this.parts.head);
-        const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.4), matArmor);
+
+        const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, 0.36), matArmor);
         this.parts.head.add(helmet);
-        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.05, 0.05), matCore);
-        visor.position.set(0, 0, 0.2);
+
+        // Visor (Glowing Energy)
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.06), matCore);
+        visor.position.set(0, 0.04, 0.17);
         this.parts.head.add(visor);
 
-        const shoulderGeo = new THREE.BoxGeometry(0.4, 0.4, 0.5);
-        const shL = new THREE.Mesh(shoulderGeo, matDetail); shL.position.set(-0.55, 0.2, 0);
-        const shR = new THREE.Mesh(shoulderGeo, matDetail); shR.position.set( 0.55, 0.2, 0);
+        // Helmet crest / blade
+        const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.24), matDetail);
+        crest.position.set(0, 0.22, -0.06);
+        this.parts.head.add(crest);
+
+        // 3. HEAVY SHOULDERS & ARMS
+        // Heavy left shoulder pad
+        const shL = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.44, 0.52), matDetail);
+        shL.position.set(-0.58, 0.24, 0);
         this.parts.torso.add(shL);
+
+        // Heavy right shoulder pad
+        const shR = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.44, 0.52), matDetail);
+        shR.position.set(0.58, 0.24, 0);
         this.parts.torso.add(shR);
 
-        this.parts.armL = new THREE.Group(); this.parts.armL.position.set(-0.55, 0, 0);
-        this.parts.armR = new THREE.Group(); this.parts.armR.position.set( 0.55, 0, 0);
+        // Left arm (Shield arm)
+        this.parts.armL = new THREE.Group();
+        this.parts.armL.position.set(-0.58, 0.05, 0);
         this.parts.torso.add(this.parts.armL);
-        this.parts.torso.add(this.parts.armR);
-        const armMesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.6, 0.25), matArmor);
-        armMesh.position.y = -0.3;
-        const armLMesh = armMesh.clone();
-        const armRMesh = armMesh.clone();
-        this.parts.armL.add(armLMesh);
-        this.parts.armR.add(armRMesh);
+        const armLUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.3), matIron);
+        armLUpper.position.y = -0.15;
+        this.parts.armL.add(armLUpper);
+        const armLLower = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.22), matArmor);
+        armLLower.position.y = -0.42;
+        this.parts.armL.add(armLLower);
 
+        // Right arm (Weapon arm)
+        this.parts.armR = new THREE.Group();
+        this.parts.armR.position.set(0.58, 0.05, 0);
+        this.parts.torso.add(this.parts.armR);
+        const armRUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.3), matIron);
+        armRUpper.position.y = -0.15;
+        this.parts.armR.add(armRUpper);
+        const armRLower = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.22), matArmor);
+        armRLower.position.y = -0.42;
+        this.parts.armR.add(armRLower);
+
+        // 4. WEAPON (GIGA BATTLE HAMMER)
         this.parts.hammer = new THREE.Group();
-        this.parts.hammer.position.set(0, -0.5, 0.2);
-        this.parts.hammer.rotation.x = Math.PI/2; 
+        this.parts.hammer.position.set(0, -0.56, 0.24);
+        this.parts.hammer.rotation.x = Math.PI / 2;
+        this.parts.hammer.rotation.y = Math.PI / 2; // Rotate 90 degrees to align with swing direction (not sideways)
         this.parts.armR.add(this.parts.hammer);
-        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8), matDark);
+
+        // Metal handle
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8), matIron);
         this.parts.hammer.add(handle);
-        const headGroup = new THREE.Group(); headGroup.position.y = 0.8; this.parts.hammer.add(headGroup);
-        const headBlock = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), matDetail); headGroup.add(headBlock);
-        
+
+        const hamHeadGroup = new THREE.Group();
+        hamHeadGroup.position.y = 0.8;
+        this.parts.hammer.add(hamHeadGroup);
+
+        // Main central block of the hammer
+        const centerBlock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.44, 0.3), matIron);
+        hamHeadGroup.add(centerBlock);
+
+        // Hammer sides
+        const sideL = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.26, 8), matArmor);
+        sideL.rotation.z = Math.PI / 2;
+        sideL.position.x = -0.26;
+        hamHeadGroup.add(sideL);
+
+        const sideR = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.26, 8), matArmor);
+        sideR.rotation.z = -Math.PI / 2;
+        sideR.position.x = 0.26;
+        hamHeadGroup.add(sideR);
+
+        // Hammer crown/spike
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.24, 4), matDetail);
+        spike.position.y = 0.32;
+        hamHeadGroup.add(spike);
+
+        // Glowing energy core inside the hammer head
+        const hamEnergy = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.36, 0.32), matCore);
+        hamHeadGroup.add(hamEnergy);
+
+        // 5. SHIELD (TOWER FORTRESS SHIELD)
         this.parts.shield = new THREE.Group();
-        this.parts.shield.position.set(0.1, -0.3, 0.3);
-        this.parts.shield.rotation.y = Math.PI/2;
+        this.parts.shield.position.set(-0.18, -0.52, 0.22); // Shifted down, out, and forward to avoid shoulder clipping
+        this.parts.shield.rotation.y = -0.15;
         this.parts.armL.add(this.parts.shield);
-        const shieldPlate = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.1), matDetail);
+
+        // Main shield body (slightly shorter height to prevent shoulder/ground clipping)
+        const shieldPlate = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.0, 0.08), matArmor);
         this.parts.shield.add(shieldPlate);
-        
-        const legGeo = new THREE.BoxGeometry(0.35, 0.8, 0.4);
-        this.parts.legL = new THREE.Mesh(legGeo, matArmor); this.parts.legL.position.set(-0.25, 0.4, 0); this.enemy.mesh.add(this.parts.legL);
-        this.parts.legR = new THREE.Mesh(legGeo, matArmor); this.parts.legR.position.set( 0.25, 0.4, 0); this.enemy.mesh.add(this.parts.legR);
+
+        // Gold runic borders
+        const borderT = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.1, 0.12), matDetail); borderT.position.y = 0.48; this.parts.shield.add(borderT);
+        const borderB = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.1, 0.12), matDetail); borderB.position.y = -0.48; this.parts.shield.add(borderB);
+        const borderL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.12), matDetail); borderL.position.x = -0.38; this.parts.shield.add(borderL);
+        const borderR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.12), matDetail); borderR.position.x = 0.38; this.parts.shield.add(borderR);
+
+        // Central glowing core emblem
+        const emblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.15), matCore);
+        emblem.position.z = 0.08;
+        this.parts.shield.add(emblem);
+
+        // 6. LEGS & HIP STRUCTURE
+        const hipJoint = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.72), matIron);
+        hipJoint.rotation.z = Math.PI / 2;
+        hipJoint.position.y = 0.55;
+        this.enemy.mesh.add(hipJoint);
+
+        const legGeo = new THREE.CylinderGeometry(0.13, 0.11, 0.65);
+
+        // Left leg group
+        this.parts.legL = new THREE.Group();
+        this.parts.legL.position.set(-0.25, 0.5, 0);
+        this.enemy.mesh.add(this.parts.legL);
+        const lLegMesh = new THREE.Mesh(legGeo, matArmor);
+        lLegMesh.position.y = -0.25;
+        this.parts.legL.add(lLegMesh);
+        // Shin/Knee Plate
+        const lKnee = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), matDetail);
+        lKnee.position.set(0, -0.06, 0.12);
+        this.parts.legL.add(lKnee);
+
+        // Right leg group
+        this.parts.legR = new THREE.Group();
+        this.parts.legR.position.set(0.25, 0.5, 0);
+        this.enemy.mesh.add(this.parts.legR);
+        const rLegMesh = new THREE.Mesh(legGeo, matArmor);
+        rLegMesh.position.y = -0.25;
+        this.parts.legR.add(rLegMesh);
+        // Shin/Knee Plate
+        const rKnee = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), matDetail);
+        rKnee.position.set(0, -0.06, 0.12);
+        this.parts.legR.add(rKnee);
 
         this.enemy.add(this.enemy.mesh);
-        this.setupHealthBar();
         Globals.scene.add(this.enemy);
-    }
-
-    setupHealthBar() {
-        this.enemy.hudGroup = new THREE.Group();
-        this.enemy.hudGroup.position.y = this.enemy.scaleVal * 1.8;
-        this.enemy.add(this.enemy.hudGroup);
-        const bg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.15), new THREE.MeshBasicMaterial({color:0x000000}));
-        this.enemy.hudGroup.add(bg);
-        this.enemy.hpBar = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.15), new THREE.MeshBasicMaterial({color:0xff0000}));
-        this.enemy.hpBar.position.z = 0.01;
-        this.enemy.hudGroup.add(this.enemy.hpBar);
     }
 
     updateAnim(dt) {
@@ -98,45 +219,103 @@ export class SentinelModel {
             if(!obj) return;
             obj.rotation[axis] = THREE.MathUtils.lerp(obj.rotation[axis], targetVal, dt * speed);
         };
+        
+        // Reset base position
         this.enemy.mesh.position.y = 0; 
+        
+        // Rotate power core continuously
+        if (this.parts.core) {
+            this.parts.core.rotation.y += dt * 2.0;
+            this.parts.core.rotation.x += dt * 1.0;
+        }
 
         if (!this.enemy.isAttacking) {
-            lerpRot(this.parts.torso, 'y', Math.sin(time) * 0.1);
-            lerpRot(this.parts.torso, 'z', Math.cos(time * 2) * 0.05);
-            lerpRot(this.parts.torso, 'x', 0); 
-            lerpRot(this.parts.legL, 'x', isMoving ? Math.sin(time * 8) * 0.6 : 0);
-            lerpRot(this.parts.legR, 'x', isMoving ? Math.sin(time * 8 + Math.PI) * 0.6 : 0);
-            lerpRot(this.parts.armL, 'x', isMoving ? Math.sin(time * 8 + Math.PI) * 0.3 : 0);
-            lerpRot(this.parts.armR, 'x', isMoving ? Math.sin(time * 8) * 0.3 : 0);
+            // Smooth idle breathing / bobbing
+            const bob = Math.sin(time * 1.5) * 0.04;
+            const headBob = Math.sin(time * 1.5 - 0.5) * 0.015;
+            
+            this.parts.torso.position.y = 1.05 + bob;
+            this.parts.head.position.y = 0.46 + headBob;
+
+            // Walk / Run cycle additions
+            if (isMoving) {
+                // Lean forward and bob actively with steps
+                lerpRot(this.parts.torso, 'x', 0.15, 6);
+                lerpRot(this.parts.torso, 'y', Math.sin(time * 8) * 0.08, 8);
+                lerpRot(this.parts.torso, 'z', Math.cos(time * 16) * 0.04, 8);
+
+                // Bob torso up and down with stride weight
+                this.parts.torso.position.y = 1.05 + Math.abs(Math.sin(time * 8)) * 0.08 - 0.04;
+
+                // Leg swing (pivoted cleanly from hip joint)
+                lerpRot(this.parts.legL, 'x', Math.sin(time * 8) * 0.65, 12);
+                lerpRot(this.parts.legR, 'x', Math.sin(time * 8 + Math.PI) * 0.65, 12);
+
+                // Arm swing
+                lerpRot(this.parts.armL, 'x', Math.sin(time * 8 + Math.PI) * 0.35, 10);
+                lerpRot(this.parts.armR, 'x', Math.sin(time * 8) * 0.35, 10);
+                
+                // Shield/Hammer alignment during move
+                lerpRot(this.parts.armL, 'z', -0.1, 8);
+                lerpRot(this.parts.armR, 'z', 0.1, 8);
+            } else {
+                // Idle posture
+                lerpRot(this.parts.torso, 'x', 0, 5);
+                lerpRot(this.parts.torso, 'y', Math.sin(time * 0.5) * 0.05, 5);
+                lerpRot(this.parts.torso, 'z', 0, 5);
+
+                lerpRot(this.parts.legL, 'x', 0, 8);
+                lerpRot(this.parts.legR, 'x', 0, 8);
+
+                // Idle arm sway
+                lerpRot(this.parts.armL, 'x', Math.sin(time * 1.5) * 0.03, 5);
+                lerpRot(this.parts.armL, 'z', -0.05 + Math.sin(time * 1.5) * 0.02, 5);
+                lerpRot(this.parts.armR, 'x', -Math.sin(time * 1.5) * 0.03, 5);
+                lerpRot(this.parts.armR, 'z', 0.05 - Math.sin(time * 1.5) * 0.02, 5);
+            }
         }
         else if (this.enemy.animState === 'windup_smash') {
-            lerpRot(this.parts.armR, 'x', -Math.PI + 0.5, 10); 
-            lerpRot(this.parts.armR, 'z', 0.5, 10);
-            lerpRot(this.parts.torso, 'x', -0.4, 10);
+            // Windup: raise hammer high, tilt body back
+            lerpRot(this.parts.armR, 'x', -Math.PI - 0.4, 15); 
+            lerpRot(this.parts.armR, 'z', -0.3, 15);
+            lerpRot(this.parts.torso, 'x', -0.35, 12);
+            lerpRot(this.parts.armL, 'x', 0.5, 12); // lower shield
+            this.parts.torso.position.y = 1.12; // stretch upwards
         }
         else if (this.enemy.animState === 'strike_smash') {
-            lerpRot(this.parts.armR, 'x', 1.0, 20); 
-            lerpRot(this.parts.torso, 'x', 0.5, 20);
+            // Strike: slam down rapidly, compress body
+            lerpRot(this.parts.armR, 'x', 0.95, 26); 
+            lerpRot(this.parts.torso, 'x', 0.5, 26);
+            lerpRot(this.parts.torso, 'y', 0.2, 26);
+            this.parts.torso.position.y = 0.86; // heavy impact squash
         }
         else if (this.enemy.animState === 'windup_charge') {
-            lerpRot(this.parts.torso, 'x', 0.6, 15);
-            lerpRot(this.parts.armL, 'x', -0.5, 15);
-            lerpRot(this.parts.armL, 'y', 1.0, 15);
+            // Lean forward, shield in front, hammer back
+            lerpRot(this.parts.torso, 'x', 0.52, 16);
+            lerpRot(this.parts.armL, 'x', -0.78, 16);
+            lerpRot(this.parts.armL, 'y', 0.4, 16);
+            lerpRot(this.parts.armR, 'x', 0.55, 16);
         }
         else if (this.enemy.animState === 'charge_loop') {
-            lerpRot(this.parts.torso, 'x', 0.8, 10);
-            lerpRot(this.parts.legL, 'x', Math.sin(time * 20) * 1.0, 20);
-            lerpRot(this.parts.legR, 'x', Math.sin(time * 20 + Math.PI) * 1.0, 20);
+            // Tilt torso forward heavily
+            lerpRot(this.parts.torso, 'x', 0.62, 12);
+            // Pump legs fast
+            lerpRot(this.parts.legL, 'x', Math.sin(time * 24) * 0.95, 24);
+            lerpRot(this.parts.legR, 'x', Math.sin(time * 24 + Math.PI) * 0.95, 24);
+            // High frequency vibration/bobbing during charge
+            this.parts.torso.position.y = 0.96 + Math.sin(time * 48) * 0.05;
         }
         else if (this.enemy.animState === 'windup_bash') {
-            lerpRot(this.parts.torso, 'y', -0.5, 15);
-            lerpRot(this.parts.armL, 'z', -0.5, 15);
-            lerpRot(this.parts.armL, 'y', 0, 15);
+            // Windup: pull shield arm back, rotate torso away
+            lerpRot(this.parts.torso, 'y', -0.55, 16);
+            lerpRot(this.parts.armL, 'z', -0.45, 16);
+            lerpRot(this.parts.armL, 'y', 0, 16);
         }
         else if (this.enemy.animState === 'strike_bash') {
-            lerpRot(this.parts.torso, 'y', 0.8, 25);
-            lerpRot(this.parts.armL, 'z', 0.8, 25);
-            lerpRot(this.parts.armL, 'x', -0.5, 25);
+            // Strike: snap torso and shield forward
+            lerpRot(this.parts.torso, 'y', 0.65, 26);
+            lerpRot(this.parts.armL, 'z', 0.75, 26);
+            lerpRot(this.parts.armL, 'x', -0.55, 26);
         }
     }
 }

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import * as THREE from 'three';
 import { Globals, removeEnemy, GameActions } from '../../core/globals';
 import { pushOutOfSafeZone, BOSS_ZONE, pushOutOfCircle } from '../world/worldZones';
 import { STATE, CONFIG } from '../../core/config';
@@ -62,6 +63,11 @@ export class BaseEnemy extends THREE.Group {
         this.position.y = 0;
         this.mesh = null;
         this.flashTimeout = null;
+        this.displayHp = this.hp;
+        this.displayBarrier = 0;
+        this.hpBarNeedsUpdate = false;
+        this.isDying = false;
+        this.deathAnimDone = false;
     }
 
     setupMesh(geo, mat, scale = 1) {
@@ -73,6 +79,10 @@ export class BaseEnemy extends THREE.Group {
     }
 
     update(dt) {
+        if (this.isDying) {
+            this.updateDeathAnimation(dt);
+            return;
+        }
         if(this.dead) return;
         
         // Vertical physics (gravity and air height)
@@ -146,17 +156,34 @@ export class BaseEnemy extends THREE.Group {
                     tickMiniBossCombat(this, dt);
                 }
                 updateMiniBossUi(this, dt, Globals.camera);
-            } else if (this.hudGroup) {
-                if (this.barrierBar && this.maxBarrierHp > 0) {
-                    const showBarrier = this.barrierHp > 0;
-                    this.barrierBar.visible = showBarrier;
-                    if (this.barrierBarBg) this.barrierBarBg.visible = showBarrier;
-                    if (showBarrier) {
-                        this.barrierBar.scale.x = Math.max(0, this.barrierHp / this.maxBarrierHp);
-                    }
+            } else {
+                if (!this.hudGroup && this.type !== 'royal_seal' && this.type !== 'void_altar') {
+                    const customColor = this.type === 'corrupted' ? 0xd946ef : null;
+                    this.setupHealthBar(customColor);
                 }
-                if (this.hpBar) this.hpBar.scale.x = Math.max(0, this.hp / this.maxHp);
-                this.hudGroup.lookAt(Globals.camera.position);
+                if (this.hudGroup) {
+                    // Position dynamically above the head if the model has a head part defined
+                    let targetY = this.scaleVal * (this.type === 'corrupted' ? 1.95 : 1.8);
+                    if (this.model && this.model.parts && this.model.parts.head) {
+                        const headWorldPos = new THREE.Vector3();
+                        this.model.parts.head.getWorldPosition(headWorldPos);
+                        targetY = (headWorldPos.y - this.position.y) + (0.45 * this.scaleVal);
+                    }
+                    this.hudGroup.position.y = targetY;
+
+                    if (this.hpBarCanvas && (this.displayHp !== this.hp || (this.maxBarrierHp > 0 && this.displayBarrier !== this.barrierHp) || this.hpBarNeedsUpdate)) {
+                        this.displayHp = THREE.MathUtils.lerp(this.displayHp, this.hp, Math.min(1, dt * 7.0));
+                        if (Math.abs(this.displayHp - this.hp) < 0.2) this.displayHp = this.hp;
+
+                        if (this.maxBarrierHp > 0) {
+                            this.displayBarrier = THREE.MathUtils.lerp(this.displayBarrier, this.barrierHp, Math.min(1, dt * 7.0));
+                            if (Math.abs(this.displayBarrier - this.barrierHp) < 0.2) this.displayBarrier = this.barrierHp;
+                        }
+
+                        this.drawHealthBar();
+                    }
+                    this.hudGroup.lookAt(Globals.camera.position);
+                }
             }
         }
 
@@ -377,12 +404,12 @@ export class BaseEnemy extends THREE.Group {
 
     die() {
         this.clearActiveTelegraphs();
+        this.disposeHealthBar();
 
         // --- CLIENT : MORT VISUELLE UNIQUEMENT ---
         if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
             if (!this.dead) { 
                 this.dead = true; 
-                this.visible = false; 
                 if (this._markVisual) {
                     this.remove(this._markVisual);
                     this._markVisual.traverse?.(child => {
@@ -396,7 +423,7 @@ export class BaseEnemy extends THREE.Group {
                     if (this._markVisual.material) this._markVisual.material.dispose();
                     this._markVisual = null;
                 }
-                spawnParticles(this.position, 0xffffff, 10);
+                if (AudioSys.sfx.hit) AudioSys.sfx.hit();
             }
             return; 
         }
@@ -450,8 +477,6 @@ export class BaseEnemy extends THREE.Group {
                 });
             }
         }
-
-        Globals.scene.remove(this); 
         
         const xpAmount = this._overrideXp ?? 35;
         if(GameActions.gainXp) GameActions.gainXp(xpAmount);
@@ -459,9 +484,244 @@ export class BaseEnemy extends THREE.Group {
         
         STATE.enemiesKilled++;
         PassiveKeystoneHooks.onEnemyKilledByPlayer();
-        removeEnemy(this);
         
-        spawnParticles(this.position, 0xffffff, 10);
-        if(AudioSys.sfx.hit) AudioSys.sfx.hit();
+        if (AudioSys.sfx.hit) AudioSys.sfx.hit();
+    }
+
+    setupHealthBar(color = null) {
+        if (this.hudGroup) {
+            this.remove(this.hudGroup);
+        }
+
+        this.hudGroup = new THREE.Group();
+        const heightMult = this.type === 'corrupted' ? 1.95 : 1.8;
+        this.hudGroup.position.y = this.scaleVal * heightMult;
+        this.add(this.hudGroup);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+
+        const geometry = new THREE.PlaneGeometry(1.2, 0.15);
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            depthWrite: false
+        });
+
+        this.hpBarMesh = new THREE.Mesh(geometry, material);
+        this.hudGroup.add(this.hpBarMesh);
+
+        this.hpBarCanvas = canvas;
+        this.hpBarCtx = ctx;
+        this.hpBarTexture = texture;
+        this.hpBarColor = color;
+        this.displayHp = this.hp;
+        this.displayBarrier = this.barrierHp;
+        this.hpBarNeedsUpdate = true;
+        this.drawHealthBar();
+    }
+
+    drawHealthBar() {
+        if (!this.hpBarCanvas || !this.hpBarCtx) return;
+
+        const ctx = this.hpBarCtx;
+        const w = this.hpBarCanvas.width;
+        const h = this.hpBarCanvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Draw Background
+        const r = 8;
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(w - r, 0);
+        ctx.quadraticCurveTo(w, 0, w, r);
+        ctx.lineTo(w, h - r);
+        ctx.quadraticCurveTo(w, h, w - r, h);
+        ctx.lineTo(r, h);
+        ctx.quadraticCurveTo(0, h, 0, h - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+        ctx.fill();
+
+        // Outer border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        const pad = 3;
+        const innerW = w - pad * 2;
+        const innerH = h - pad * 2;
+        const innerR = r - 2;
+
+        const hpPct = Math.max(0, Math.min(1, this.hp / this.maxHp));
+        const displayHpPct = Math.max(0, Math.min(1, this.displayHp / this.maxHp));
+
+        // 2. Draw Catch-up / Trailing damage bar
+        if (displayHpPct > hpPct) {
+            const tw = innerW * displayHpPct;
+            ctx.beginPath();
+            ctx.moveTo(pad + innerR, pad);
+            ctx.lineTo(pad + tw - innerR, pad);
+            ctx.quadraticCurveTo(pad + tw, pad, pad + tw, pad + innerR);
+            ctx.lineTo(pad + tw, pad + innerH - innerR);
+            ctx.quadraticCurveTo(pad + tw, pad + innerH, pad + tw - innerR, pad + innerH);
+            ctx.lineTo(pad + innerR, pad + innerH);
+            ctx.quadraticCurveTo(pad, pad + innerH, pad, pad + innerH - innerR);
+            ctx.lineTo(pad, pad + innerR);
+            ctx.quadraticCurveTo(pad, pad, pad + innerR, pad);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(240, 240, 245, 0.85)';
+            ctx.fill();
+        }
+
+        // 3. Draw main health bar
+        if (hpPct > 0) {
+            const hw = innerW * hpPct;
+            ctx.beginPath();
+            ctx.moveTo(pad + innerR, pad);
+            ctx.lineTo(pad + hw - innerR, pad);
+            ctx.quadraticCurveTo(pad + hw, pad, pad + hw, pad + innerR);
+            ctx.lineTo(pad + hw, pad + innerH - innerR);
+            ctx.quadraticCurveTo(pad + hw, pad + innerH, pad + hw - innerR, pad + innerH);
+            ctx.lineTo(pad + innerR, pad + innerH);
+            ctx.quadraticCurveTo(pad, pad + innerH, pad, pad + innerH - innerR);
+            ctx.lineTo(pad, pad + innerR);
+            ctx.quadraticCurveTo(pad, pad, pad + innerR, pad);
+            ctx.closePath();
+
+            const g = ctx.createLinearGradient(pad, pad, pad + hw, pad);
+            if (this.hpBarColor === 0xd946ef || this.hpBarColor === '#d946ef') {
+                g.addColorStop(0, '#c084fc');
+                g.addColorStop(1, '#a855f7');
+            } else {
+                g.addColorStop(0, '#ff5e62');
+                g.addColorStop(1, '#ff9966');
+            }
+            ctx.fillStyle = g;
+            ctx.fill();
+
+            // Glossy sheen overlay
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(pad, pad, hw, innerH / 2);
+        }
+
+        // 4. Draw barrier bar (if any)
+        if (this.maxBarrierHp > 0 && this.barrierHp > 0) {
+            const barrierPct = Math.max(0, Math.min(1, this.barrierHp / this.maxBarrierHp));
+            const bw = innerW * barrierPct;
+            ctx.beginPath();
+            ctx.moveTo(pad + innerR, pad);
+            ctx.lineTo(pad + bw - innerR, pad);
+            ctx.quadraticCurveTo(pad + bw, pad, pad + bw, pad + innerR);
+            ctx.lineTo(pad + bw, pad + innerH - innerR);
+            ctx.quadraticCurveTo(pad + bw, pad + innerH, pad + bw - innerR, pad + innerH);
+            ctx.lineTo(pad + innerR, pad + innerH);
+            ctx.quadraticCurveTo(pad, pad + innerH, pad, pad + innerH - innerR);
+            ctx.lineTo(pad, pad + innerR);
+            ctx.quadraticCurveTo(pad, pad, pad + innerR, pad);
+            ctx.closePath();
+
+            const g = ctx.createLinearGradient(pad, pad, pad + bw, pad);
+            g.addColorStop(0, '#38bdf8');
+            g.addColorStop(1, '#0284c7');
+            ctx.fillStyle = g;
+            ctx.fill();
+        }
+
+        this.hpBarTexture.needsUpdate = true;
+        this.hpBarNeedsUpdate = false;
+    }
+
+    disposeHealthBar() {
+        if (this.hudGroup) {
+            this.remove(this.hudGroup);
+        }
+        if (this.hpBarMesh) {
+            if (this.hpBarMesh.geometry) this.hpBarMesh.geometry.dispose();
+            if (this.hpBarMesh.material) {
+                if (this.hpBarMesh.material.map) this.hpBarMesh.material.map.dispose();
+                this.hpBarMesh.material.dispose();
+            }
+            this.hpBarMesh = null;
+        }
+        this.hpBarCanvas = null;
+        this.hpBarCtx = null;
+        this.hpBarTexture = null;
+        this.hudGroup = null;
+    }
+
+    startDeathAnimation() {
+        this.isDying = true;
+        this.deathTimer = 0;
+        this._smokeEmitted = 0;
+        
+        this.disposeHealthBar();
+        this.clearActiveTelegraphs();
+
+        if (this.mesh) {
+            this.mesh.traverse(child => {
+                if (child.isMesh && child.material) {
+                    const makeTransparent = (mat) => {
+                        mat.transparent = true;
+                        mat.needsUpdate = true;
+                    };
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(makeTransparent);
+                    } else {
+                        makeTransparent(child.material);
+                    }
+                }
+            });
+        }
+    }
+
+    updateDeathAnimation(dt) {
+        this.deathTimer += dt;
+        const duration = 1.0;
+        const progress = Math.min(1.0, this.deathTimer / duration);
+        const opacity = 1.0 - progress;
+
+        if (this.mesh) {
+            this.mesh.traverse(child => {
+                if (child.isMesh && child.material) {
+                    const setOpacity = (mat) => {
+                        mat.opacity = opacity;
+                    };
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(setOpacity);
+                    } else {
+                        setOpacity(child.material);
+                    }
+                }
+            });
+
+            this.mesh.position.y += dt * 0.8;
+            this.mesh.scale.setScalar(this.scaleVal * (1.0 - progress * 0.4));
+        }
+
+        const smokeColor = this.type === 'corrupted' ? 0xd946ef 
+                         : (this.type === 'warlock' ? 0x8e44ad
+                         : (this.type === 'sentinel' ? 0x888888 : 0x444444));
+        this._smokeEmitted += dt;
+        if (this._smokeEmitted >= 0.08 && progress < 0.95) {
+            this._smokeEmitted = 0;
+            const particlePos = this.position.clone();
+            particlePos.y += 0.5 + Math.random() * 0.8;
+            particlePos.x += (Math.random() - 0.5) * 0.5;
+            particlePos.z += (Math.random() - 0.5) * 0.5;
+            spawnParticles(particlePos, smokeColor, 1);
+        }
+
+        if (progress >= 1.0) {
+            this.deathAnimDone = true;
+        }
     }
 }

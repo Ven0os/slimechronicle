@@ -122,7 +122,14 @@ export function spawnParticles(pos, color, count, sizeMult = 1.0) {
 }
 
 export function createTelegraph(pos, shape, size, duration, color, onComplete, rotationY = 0, isRemote = false) {
-    let mesh;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0.05; // Slightly above ground
+    
+    // Set the group's rotation. Since rotationY is Math.atan2(dir.x, dir.z),
+    // rotating around Y aligns the local Z axis with the target direction.
+    group.rotation.y = rotationY;
+
     const mat = new THREE.MeshBasicMaterial({ 
         color: color, 
         transparent: true, 
@@ -130,42 +137,54 @@ export function createTelegraph(pos, shape, size, duration, color, onComplete, r
         side: THREE.DoubleSide,
         depthWrite: false
     });
+    group.material = mat;
 
     if (shape === 'circle') {
-        mesh = new THREE.Mesh(new THREE.RingGeometry(size * 0.95, size, 32), mat);
-        mesh.rotation.x = -Math.PI / 2;
-        const fillMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 32), new THREE.MeshBasicMaterial({color: color, transparent: true, opacity: 0.1}));
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(size * 0.95, size, 32), mat);
+        ringMesh.rotation.x = -Math.PI / 2;
+        group.add(ringMesh);
+        
+        const fillMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 32), new THREE.MeshBasicMaterial({
+            color: color, 
+            transparent: true, 
+            opacity: 0.1
+        }));
         fillMesh.rotation.x = -Math.PI / 2;
-        fillMesh.position.y = 0.01;
-        mesh.add(fillMesh);
-        mesh.fill = fillMesh;
+        fillMesh.position.y = 0.005;
+        group.add(fillMesh);
+        group.fill = fillMesh;
     } 
     else if (shape === 'rect') {
-        mesh = new THREE.Mesh(new THREE.PlaneGeometry(size.x, size.y), mat);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.rotation.z = -rotationY + Math.PI/2; 
-        mesh.translateY(size.y / 2); 
+        const rectMesh = new THREE.Mesh(new THREE.PlaneGeometry(size.x, size.y), mat);
+        rectMesh.rotation.x = -Math.PI / 2;
+        // In local group coordinates, +Z is target direction.
+        // A PlaneGeometry is flat on XZ. Its width is X and its length is Z.
+        // It is already perfectly aligned with the target direction.
+        group.add(rectMesh);
     }
     else if (shape === 'cone') {
-        mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 32, 0, Math.PI/3), mat); 
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.rotation.z = -rotationY - Math.PI/6; 
+        const sweepAngle = Math.PI / 3; // 60 degrees
+        const coneMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 32, 0, sweepAngle), mat); 
+        coneMesh.rotation.x = -Math.PI / 2;
+        // The circle sector starts at 0 (along local +X) and goes to sweepAngle.
+        // Its center is at sweepAngle / 2.
+        // We want the center of the sector to point along local +Z (which is at -Math.PI / 2 on the flat plane).
+        // Therefore, we rotate by -Math.PI / 2 - sweepAngle / 2.
+        coneMesh.rotation.z = -Math.PI / 2 - sweepAngle / 2;
+        group.add(coneMesh);
     }
 
-    if (!mesh) return;
+    Globals.scene.add(group);
 
-    mesh.position.copy(pos);
-    mesh.position.y = 0.05; 
-    Globals.scene.add(mesh);
-
-    mesh.userData = {
+    group.userData = {
         timer: duration,
         maxTimer: duration,
         onComplete: onComplete
     };
     
     Globals.telegraphs = Globals.telegraphs || [];
-    Globals.telegraphs.push(mesh);
+    Globals.telegraphs.push(group);
+    return group;
 }
 
 export function updateTelegraphs(dt) {
@@ -179,15 +198,23 @@ export function updateTelegraphs(dt) {
             const progress = 1 - (t.userData.timer / t.userData.maxTimer);
             t.fill.scale.setScalar(progress);
             t.fill.material.opacity = 0.1 + (progress * 0.4);
-        } else {
+        } else if (t.material) {
             t.material.opacity = 0.3 + Math.sin(Date.now() * 0.02) * 0.2;
         }
 
         if (t.userData.timer <= 0) {
             if (t.userData.onComplete) t.userData.onComplete();
             Globals.scene.remove(t);
-            if(t.geometry) t.geometry.dispose();
-            if(t.material) t.material.dispose();
+            
+            // Dispose children geometries/materials recursively to prevent memory leaks
+            t.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            });
+            
             Globals.telegraphs.splice(i, 1);
         }
     }
@@ -391,5 +418,245 @@ export function createSkillVisual(type, pos, size, color, dir) {
         spawnParticles(pos, 0xffaa00, 10);
         spawnParticles(pos, 0x444444, 8); // grey smoke
         spawnParticles(pos, 0x222222, 8); // dark smoke
+    }
+    else if (type === 'vortex') {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        Globals.scene.add(group);
+
+        const spikeMat = new THREE.MeshStandardMaterial({
+            color: 0x110722, // Dark obsidian
+            emissive: 0x7b2cbf, // Glowing purple edges
+            emissiveIntensity: 2.5,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+
+        const numSpikes = 6 + Math.floor(Math.random() * 4);
+        const spikes = [];
+
+        for (let i = 0; i < numSpikes; i++) {
+            const angle = (i / numSpikes) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+            const dist = Math.random() * (size * 0.75);
+            
+            const height = 1.2 + Math.random() * 1.5;
+            const radius = 0.15 + Math.random() * 0.25;
+            const geo = new THREE.ConeGeometry(radius, height, 4); // Faceted crystal prism
+            
+            const mesh = new THREE.Mesh(geo, spikeMat);
+            
+            // Start below ground
+            mesh.position.set(Math.cos(angle) * dist, -height * 0.8, Math.sin(angle) * dist);
+            // Random slant
+            mesh.rotation.x = (Math.random() - 0.5) * 0.4;
+            mesh.rotation.z = (Math.random() - 0.5) * 0.4;
+            mesh.rotation.y = Math.random() * Math.PI;
+
+            group.add(mesh);
+            spikes.push({
+                mesh: mesh,
+                targetY: height / 2, // fully emerged Y position
+                height: height
+            });
+        }
+
+        // Emit dense particles on emergence
+        spawnParticles(pos, 0x9d4edd, 15);
+        spawnParticles(pos, 0x00ffff, 10);
+
+        const duration = 1.5; // Spikes persist for 1.5s
+        let elapsed = 0;
+
+        const animateSpikes = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+
+            spikes.forEach(s => {
+                // Rising phase (first 15% of duration)
+                if (progress < 0.15) {
+                    const t = progress / 0.15;
+                    const currentY = THREE.MathUtils.lerp(-s.height * 0.8, s.targetY, Math.sin(t * Math.PI / 2));
+                    s.mesh.position.y = currentY;
+                }
+                // Sinking phase (last 20% of duration)
+                else if (progress > 0.8) {
+                    const t = (progress - 0.8) / 0.2;
+                    s.mesh.position.y = THREE.MathUtils.lerp(s.targetY, -s.height * 0.9, t);
+                    s.mesh.scale.setScalar(Math.max(0.001, 1.0 - t));
+                }
+                // Middle phase (vibrating slightly with void energy)
+                else {
+                    s.mesh.position.y = s.targetY + Math.sin(elapsed * 25) * 0.02;
+                }
+            });
+
+            if (progress >= 1.0) {
+                Globals.scene.remove(group);
+                spikes.forEach(s => {
+                    s.mesh.geometry.dispose();
+                });
+                spikeMat.dispose();
+            } else {
+                requestAnimationFrame(animateSpikes);
+            }
+        };
+
+        animateSpikes();
+    }
+    else if (type === 'beam') {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        
+        // Orient the beam group in target direction
+        if (dir) {
+            const angle = Math.atan2(dir.x, dir.z);
+            group.rotation.y = angle;
+        }
+        Globals.scene.add(group);
+
+        const length = size;
+        const beamRadius = 0.5;
+
+        // Core cylinder (white glowing hot center)
+        const coreGeo = new THREE.CylinderGeometry(beamRadius * 0.4, beamRadius * 0.4, length, 8);
+        coreGeo.rotateX(Math.PI / 2); // align along Z axis
+        coreGeo.translate(0, 0, length / 2); // offset pivot to start at origin
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        group.add(coreMesh);
+
+        // Outer shield cylinder (purple plasma energy)
+        const shieldGeo = new THREE.CylinderGeometry(beamRadius, beamRadius, length, 12);
+        shieldGeo.rotateX(Math.PI / 2);
+        shieldGeo.translate(0, 0, length / 2);
+        const shieldMat = new THREE.MeshStandardMaterial({ 
+            color: 0x9d4edd, 
+            emissive: 0xbd00ff, 
+            emissiveIntensity: 3.5, 
+            transparent: true, 
+            opacity: 0.5 
+        });
+        const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+        group.add(shieldMesh);
+
+        // Add 4 orbiting golden energy rings along the length of the beam
+        const ringGeo = new THREE.TorusGeometry(beamRadius * 1.3, 0.03, 4, 16);
+        const rings = [];
+        for (let i = 0; i < 4; i++) {
+            const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 }));
+            ring.position.z = (i / 3) * length;
+            group.add(ring);
+            rings.push(ring);
+        }
+
+        const duration = 0.6; // beam channels/blasts for 0.6 seconds
+        let elapsed = 0;
+
+        const animateBeam = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+
+            if (progress >= 1.0) {
+                Globals.scene.remove(group);
+                coreGeo.dispose();
+                coreMat.dispose();
+                shieldGeo.dispose();
+                shieldMat.dispose();
+                ringGeo.dispose();
+                rings.forEach(r => r.material.dispose());
+            } else {
+                // Pulse size
+                const pulse = 1.0 + Math.sin(elapsed * 50) * 0.15;
+                shieldMesh.scale.set(pulse, pulse, 1.0);
+                coreMesh.scale.set(pulse, pulse, 1.0);
+                
+                // Fade out
+                shieldMat.opacity = (1.0 - progress) * 0.65;
+                coreMat.opacity = (1.0 - progress) * 0.95;
+
+                // Spin and move rings
+                rings.forEach((r, idx) => {
+                    r.rotation.z += 0.1;
+                    r.material.opacity = (1.0 - progress) * 0.8;
+                    r.position.x = Math.sin(elapsed * 30 + idx) * 0.05;
+                    r.position.y = Math.cos(elapsed * 30 + idx) * 0.05;
+                });
+
+                // Spawn particles along the beam path
+                if (Math.random() < 0.4) {
+                    const randDist = Math.random() * length;
+                    const pPos = pos.clone().add(dir.clone().multiplyScalar(randDist));
+                    pPos.y += (Math.random() - 0.5) * 0.5;
+                    spawnParticles(pPos, 0xbd00ff, 1);
+                }
+
+                requestAnimationFrame(animateBeam);
+            }
+        };
+        animateBeam();
+    }
+    else if (type === 'meteor') {
+        const targetPos = pos.clone();
+        const startHeight = 15.0;
+        const meteorPos = targetPos.clone().add(new THREE.Vector3(0, startHeight, 0));
+        
+        // Deformed rock mesh
+        const rockGeo = new THREE.DodecahedronGeometry(0.6, 1);
+        const rockMat = new THREE.MeshStandardMaterial({
+            color: 0x1a0f2e,
+            emissive: 0x9d4edd,
+            emissiveIntensity: 1.5,
+            roughness: 0.8
+        });
+        const rock = new THREE.Mesh(rockGeo, rockMat);
+        rock.position.copy(meteorPos);
+        Globals.scene.add(rock);
+
+        // Core glow
+        const glowGeo = new THREE.SphereGeometry(0.8, 16, 16);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xc77dff, transparent: true, opacity: 0.3 });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        rock.add(glow);
+
+        const duration = 0.55; // fall speed
+        let elapsed = 0;
+        
+        const fall = () => {
+            elapsed += 0.016;
+            const t = Math.min(elapsed / duration, 1.0);
+            
+            // Linear descent
+            rock.position.y = targetPos.y + startHeight * (1.0 - t);
+            
+            // Rotation during fall
+            rock.rotation.x += 0.08;
+            rock.rotation.y += 0.05;
+
+            // Spawn fire/smoke trail particles
+            if (Math.random() < 0.6) {
+                spawnParticles(rock.position.clone().add(new THREE.Vector3(
+                    (Math.random()-0.5)*0.2,
+                    0.3,
+                    (Math.random()-0.5)*0.2
+                )), 0x7b2cbf, 1);
+            }
+
+            if (t >= 1.0) {
+                // Impact!
+                Globals.scene.remove(rock);
+                rockGeo.dispose();
+                rockMat.dispose();
+                glowGeo.dispose();
+                glowMat.dispose();
+
+                // Trigger callback
+                if (dir && typeof dir === 'function') {
+                    dir();
+                }
+            } else {
+                requestAnimationFrame(fall);
+            }
+        };
+        fall();
     }
 }

@@ -60,11 +60,6 @@ export class Sentinel extends BaseEnemy {
         this.updateMoveSpeed(dt);
         this.model.updateAnim(dt);
 
-        if (this.hudGroup && Globals.camera) {
-            this.hpBar.scale.x = Math.max(0, this.hp / this.maxHp);
-            this.hudGroup.lookAt(Globals.camera.position); 
-        }
-
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
             if (this.isAttacking) { } 
             else if (target) {

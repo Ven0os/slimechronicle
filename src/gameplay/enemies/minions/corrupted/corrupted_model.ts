@@ -170,47 +170,7 @@ export class CorruptedModel {
 
         this.enemy.add(this.enemy.mesh);
 
-        this.setupHealthBar();
-
         Globals.scene.add(this.enemy);
-
-    }
-
-
-
-    setupHealthBar() {
-
-        this.enemy.hudGroup = new THREE.Group();
-
-        this.enemy.hudGroup.position.y = this.enemy.scaleVal * 1.95;
-
-        this.enemy.add(this.enemy.hudGroup);
-
-
-
-        const bg = new THREE.Mesh(
-
-            new THREE.PlaneGeometry(1.3, 0.14),
-
-            new THREE.MeshBasicMaterial({ color: 0x000000 })
-
-        );
-
-        this.enemy.hudGroup.add(bg);
-
-
-
-        this.enemy.hpBar = new THREE.Mesh(
-
-            new THREE.PlaneGeometry(1.3, 0.14),
-
-            new THREE.MeshBasicMaterial({ color: CORRUPT_HP_BAR })
-
-        );
-
-        this.enemy.hpBar.position.z = 0.01;
-
-        this.enemy.hudGroup.add(this.enemy.hpBar);
 
     }
 

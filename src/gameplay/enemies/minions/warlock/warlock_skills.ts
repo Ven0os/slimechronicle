@@ -32,13 +32,39 @@ export class WarlockSkills {
         setTimeout(() => {
             if (this.enemy.dead) return;
             const dir = target.position.clone().sub(this.enemy.position).normalize();
-            const startPos = this.enemy.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(dir.multiplyScalar(0.5));
-            const projGeo = new THREE.TorusKnotGeometry(0.25, 0.08, 64, 8);
-            const projMat = new THREE.MeshStandardMaterial({ color: 0x220022, emissive: 0xbd00ff, emissiveIntensity: 2.0 });
-            Globals.projectiles.push(new Projectile(projGeo, projMat, startPos, dir, cfg.speed, cfg.damage, 'enemy', 0xbd00ff));
-            const proj = Globals.projectiles[Globals.projectiles.length - 1];
+            const startPos = this.enemy.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(dir.clone().multiplyScalar(0.5));
+            
+            // Premium projectile geometry (sphere core)
+            const projGeo = new THREE.SphereGeometry(0.18, 16, 16);
+            const projMat = new THREE.MeshStandardMaterial({ color: 0x240046, emissive: 0x9d4edd, emissiveIntensity: 3.0 });
+            const proj = new Projectile(projGeo, projMat, startPos, dir, cfg.speed, cfg.damage, 'enemy', 0xbd00ff);
+            
+            // Add a floating orbiting gold ring and smaller glowing crystal shards around the main orb
+            const orbRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.32, 0.03, 4, 16), 
+                new THREE.MeshStandardMaterial({
+                    color: 0xffb703,
+                    metalness: 0.9,
+                    roughness: 0.1,
+                    emissive: 0xffaa00,
+                    emissiveIntensity: 0.5
+                })
+            );
+            orbRing.rotation.x = Math.PI / 2;
+            proj.mesh.add(orbRing);
+            
+            const shardL = new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+            shardL.position.set(-0.36, 0, 0);
+            proj.mesh.add(shardL);
+
+            const shardR = new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
+            shardR.position.set(0.36, 0, 0);
+            proj.mesh.add(shardR);
+
             proj.sourceEnemy = this.enemy;
             proj.isAbility = true;
+            Globals.projectiles.push(proj);
+
             this.enemy.isAttacking = false;
             this.enemy.animState = 'idle';
         }, cfg.castTime * 1000); 
@@ -53,18 +79,21 @@ export class WarlockSkills {
         const zonePos = target.position.clone();
         zonePos.y = 0;
         this.spawnTelegraphNetwork(zonePos, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
-            createSkillVisual('vortex', zonePos, cfg.radius, 0x8e44ad);
-            if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
-            getAllLivingPlayers().forEach((t) => {
-                if (zonePos.distanceTo(t.position) < cfg.radius) {
-                    const pull = zonePos.clone().sub(t.position).normalize().multiplyScalar(cfg.pullForce || 0);
-                    pull.y = 0;
-                    this.enemy.dealPlayerDamage(t, cfg.damage, {
-                        knockback: pull,
-                        stunDuration: cfg.stunDuration,
-                        isAbility: true,
-                    });
-                }
+            // Spawns meteor first, which on impact creates the vortex spikes and does damage!
+            createSkillVisual('meteor', zonePos, cfg.radius, 0x8e44ad, () => {
+                createSkillVisual('vortex', zonePos, cfg.radius, 0x8e44ad);
+                if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
+                getAllLivingPlayers().forEach((t) => {
+                    if (zonePos.distanceTo(t.position) < cfg.radius) {
+                        const pull = zonePos.clone().sub(t.position).normalize().multiplyScalar(cfg.pullForce || 0);
+                        pull.y = 0;
+                        this.enemy.dealPlayerDamage(t, cfg.damage, {
+                            knockback: pull,
+                            stunDuration: cfg.stunDuration,
+                            isAbility: true,
+                        });
+                    }
+                });
             });
             this.enemy.isAttacking = false;
             this.enemy.animState = 'idle';
