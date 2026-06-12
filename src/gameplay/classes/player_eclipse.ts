@@ -1163,7 +1163,6 @@ export class Eclipse extends PlayerBase {
                             dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
                             spawnParticles(e.position, 0xaa00ff, 5);
                         }
-                        e.pushBack(this.position, 1.5);
                     }
                 }
             });

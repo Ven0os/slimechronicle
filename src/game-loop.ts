@@ -83,7 +83,7 @@ window.Debug = {
     WorldEvents.spawnLightRitual(Globals.player.position.clone().add(new THREE.Vector3(0, 0, -15))),
   spawnGliderRun: () =>
     WorldEvents.spawnGliderRun(Globals.player.position.clone().add(new THREE.Vector3(10, 0, 10))),
-  spawnMiniBoss: (miniId = 'random') => GameLogic.spawnMiniBoss(miniId),
+  spawnMiniBoss: (miniId = 'random') => GameLogic.spawnMiniBoss(miniId as string),
 };
 
 createBoundaries();

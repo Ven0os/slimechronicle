@@ -89,6 +89,13 @@ export class BaseEnemy extends THREE.Group {
         }
         this.position.y = this.airY;
 
+        // Smooth knockback updates
+        this.knockback = this.knockback || new THREE.Vector3();
+        if (this.knockback.lengthSq() > 0.001) {
+            this.position.add(this.knockback.clone().multiplyScalar(dt));
+            this.knockback.multiplyScalar(Math.exp(-8 * dt)); // smooth exponential decay
+        }
+
         // Animate the 3D Eclipse Mark
         const mark = this.getObjectByName("eclipseMark");
         if (mark) {
@@ -187,15 +194,33 @@ export class BaseEnemy extends THREE.Group {
         this.position.y = this.airY || 0;
     }
 
-    pushBack(force) {
-        if (force && force instanceof THREE.Vector3) {
-            let f = force.clone();
-            if (this.isMiniBoss && this.miniBossStats?.knockbackResist) {
-                f.multiplyScalar(1 - this.miniBossStats.knockbackResist);
+    pushBack(forceOrPos, strength) {
+        if (!forceOrPos || !(forceOrPos instanceof THREE.Vector3)) return;
+        
+        let f;
+        if (typeof strength === 'number') {
+            // It's a position and a strength. Calculate the push direction away from the position.
+            const dir = this.position.clone().sub(forceOrPos);
+            dir.y = 0;
+            if (dir.lengthSq() > 0.0001) {
+                dir.normalize();
+            } else {
+                dir.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
             }
-            this.knockback.add(f);
-            this.position.add(f.clone().multiplyScalar(0.1));
+            f = dir.multiplyScalar(strength * 9.0); // scaled for smooth integration over dt
+        } else {
+            // It's a force vector directly
+            f = forceOrPos.clone();
         }
+
+        // Apply knockback resistance for mini-bosses
+        if (this.isMiniBoss && this.miniBossStats?.knockbackResist) {
+            f.multiplyScalar(1 - this.miniBossStats.knockbackResist);
+        }
+
+        // Add to the knockback velocity vector
+        this.knockback = this.knockback || new THREE.Vector3();
+        this.knockback.add(f);
     }
 
     dealPlayerDamage(target, baseAmount, opts = {}) {
