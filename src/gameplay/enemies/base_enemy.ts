@@ -430,6 +430,13 @@ export class BaseEnemy extends THREE.Group {
                 AudioSys.sfx.warrior.smash();
             }
             
+            // Give 10 sun and moon to eclipse player
+            if (Globals.player && Globals.player.className === 'eclipse' && Globals.player.eclipse) {
+                Globals.player.eclipse.sun = Math.min(100, Globals.player.eclipse.sun + 10);
+                Globals.player.eclipse.moon = Math.min(100, Globals.player.eclipse.moon + 10);
+                createDamageText("+10 SOLEIL/LUNE", this.position, '#aa00ff');
+            }
+            
             // Deal damage to other surrounding enemies
             if (Globals.enemies) {
                 Globals.enemies.forEach(other => {

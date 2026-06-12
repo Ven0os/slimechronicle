@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { PlayerBase } from '../player_base';
+import { UI } from '../../visual/ui';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
@@ -30,6 +31,8 @@ export class Eclipse extends PlayerBase {
         this.attackAnimTime = 0;
         this.dashComboCount = 0;
         this.dashShield = null;
+        this.ascensionTime = 0;
+        this._ascensionHpLossTriggered = false;
     }
 
     createArm(sideSign, voidMat, goldMat, silverMat, sunMat, moonMat) {
@@ -689,6 +692,29 @@ export class Eclipse extends PlayerBase {
             this.eclipse.active = true;
             createDamageText("ÉCLIPSE TOTALE", this.position, '#ffffff');
             createSkillVisual('shockwave', this.position, 6, 0xffffff);
+        }
+
+        if (this.isLocalPlayer() && this.eclipse.active) {
+            this.ascensionTime = (this.ascensionTime || 0) + dt;
+            if (this.ascensionTime >= 5.0) {
+                if (!this._ascensionHpLossTriggered) {
+                    this._ascensionHpLossTriggered = true;
+                    createDamageText("SURCHARGE", this.position, '#ff3300');
+                    createSkillVisual('shockwave', this.position, 4.0, 0xff3300);
+                    spawnParticles(this.position, 0xff3300, 25);
+                }
+                // Perdre 3 de vie par seconde
+                const hpLoss = 3 * dt;
+                this.hp = Math.max(0, this.hp - hpLoss);
+                if (this.hp <= 0 && !this.dead) {
+                    this.hp = 0;
+                    this.die();
+                }
+                UI.updateHUD();
+            }
+        } else if (!this.eclipse.active) {
+            this.ascensionTime = 0;
+            this._ascensionHpLossTriggered = false;
         }
 
         const resourceEl = document.getElementById('class-resource');
@@ -1464,7 +1490,7 @@ export class Eclipse extends PlayerBase {
 
             // Inner glowing translucent energy barrier
             const barrierGeo = new THREE.SphereGeometry(0.5, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-            barrierGeo.rotateX(-Math.PI / 2); // point dome forward
+            barrierGeo.rotateX(Math.PI / 2); // point dome forward
             const barrierMat = new THREE.MeshStandardMaterial({
                 color: 0xff5500,
                 transparent: true,
