@@ -324,9 +324,9 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     branches: [
       chain('eclipse', 'soleil', 'atk', 'Soleil', [
         { tier: 1, name: 'Éclat', desc: '+4 ATK', icon: 'fa-sun', cost: 1, effects: { atk: 4 } },
-        { tier: 2, name: 'Rayonnement', desc: '+10% Éclat Solaire', icon: 'fa-fire', cost: 1, effects: { skillMods: { space: 0.1 } } },
-        { tier: 3, name: 'Brasier', desc: '+3 ATK, +8% Éclat Solaire', icon: 'fa-meteor', cost: 1, effects: { atk: 3, skillMods: { space: 0.08 } } },
-        { tier: 4, name: 'Corona', desc: 'Passif : DoT solaire amplifié + rebonds', icon: 'fa-sun-plant-wilt', cost: 1, keystone: true, effects: { passive: 'solarFlare', passiveRank: 1 } },
+        { tier: 2, name: 'Rayonnement', desc: '+10% Fulgurance Solaire', icon: 'fa-fire', cost: 1, effects: { skillMods: { space: 0.1 } } },
+        { tier: 3, name: 'Brasier', desc: '+3 ATK, +8% Fulgurance Solaire', icon: 'fa-meteor', cost: 1, effects: { atk: 3, skillMods: { space: 0.08 } } },
+        { tier: 4, name: 'Corona', desc: 'Passif : DoT solaire amplifié', icon: 'fa-sun-plant-wilt', cost: 1, keystone: true, effects: { passive: 'solarFlare', passiveRank: 1 } },
       ]),
       chain('eclipse', 'lune', 'mst', 'Lune', [
         { tier: 1, name: 'Froid Lunaire', desc: '+6% Critique', icon: 'fa-moon', cost: 1, effects: { crit: 0.06 } },

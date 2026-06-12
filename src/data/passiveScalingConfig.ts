@@ -367,15 +367,10 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   solarFlare: {
-
     mechanics: () => [
-
-      'Éclat Solaire (Espace) : +2 rebonds max sur les cibles.',
-
+      'Fulgurance Solaire (Espace) : Dash en infligeant des dégâts aux ennemis traversés.',
       'Brûlure sur 3 ticks à 42 % des dégâts du coup (au lieu d\'1 tick à 30 %).',
-
     ],
-
   },
 
   lunarSpike: {

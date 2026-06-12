@@ -72,28 +72,50 @@ export function updateFloatingTexts(dt) {
     }
 }
 
-export function spawnParticles(pos, color, count) {
-    const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const mat = new THREE.MeshBasicMaterial({ color: color });
-
+export function spawnParticles(pos, color, count, sizeMult = 1.0) {
     for (let i = 0; i < count; i++) {
+        // Random shape: Box, Octahedron, or Tetrahedron for realistic debris shards
+        const size = (0.06 + Math.random() * 0.14) * sizeMult;
+        let geo;
+        const rand = Math.random();
+        if (rand < 0.4) {
+            geo = new THREE.BoxGeometry(size, size, size);
+        } else if (rand < 0.7) {
+            geo = new THREE.OctahedronGeometry(size, 0);
+        } else {
+            geo = new THREE.TetrahedronGeometry(size, 0);
+        }
+
+        const mat = new THREE.MeshBasicMaterial({ 
+            color: color,
+            transparent: true,
+            opacity: 0.95
+        });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(pos);
         
-        mesh.position.x += (Math.random() - 0.5);
-        mesh.position.y += (Math.random() - 0.5);
-        mesh.position.z += (Math.random() - 0.5);
+        // Randomize initial positions around origin
+        mesh.position.copy(pos);
+        mesh.position.x += (Math.random() - 0.5) * 0.4;
+        mesh.position.y += (Math.random() - 0.5) * 0.4;
+        mesh.position.z += (Math.random() - 0.5) * 0.4;
+
+        // Randomize starting rotation
+        mesh.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
 
         Globals.scene.add(mesh);
 
-        // VITESSE RÉDUITE ICI (Division par 3 environ par rapport à l'original)
+        // Randomize life and velocity vector for realistic dispersion physics
         Globals.particles.push({
             mesh: mesh,
-            life: 0.5 + Math.random() * 0.5,
+            life: 0.4 + Math.random() * 0.5,
             vel: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.8,  // Était 2.5
-                (Math.random() * 1.5),        // Était 2.5
-                (Math.random() - 0.5) * 0.8   // Était 2.5
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() * 1.5),
+                (Math.random() - 0.5) * 0.8
             )
         });
     }
@@ -258,5 +280,116 @@ export function createSkillVisual(type, pos, size, color, dir) {
             }
         };
         expand();
+    }
+    else if (type === 'explosion') {
+        // 1. Expanding and Color-Shifting Fireball
+        const geo = new THREE.SphereGeometry(0.2, 16, 16);
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(pos).add(new THREE.Vector3(0, 0.5, 0));
+        Globals.scene.add(mesh);
+
+        // 2. Shockwave ring at base
+        const ringGeo = new THREE.RingGeometry(0.1, 0.3, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.position.copy(pos).add(new THREE.Vector3(0, 0.05, 0));
+        ringMesh.rotation.x = -Math.PI / 2;
+        Globals.scene.add(ringMesh);
+
+        // 3. Spikes of light (energy rays radiating from center)
+        const raysGroup = new THREE.Group();
+        raysGroup.position.copy(pos).add(new THREE.Vector3(0, 0.5, 0));
+        const rayGeo = new THREE.CylinderGeometry(0, 0.08, size * 0.7, 4);
+        rayGeo.translate(0, size * 0.35, 0); // pivot at base
+        const rayMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending
+        });
+        for (let i = 0; i < 6; i++) {
+            const ray = new THREE.Mesh(rayGeo, rayMat);
+            ray.rotation.x = Math.random() * Math.PI * 2;
+            ray.rotation.y = Math.random() * Math.PI * 2;
+            ray.rotation.z = Math.random() * Math.PI * 2;
+            raysGroup.add(ray);
+        }
+        Globals.scene.add(raysGroup);
+
+        // Animate everything together
+        const maxLife = 0.45;
+        let life = maxLife;
+        const animate = () => {
+            life -= 0.016; // approx dt
+            const progress = life / maxLife; // 1.0 down to 0.0
+            const easeOut = 1 - Math.pow(progress, 3);
+
+            // Fireball updates
+            if (mesh.parent) {
+                const s = 0.2 + easeOut * (size * 1.2);
+                mesh.scale.set(s, s, s);
+                mesh.material.opacity = progress * 0.9;
+                
+                // Color transition from white -> orange -> dark purple/red
+                if (progress > 0.7) {
+                    mesh.material.color.setHex(0xffffff); // white hot
+                } else if (progress > 0.4) {
+                    mesh.material.color.lerpColors(new THREE.Color(0xffaa00), new THREE.Color(0xffffff), (progress - 0.4) / 0.3);
+                } else {
+                    mesh.material.color.lerpColors(new THREE.Color(0x3d0c02), new THREE.Color(0xffaa00), progress / 0.4);
+                }
+            }
+
+            // Ring updates
+            if (ringMesh.parent) {
+                const rs = 1.0 + easeOut * (size * 1.8);
+                ringMesh.scale.set(rs, rs, rs);
+                ringMesh.material.opacity = progress * 0.8;
+            }
+
+            // Rays updates
+            if (raysGroup.parent) {
+                raysGroup.scale.setScalar(0.2 + easeOut * 1.2);
+                rayMat.opacity = progress * 0.7;
+            }
+
+            if (life <= 0) {
+                if (mesh.parent) {
+                    Globals.scene.remove(mesh);
+                    mesh.geometry.dispose();
+                    mesh.material.dispose();
+                }
+                if (ringMesh.parent) {
+                    Globals.scene.remove(ringMesh);
+                    ringMesh.geometry.dispose();
+                    ringMesh.material.dispose();
+                }
+                if (raysGroup.parent) {
+                    Globals.scene.remove(raysGroup);
+                    rayGeo.dispose();
+                    rayMat.dispose();
+                }
+            } else {
+                requestAnimationFrame(animate);
+            }
+        };
+        animate();
+
+        // Spawn dense realistic particles (fire sparks, orange flame, black/grey smoke)
+        spawnParticles(pos, 0xff5500, 15);
+        spawnParticles(pos, 0xffaa00, 10);
+        spawnParticles(pos, 0x444444, 8); // grey smoke
+        spawnParticles(pos, 0x222222, 8); // dark smoke
     }
 }

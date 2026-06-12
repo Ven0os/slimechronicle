@@ -52,9 +52,9 @@ export const CONFIG = {
             e: { name: "Frénésie", desc: "Active le pistolet.\nTirs rapides à chance de critique accrue." }
         },
         eclipse: {
-            passive: { name: "Balance Astrale", desc: "Alterne attaques Solaires et Lunaires.\nSoleil : dégâts sur la durée · Lune : burst et ralentissement." },
-            space: { name: "Éclat Solaire", desc: "Orbe ricochant jusqu'à 5 cibles.\nImmunité au rebond : 0,25 s." },
-            shift: { name: "Pic de Lune", desc: "Burst de zone.\nEmpale et ralentit les ennemis." },
+            passive: { name: "Balance Astrale", desc: "Alterne les balayages Solaires et Lunaires en mêlée.\nSoleil : DoT de feu · Lune : drain de vie." },
+            space: { name: "Fulgurance Solaire", desc: "Dash rapide à travers les ennemis en infligeant des dégâts de feu.\nImmunité pendant la course." },
+            shift: { name: "Pic de Lune", desc: "Écrase l'arme au sol.\nEmpale et ralentit les ennemis en mêlée." },
             e: { name: "Cataclysme", desc: "Explosion massive.\nDégâts de zone · aspire les ennemis proches." }
         },
         chronoregulator: {

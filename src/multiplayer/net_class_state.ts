@@ -380,12 +380,12 @@ export const NetClassState = {
     const fireMoon = empowered || eState.nextIsSun === 0;
 
     if (fireSun) {
-      this.resolveMeleeHit(playerId, pos, dir, 18, STATE.stats.atk * empMult, 0.85);
+      this.resolveMeleeHit(playerId, pos, dir, 3.5, STATE.stats.atk * empMult, 0.4);
       eState.sun = Math.min(100, eState.sun + 10);
       if (!empowered) eState.nextIsSun = 0;
     }
     if (fireMoon) {
-      this.resolveMeleeHit(playerId, pos, dir, 18, STATE.stats.atk * 1.2 * empMult, 0.85);
+      this.resolveMeleeHit(playerId, pos, dir, 3.5, STATE.stats.atk * 1.2 * empMult, 0.4);
       eState.moon = Math.min(100, eState.moon + 10);
       if (!empowered) eState.nextIsSun = 1;
     }

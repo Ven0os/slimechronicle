@@ -139,7 +139,7 @@ export const CLASS_STATS_CONFIG: Record<ClassId, ClassStatsDef> = {
     base: { maxHp: 160, atk: 35, speed: 15, attackMaxCooldown: 0.6, cooldowns: { space: 5, shift: 10, e: 15 } },
     skills: {
       primary: { ratio: 1.0, label: 'Attaque' },
-      space: { ratio: 1.2, label: 'Éclat Solaire' },
+      space: { ratio: 1.2, label: 'Fulgurance Solaire' },
       shift: { ratio: 2.5, label: 'Pic de Lune' },
       e: { ratio: 3.0, label: 'Cataclysme' },
     },

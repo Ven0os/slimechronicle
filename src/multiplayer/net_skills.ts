@@ -4,7 +4,7 @@ import { Globals } from '../core/globals';
 import { AudioSys } from '../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual } from '../visual/effects';
 import { Network } from './network';
-import { runVisualOnly, isServerAuthority } from './net_combat';
+import { runVisualOnly, isServerAuthority, getPlayerByPeerId } from './net_combat';
 import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 import { NetClassState } from './net_class_state';
 
@@ -35,6 +35,11 @@ export const NetSkills = {
                 NetClassState.resolveMeleeHit(playerId, pos, flatDir, 3.5, 20 * 1.5, 0.5);
             } else if (data.class === 'blade') {
                 NetClassState.resolveMeleeHit(playerId, pos, flatDir, 3.0, 30, 0.4);
+            } else if (data.class === 'eclipse') {
+                const player = getPlayerByPeerId(playerId);
+                if (player) {
+                    NetClassState.resolveEclipseBasicAttack(playerId, player, pos, flatDir);
+                }
             }
             return;
         }
