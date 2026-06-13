@@ -28,5 +28,5 @@ export const HUDEnchant = {
         }
     },
 
-    updateLoop: function() {},
+    updateLoop: function(dt?: number) {},
 };

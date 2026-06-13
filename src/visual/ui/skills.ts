@@ -3,7 +3,7 @@ import { STATE, CONFIG } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { AudioSys } from '@/core/ressources';
 import { getConstellationForClass, type ClassId } from '@/data/constellations';
-import { formatDestinySkillDetailHtml, formatSkillScalingHtml, getSkillLabel, type SkillKey } from '@/data/classStatsConfig';
+import { formatDestinySkillDetailHtml, formatSkillScalingHtml, getSkillLabel, type SkillKey, getClassStatsConfig } from '@/data/classStatsConfig';
 import { getPlayerDefense, formatDefenseReductionPct } from '@/gameplay/combat/defense';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { ConstellationUI } from '@/ui/constellationUI';
@@ -119,12 +119,66 @@ export const NewSkillUI = {
   },
 
   buildSkillDetailHtml: function (classId: ClassId, skillKey: SkillKey) {
-    if (skillKey === 'space' || skillKey === 'shift' || skillKey === 'e') {
-      return formatDestinySkillDetailHtml(classId, skillKey);
-    }
+    const cfg = getClassStatsConfig(classId);
+    const stats = STATE.stats;
     const chips = formatSkillScalingHtml(classId, skillKey);
     const chipsBlock = chips ? `<div class="grimoire-ratio-chips">${chips}</div>` : '';
-    return `${chipsBlock}<div class="grimoire-skill-hint">Cliquer pour replier</div>`;
+
+    let cooldownInfo = '';
+    if (skillKey === 'primary') {
+      const baseCd = cfg.base.attackMaxCooldown || 0.5;
+      const speedMod = stats.attackSpeedMod || 1;
+      const currentCd = baseCd * speedMod;
+      const currentRate = 1 / currentCd;
+      cooldownInfo = `
+        <div class="destiny-skill-meta-row">
+          <span class="destiny-skill-meta-label"><i class="fas fa-gauge-high"></i> Cadence</span>
+          <span class="destiny-skill-meta-value">${currentRate.toFixed(1)}/s <span class="grimoire-meta-secondary">(${currentCd.toFixed(2)}s)</span></span>
+        </div>
+      `;
+    } else {
+      const baseCd = cfg.base.cooldowns[skillKey] || 0;
+      const cdMult = ConstellationEngine.getSkillCdMult(skillKey);
+      const currentCd = baseCd * cdMult;
+      cooldownInfo = `
+        <div class="destiny-skill-meta-row">
+          <span class="destiny-skill-meta-label"><i class="fas fa-stopwatch"></i> Recharge</span>
+          <span class="destiny-skill-meta-value">${currentCd.toFixed(1)}s <span class="grimoire-meta-secondary">(${baseCd}s base)</span></span>
+        </div>
+      `;
+    }
+
+    const estDmg = ConstellationEngine.calcSkillDamage(skillKey);
+    let dmgInfo = '';
+    if (estDmg > 0) {
+      let label = 'Impact de base';
+      if (classId === 'sentinel' && (skillKey === 'shift' || skillKey === 'e')) {
+        label = 'Dégâts / Soin estimé';
+      } else if (classId === 'warrior' && skillKey === 'shift') {
+        label = 'Soin estimé';
+      } else if (classId === 'mage' && skillKey === 'space') {
+        label = 'Dégâts par projectile';
+      } else {
+        label = 'Dégâts / Effet estimé';
+      }
+      dmgInfo = `
+        <div class="destiny-skill-meta-row">
+          <span class="destiny-skill-meta-label"><i class="fas fa-fire"></i> ${label}</span>
+          <span class="destiny-skill-meta-value grimoire-meta-damage">${Math.round(estDmg)}</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="destiny-skill-detail-inner">
+        <div class="destiny-skill-meta">
+          ${cooldownInfo}
+          ${dmgInfo}
+        </div>
+        ${chipsBlock ? `<div class="destiny-skill-scaling-label">Scaling & Ratios</div>${chipsBlock}` : ''}
+        <div class="grimoire-skill-hint">Cliquer pour replier</div>
+      </div>
+    `;
   },
 
   updateInfoTab: function () {

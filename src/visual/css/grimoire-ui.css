@@ -336,7 +336,42 @@
   50% { filter: drop-shadow(0 0 10px rgba(150, 220, 255, 0.55)); }
 }
 
-/* --- Compact stat rows --- */
+/* --- Stats Grid Layout --- */
+.grimoire-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(14px, 1.8vw, 24px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.grimoire-stats-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.grimoire-subpanel-title {
+  margin: 0 0 10px 0;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 1.5px;
+  color: #e8d48a;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  padding-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.grimoire-subpanel-title i {
+  color: #ffd93d;
+  font-size: 0.75rem;
+}
+
 .grimoire-stats-list {
   display: flex;
   flex-direction: column;
@@ -496,9 +531,13 @@
 }
 
 /* --- Compact skill cards --- */
+/* --- Compact skill cards --- */
 .grimoire-panel-combat .grimoire-skills-list {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(212, 175, 55, 0.25) transparent;
@@ -507,37 +546,45 @@
 .grimoire-skills-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .grimoire-skill-card {
-  padding: 8px 10px 7px;
-  border-radius: 6px;
+  padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.4vw, 14px);
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 2px solid rgba(212, 175, 55, 0.35);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-left: 3px solid rgba(212, 175, 55, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   user-select: none;
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .grimoire-skill-card:hover {
   border-left-color: #ffd93d;
-  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.08);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.12);
+  background: rgba(0, 0, 0, 0.38);
 }
 
 .grimoire-skill-card.expanded {
+  flex: none;
+  height: auto;
+  justify-content: flex-start;
   border-left-color: #48c9b0;
-  box-shadow: 0 2px 16px rgba(72, 201, 176, 0.12);
+  box-shadow: 0 4px 22px rgba(72, 201, 176, 0.14);
   background: rgba(8, 12, 18, 0.5);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
 }
 
 .grimoire-skill-detail {
   display: none;
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
@@ -550,11 +597,72 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .grimoire-skill-card.expanded .grimoire-skill-desc {
-  display: none;
+  display: block;
+  margin-top: 6px;
+  color: #b5b5c5;
+}
+
+/* --- Destiny skill meta rows in Grimoire --- */
+.destiny-skill-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.destiny-skill-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+}
+
+.destiny-skill-meta-row:last-child {
+  border-bottom: none;
+}
+
+.destiny-skill-meta-label {
+  font-size: 0.65rem;
+  color: #7a7a8a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.destiny-skill-meta-label i {
+  width: 12px;
+  text-align: center;
+}
+
+.destiny-skill-meta-value {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #eee;
+}
+
+.grimoire-meta-secondary {
+  font-size: 0.58rem;
+  color: #555;
+  font-weight: normal;
+  margin-left: 4px;
+}
+
+.grimoire-meta-damage {
+  color: #ffd93d;
+  text-shadow: 0 0 8px rgba(255, 217, 61, 0.3);
+}
+
+.destiny-skill-scaling-label {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #555;
+  margin: 10px 0 4px 0;
 }
 
 .grimoire-ratio-chips {
@@ -689,6 +797,19 @@
 @media (max-width: 900px) {
   .grimoire-scroll {
     padding: 14px 12px 20px;
+  }
+}
+
+@media (max-width: 580px) {
+  .grimoire-stats-grid {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 16px;
+  }
+  .grimoire-stats-list {
+    overflow-y: visible;
+    flex: none;
   }
 }
 
