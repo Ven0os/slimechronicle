@@ -19,15 +19,15 @@ export const CHRONO_FRACTURE = {
   fillTime: 4.33,
   skillCost: 30,
   silence: 1.5,
-  ruptureMin: 85,
-  ruptureMax: 95,
-  /** Seuil UI / proc grenade « Surchauffe imminente ». */
-  overloadImminenceMin: 70,
+  /** Marge avant le plafond pour Surcharge imminente (max − cette valeur). */
+  overloadWarningBeforeMax: 5,
+  /** Réduction Fracture après relâchement correct pendant Surcharge imminente. */
+  overloadReleaseReductionPct: 0.1,
   /** Inactivité avant début de décroissance (s). */
   decayDelay: 1,
-  /** Vitesse de décroissance continue : 9,32 % du plafond par seconde (×2,33 vs 4 %). */
-  decayPerSecondPct: 0.0932,
-  /** Explosion immédiate si grenade lancée sous Surchauffe imminente. */
+  /** Vitesse de décroissance continue : 4 % du plafond par seconde (= 2 % / 0,5 s). */
+  decayPerSecondPct: 0.04,
+  /** Proc de désurcharge (relâchement correct en fenêtre imminente). */
   overloadImminenceProc: { radius: 4.2, dmgMult: 2.1 },
 } as const;
 

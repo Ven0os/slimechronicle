@@ -331,6 +331,21 @@
   box-shadow: 0 0 8px rgba(231, 76, 60, 0.7);
 }
 
+.chrono-fracture-imminence .chrono-fracture-fill {
+  background: linear-gradient(90deg, #f1c40f, #ffe066);
+  box-shadow: 0 0 7px rgba(241, 196, 15, 0.65);
+}
+
+.chrono-fracture-silence .chrono-fracture-label,
+.chrono-fracture-silence .chrono-fracture-hint {
+  color: #aaaaaa;
+}
+
+.chrono-fracture-silence .chrono-fracture-fill {
+  background: linear-gradient(90deg, #555, #888);
+  box-shadow: none;
+}
+
 .chrono-fracture-label {
   font-size: 10px;
   font-family: 'Cinzel', serif;

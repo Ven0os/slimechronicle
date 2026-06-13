@@ -5,7 +5,10 @@ import {
   getFractureBarFillPct,
   getFractureDisplayValue,
   getMaxFracture,
+  getOverloadImminenceThreshold,
   isChronoFractureApexActive,
+  isFractureAtOverheat,
+  isOverloadImminenceActive,
 } from './fractureHelpers';
 
 export function updateChronoFractureUI(
@@ -30,15 +33,23 @@ export function updateChronoFractureUI(
   const cap = getMaxFracture();
   const fractureValue = getFractureDisplayValue(gauge, cap);
   const barFillPct = getFractureBarFillPct(gauge, cap);
+  const imminence = isOverloadImminenceActive(gauge);
+  const overheat = isFractureAtOverheat(gauge);
 
   fill.style.width = `${barFillPct}%`;
   root.classList.toggle('chrono-fracture-apex', apexActive);
-  root.classList.toggle('chrono-fracture-danger', fractureValue >= CHRONO_FRACTURE.ruptureMin);
-  root.classList.toggle('chrono-fracture-critical', fractureValue >= 95);
+  root.classList.toggle('chrono-fracture-danger', imminence || overheat);
+  root.classList.toggle('chrono-fracture-critical', overheat);
+  root.classList.toggle('chrono-fracture-imminence', imminence && !overheat);
+  root.classList.toggle('chrono-fracture-silence', silence > 0);
 
   if (label) {
     if (silence > 0) {
-      label.textContent = `Silence ${silence.toFixed(1)}s`;
+      label.textContent = `Silence — ${silence.toFixed(1)} s`;
+    } else if (overheat) {
+      label.textContent = 'Surchauffe';
+    } else if (imminence) {
+      label.textContent = 'Surcharge imminente';
     } else if (apexActive) {
       label.textContent = `Fracture ${fractureValue}% / ${cap}%`;
     } else {
@@ -48,15 +59,15 @@ export function updateChronoFractureUI(
 
   if (hint) {
     if (silence > 0) {
-      hint.textContent = 'Rayon indisponible';
-    } else if (fractureValue >= CHRONO_FRACTURE.ruptureMin && fractureValue <= CHRONO_FRACTURE.ruptureMax) {
-      hint.textContent = 'Relâchez : explosion de rupture';
-    } else if (apexActive && fractureValue >= CHRONO_FRACTURE.max && fractureValue < cap) {
+      hint.textContent = 'Compétences indisponibles';
+    } else if (overheat) {
+      hint.textContent = 'Surchauffe critique';
+    } else if (imminence) {
+      hint.textContent = 'Relâchez pour désurcharger (−10 %)';
+    } else if (apexActive && fractureValue >= CHRONO_FRACTURE.max && fractureValue < getOverloadImminenceThreshold(cap)) {
       hint.textContent = `Surcharge Apex — jusqu'à ${cap}% (+0,33 % dmg / %)`;
     } else if (isDecaying) {
       hint.textContent = 'Fracture en décroissance';
-    } else if (fractureValue >= 70) {
-      hint.textContent = 'Surchauffe imminente';
     } else {
       hint.textContent = 'Maintenez clic pour canaliser';
     }
