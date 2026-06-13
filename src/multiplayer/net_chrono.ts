@@ -73,6 +73,21 @@ function applyAuthLensesToPlayer(player, auth) {
   player.syncLensesFromNetwork(auth.lenses);
 }
 
+function resolveExtraPrismLensFlag(player) {
+  if (!player) return 0;
+  if (player._netExtraPrismLens != null) return player._netExtraPrismLens ? 1 : 0;
+  if (player.isLocalPlayer?.()) {
+    const p = STATE.passives as Record<string, number> | undefined;
+    return (p?.extraPrismLens as number) ? 1 : 0;
+  }
+  return 0;
+}
+
+function applyExtraPrismLensFlag(player, flag) {
+  if (!player || flag == null) return;
+  player._netExtraPrismLens = flag === 1;
+}
+
 function applyBeamStateToPlayer(player, auth) {
   if (!player) return;
   const dir = vec3FromSnap(auth.aimX, auth.aimZ);
@@ -107,12 +122,14 @@ export const NetChrono = {
       aimX: auth.aimX,
       aimZ: auth.aimZ,
       lenses: auth.lenses,
+      extraPrismLens: resolveExtraPrismLensFlag(player),
     };
   },
 
   /** Applique l'état répliqué sur un joueur (client ou observateur). */
   applySnapshot(player, snap, isSelf = false) {
     if (!player || !snap || !isChronoPlayer(player)) return;
+    applyExtraPrismLensFlag(player, snap.extraPrismLens);
     const auth = {
       isBeaming: snap.isBeaming === 1,
       aimX: snap.aimX ?? 0,
@@ -277,6 +294,9 @@ export const NetChrono = {
           player.stopDistortionBeamNetwork();
         }
       }
+    }
+    if (c.extraPrismLens != null) {
+      applyExtraPrismLensFlag(player, c.extraPrismLens);
     }
   },
 

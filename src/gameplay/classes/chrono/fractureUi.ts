@@ -12,6 +12,7 @@ export function updateChronoFractureUI(
   gauge: number,
   silence: number,
   isLocal: boolean,
+  isDecaying = false,
 ): void {
   const root = document.getElementById('chrono-fracture');
   const fill = document.getElementById('chrono-fracture-fill');
@@ -52,6 +53,8 @@ export function updateChronoFractureUI(
       hint.textContent = 'Relâchez : explosion de rupture';
     } else if (apexActive && fractureValue >= CHRONO_FRACTURE.max && fractureValue < cap) {
       hint.textContent = `Surcharge Apex — jusqu'à ${cap}% (+0,33 % dmg / %)`;
+    } else if (isDecaying) {
+      hint.textContent = 'Fracture en décroissance';
     } else if (fractureValue >= 70) {
       hint.textContent = 'Surchauffe imminente';
     } else {

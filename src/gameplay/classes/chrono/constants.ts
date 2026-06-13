@@ -21,6 +21,16 @@ export const CHRONO_FRACTURE = {
   silence: 1.5,
   ruptureMin: 85,
   ruptureMax: 95,
+  /** Seuil UI / proc grenade « Surchauffe imminente ». */
+  overloadImminenceMin: 70,
+  /** Inactivité avant début de décroissance (s). */
+  decayDelay: 1,
+  /** Intervalle entre chaque tick de décroissance (s). */
+  decayInterval: 0.5,
+  /** Fracture perdue par tick de décroissance. */
+  decayPerTick: 2,
+  /** Explosion immédiate si grenade lancée sous Surchauffe imminente. */
+  overloadImminenceProc: { radius: 4.2, dmgMult: 2.1 },
 } as const;
 
 export const CHRONO_ASCENDANT = {

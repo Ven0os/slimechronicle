@@ -374,7 +374,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   extraPrismLens: {
     paragraphs: () => [
       'Lentille de Focalisation : split en 4 rayons au lieu de 3.',
-      'Rayons prismatiques : dégâts −15 % par rayon.',
+      'Rayons prismatiques : dégâts −10 % par rayon.',
       'Rayons prismatiques : infligent une brûlure temporelle.',
     ],
   },
