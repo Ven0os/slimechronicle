@@ -94,7 +94,29 @@ export const STATE = {
             isEventsActive: true,
             maxMobDisplay: 30,
             luckMultPrismatic: 1.0,
-            luckMultMiniBoss: 1.0
+            luckMultMiniBoss: 1.0,
+            camp_tent_enabled: true,
+            camp_tent_weight: 100,
+            camp_portal_enabled: true,
+            camp_portal_weight: 100,
+            camp_barricade_enabled: true,
+            camp_barricade_weight: 100,
+            camp_obelisk_enabled: true,
+            camp_obelisk_weight: 100,
+            camp_treasure_enabled: true,
+            camp_treasure_weight: 100,
+            camp_ritual_enabled: true,
+            camp_ritual_weight: 100,
+            camp_crypt_enabled: true,
+            camp_crypt_weight: 100,
+            camp_shrine_enabled: true,
+            camp_shrine_weight: 100,
+            camp_forge_enabled: true,
+            camp_forge_weight: 100,
+            camp_frozen_enabled: true,
+            camp_frozen_weight: 100,
+            camp_ruins_enabled: true,
+            camp_ruins_weight: 100
         };
         try {
             const saved = localStorage.getItem('slime_game_options');

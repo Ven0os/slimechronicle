@@ -4,7 +4,6 @@ import { STATE, CONFIG } from '../core/config';
 import { Globals, GameActions, setPlayer, addEnemy, removeEnemy } from '../core/globals';
 import { AudioSys } from '../core/ressources';
 import { Network } from '@/multiplayer/network';
-import { UI, SkillTree } from '../visual/ui';
 import { Player } from './player';
 import { Enemy } from './enemy';
 import { createDamageText } from '../visual/effects';
@@ -23,8 +22,8 @@ const MINI_BOSS_MOB_TYPE: Record<string, string> = {
 
 import { applyMiniBossVariant } from './enemies/minions/mini_boss';
 
-function spawnRogueTent(pos) {
-    if (!Globals.scene) return null;
+export function spawnRogueTent(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
     group.position.y = 0;
@@ -59,28 +58,199 @@ function spawnRogueTent(pos) {
     poleR.rotation.y = -0.2;
     group.add(poleR);
 
-    // Inner Glowing Campfire (warm orange light) - Mesh only, no pointlight to prevent WebGL compile lag
+    // Flag Pole & Fabric on top (Improvement)
+    const flagPoleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 4);
+    const flagPole = new THREE.Mesh(flagPoleGeo, poleMat);
+    flagPole.position.set(0, 2.2, 0);
+    flagPole.castShadow = true;
+    group.add(flagPole);
+
+    const flagGeo = new THREE.BoxGeometry(0.4, 0.25, 0.03);
+    const flagMat = new THREE.MeshStandardMaterial({ color: 0x922b21, roughness: 0.9 });
+    const flag = new THREE.Mesh(flagGeo, flagMat);
+    flag.position.set(0.2, 2.4, 0);
+    flag.castShadow = true;
+    group.add(flag);
+
+    // Sleeping Bedroll (Improvement)
+    const bedrollGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.7, 6);
+    const bedrollMat = new THREE.MeshStandardMaterial({ color: 0x1e3f20, roughness: 0.95 });
+    const bedroll = new THREE.Mesh(bedrollGeo, bedrollMat);
+    bedroll.position.set(-0.7, 0.06, 0.2);
+    bedroll.rotation.x = Math.PI / 2;
+    bedroll.rotation.z = 0.5;
+    bedroll.castShadow = true;
+    group.add(bedroll);
+
+    // Leaning Round Shield (Improvement)
+    const shieldGroup = new THREE.Group();
+    shieldGroup.position.set(0.9, 0.2, -0.2);
+    shieldGroup.rotation.y = -0.5;
+    shieldGroup.rotation.z = -0.3;
+    
+    const shieldPlate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.28, 0.28, 0.03, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.7, roughness: 0.5 })
+    );
+    shieldPlate.rotation.x = Math.PI / 2;
+    shieldPlate.castShadow = true;
+    shieldGroup.add(shieldPlate);
+
+    const boss = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 6, 6),
+        new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 })
+    );
+    boss.position.z = 0.02;
+    shieldGroup.add(boss);
+
+    const trim = new THREE.Mesh(
+        new THREE.TorusGeometry(0.26, 0.02, 4, 12),
+        new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 })
+    );
+    trim.position.z = 0.01;
+    shieldGroup.add(trim);
+    group.add(shieldGroup);
+
+    // Hanging Lantern (Improvement)
+    const crossbarGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 4);
+    const crossbar = new THREE.Mesh(crossbarGeo, poleMat);
+    crossbar.position.set(0, 1.6, 1.1);
+    crossbar.rotation.z = Math.PI / 2;
+    group.add(crossbar);
+
+    const lanternGroup = new THREE.Group();
+    lanternGroup.position.set(0, 1.3, 1.1);
+
+    const wire = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.01, 0.01, 0.2, 4),
+        new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8 })
+    );
+    wire.position.y = 0.1;
+    lanternGroup.add(wire);
+
+    const capGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.04, 4);
+    const capMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, metalness: 0.8, roughness: 0.6 });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.y = 0.02;
+    const basePlate = cap.clone();
+    basePlate.position.y = -0.14;
+    lanternGroup.add(cap, basePlate);
+
+    const glassGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.12, 4);
+    const glassMat = new THREE.MeshBasicMaterial({ color: 0xffcc44 });
+    const glass = new THREE.Mesh(glassGeo, glassMat);
+    glass.position.y = -0.06;
+    lanternGroup.add(glass);
+    group.add(lanternGroup);
+
+    // Inner Glowing Campfire (warm orange light)
     const fireGeo = new THREE.SphereGeometry(0.15, 8, 8);
     const fireMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
     const fire = new THREE.Mesh(fireGeo, fireMat);
     fire.position.set(0, 0.1, 0.8);
     group.add(fire);
 
-    Globals.scene.add(group);
-    
-    // Add collision
-    if (!Globals.obstacles) Globals.obstacles = [];
-    const obstacle = {
-        position: pos.clone(),
-        radius: 1.8
-    };
-    Globals.obstacles.push(obstacle);
+    // Campfire wood logs base
+    const woodLogGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.4, 4);
+    const woodLogMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
+    for (let i = 0; i < 3; i++) {
+        const log = new THREE.Mesh(woodLogGeo, woodLogMat);
+        log.position.set(0, 0.02, 0.8);
+        log.rotation.z = Math.PI / 2;
+        log.rotation.y = (i * Math.PI) / 3;
+        group.add(log);
+    }
 
-    return { group, obstacle };
+    // Dynamic sparks (Improvement)
+    const sparks = [];
+    const sparkCount = 3;
+    for (let i = 0; i < sparkCount; i++) {
+        const sGeo = new THREE.SphereGeometry(0.04, 4, 4);
+        const sMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+        const s = new THREE.Mesh(sGeo, sMat);
+        s.position.set((Math.random() - 0.5) * 0.2, 0.15, 0.8 + (Math.random() - 0.5) * 0.2);
+        group.add(s);
+        sparks.push({
+            mesh: s,
+            speed: 0.3 + Math.random() * 0.3,
+            offset: Math.random() * Math.PI
+        });
+    }
+
+    // Rustic Wood Barrel
+    const barrelGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.6, 6);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x6e503b, roughness: 0.8 });
+    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+    barrel.position.set(-1.2, 0.3, -0.6);
+    barrel.castShadow = true;
+    group.add(barrel);
+    
+    // Metal rings on barrel
+    const ringGeo = new THREE.TorusGeometry(0.26, 0.02, 4, 12);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.8 });
+    const ring1 = new THREE.Mesh(ringGeo, ringMat);
+    ring1.rotation.x = Math.PI / 2;
+    ring1.position.set(-1.2, 0.45, -0.6);
+    const ring2 = ring1.clone();
+    ring2.position.y = 0.15;
+    group.add(ring1, ring2);
+
+    // Wooden Supply Crate
+    const crateGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7 });
+    const crate = new THREE.Mesh(crateGeo, crateMat);
+    crate.position.set(1.1, 0.2, -0.5);
+    crate.rotation.y = 0.4;
+    crate.castShadow = true;
+    group.add(crate);
+
+    // Start tent animations
+    const animateTent = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.003;
+        
+        // Pulse campfire scale
+        fire.scale.setScalar(1.0 + Math.sin(time * 2) * 0.1);
+        
+        // Rise sparks
+        sparks.forEach(s => {
+            s.mesh.position.y = 0.15 + ((time * s.speed + s.offset) % 0.6);
+            const progress = (s.mesh.position.y - 0.15) / 0.6;
+            s.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress));
+            s.mesh.position.x = Math.sin(time + s.offset) * 0.08;
+        });
+
+        // Flag subtle waving
+        if (flag) {
+            flag.rotation.y = Math.sin(time * 1.5) * 0.15;
+        }
+
+        requestAnimationFrame(animateTent);
+    };
+    animateTent();
+
+    if (!isPreview) {
+        Globals.scene.add(group);
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.8
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
 }
 
-function spawnArcanePortal(pos) {
-    if (!Globals.scene) return null;
+export function spawnArcanePortal(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
     group.position.y = 0;
@@ -115,36 +285,92 @@ function spawnArcanePortal(pos) {
     crystal.castShadow = true;
     group.add(crystal);
 
-    Globals.scene.add(group);
+    // Floating runes circling
+    const runesList = [];
+    for (let i = 0; i < 3; i++) {
+        const angle = (i / 3) * Math.PI * 2;
+        const r = 1.6;
+        const runeGeo = new THREE.BoxGeometry(0.12, 0.25, 0.05);
+        const runeMat = new THREE.MeshBasicMaterial({
+            color: 0xbd00ff,
+            transparent: true,
+            opacity: 0.7
+        });
+        const rune = new THREE.Mesh(runeGeo, runeMat);
+        rune.position.set(Math.cos(angle) * r, 0.35, Math.sin(angle) * r);
+        rune.rotation.y = -angle + Math.PI/2;
+        group.add(rune);
+        runesList.push({ mesh: rune, offset: i * 2 });
+    }
 
-    // Simple floating rotation animation
+    // 4 Surrounding obelisk pillars
+    const pillarGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.2, 5);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1a1126, roughness: 0.9, flatShading: true });
+    for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        const r = 1.35;
+        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+        pillar.position.set(Math.cos(angle) * r, 0.6, Math.sin(angle) * r);
+        pillar.castShadow = true;
+        pillar.receiveShadow = true;
+        group.add(pillar);
+        
+        // Glowing crystal tips on pillars
+        const tipGeo = new THREE.OctahedronGeometry(0.12, 0);
+        const tipMat = new THREE.MeshBasicMaterial({ color: 0xbd00ff });
+        const tip = new THREE.Mesh(tipGeo, tipMat);
+        tip.position.set(Math.cos(angle) * r, 1.3, Math.sin(angle) * r);
+        group.add(tip);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Floating animations
     const animatePortal = () => {
-        if (!group.parent || group.scale.x < 0.1) return;
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.003;
         crystal.rotation.y += 0.02;
-        crystal.position.y = 1.2 + Math.sin(Date.now() * 0.003) * 0.15;
+        crystal.position.y = 1.2 + Math.sin(time) * 0.15;
+        
+        runesList.forEach(r => {
+            r.mesh.position.y = 0.35 + Math.sin(time * 0.7 + r.offset) * 0.1;
+            r.mesh.rotation.y += 0.01;
+        });
+
         requestAnimationFrame(animatePortal);
     };
     animatePortal();
 
-    // Add collision
-    if (!Globals.obstacles) Globals.obstacles = [];
-    const obstacle = {
-        position: pos.clone(),
-        radius: 1.4
-    };
-    Globals.obstacles.push(obstacle);
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.4
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
 
-    return { group, obstacle };
+    return { group, obstacle: null };
 }
 
-function spawnSpikedBarricade(pos) {
-    if (!Globals.scene) return null;
+export function spawnSpikedBarricade(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
     group.position.y = 0;
 
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3c, roughness: 0.9 });
     const spikeMat = new THREE.MeshStandardMaterial({ color: 0x423429, roughness: 0.8 });
+    const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.8, roughness: 0.4 });
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.9 });
 
     // Spiked log 1, 2, 3
     const logHeight = 1.4;
@@ -166,6 +392,11 @@ function spawnSpikedBarricade(pos) {
         tip.castShadow = true;
         logGroup.add(tip);
 
+        // Iron reinforcement strap on each log
+        const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 6), ironMat);
+        strap.position.y = 0.2;
+        logGroup.add(strap);
+
         group.add(logGroup);
     });
 
@@ -176,17 +407,799 @@ function spawnSpikedBarricade(pos) {
     bar.position.set(0, 0.5, 0.15);
     group.add(bar);
 
-    Globals.scene.add(group);
+    // Rope bindings at crossbar joints
+    const ropeGeo = new THREE.TorusGeometry(0.14, 0.03, 4, 8);
+    offsetsX.forEach(ox => {
+        const rope = new THREE.Mesh(ropeGeo, ropeMat);
+        rope.position.set(ox, 0.5, 0.15);
+        rope.rotation.y = Math.PI / 2;
+        group.add(rope);
+    });
 
-    // Add collision
-    if (!Globals.obstacles) Globals.obstacles = [];
-    const obstacle = {
-        position: pos.clone(),
-        radius: 1.6
+    // Small rock debris pile at the base
+    const rockGeo = new THREE.DodecahedronGeometry(0.15, 0);
+    for (let i = 0; i < 5; i++) {
+        const rock = new THREE.Mesh(rockGeo, rockMat);
+        rock.position.set((Math.random() - 0.5) * 1.6, 0.08, (Math.random() - 0.5) * 0.4 - 0.2);
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        group.add(rock);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.6
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnCorruptedObelisk(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Corruption Pool (Flat ring)
+    const poolGeo = new THREE.RingGeometry(0.01, 1.8, 16);
+    const poolMat = new THREE.MeshStandardMaterial({
+        color: 0x3d0c5a,
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    });
+    const pool = new THREE.Mesh(poolGeo, poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.y = 0.01;
+    group.add(pool);
+
+    // Runic Obelisk Pillar
+    const obeliskGeo = new THREE.CylinderGeometry(0.15, 0.32, 2.2, 4);
+    const obeliskMat = new THREE.MeshStandardMaterial({
+        color: 0x1b0826,
+        roughness: 0.8,
+        flatShading: true
+    });
+    const obelisk = new THREE.Mesh(obeliskGeo, obeliskMat);
+    obelisk.position.y = 1.1;
+    obelisk.rotation.y = Math.PI / 4;
+    obelisk.castShadow = true;
+    obelisk.receiveShadow = true;
+    group.add(obelisk);
+
+    // Floating Glowing Eye/Crystal
+    const eyeGeo = new THREE.OctahedronGeometry(0.25, 0);
+    const eyeMat = new THREE.MeshStandardMaterial({
+        color: 0xd946ef,
+        emissive: 0xd946ef,
+        emissiveIntensity: 3.0,
+        roughness: 0.1
+    });
+    const eye = new THREE.Mesh(eyeGeo, eyeMat);
+    eye.position.y = 2.6;
+    group.add(eye);
+
+    // 3 Small floating crystals circling
+    const floaters = [];
+    for (let i = 0; i < 3; i++) {
+        const crystalGeo = new THREE.OctahedronGeometry(0.1, 0);
+        const crystalMat = new THREE.MeshBasicMaterial({ color: 0x9d4edd });
+        const f = new THREE.Mesh(crystalGeo, crystalMat);
+        group.add(f);
+        floaters.push(f);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Animate floating
+    const animateObelisk = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.002;
+        
+        // Main crystal bobbing and spinning
+        eye.rotation.y += 0.03;
+        eye.position.y = 2.5 + Math.sin(time) * 0.12;
+
+        // Circle floaters
+        floaters.forEach((f, idx) => {
+            const angle = time * 0.8 + (idx * Math.PI * 2) / 3;
+            f.position.set(Math.cos(angle) * 0.8, 1.2 + Math.sin(time * 2 + idx) * 0.25, Math.sin(angle) * 0.8);
+            f.rotation.y += 0.05;
+        });
+
+        requestAnimationFrame(animateObelisk);
     };
-    Globals.obstacles.push(obstacle);
+    animateObelisk();
 
-    return { group, obstacle };
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.8
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnTreasureOutpost(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // 1. Treasure Chest
+    const chestGroup = new THREE.Group();
+    chestGroup.position.set(0, 0.15, 0);
+    
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3d24, roughness: 0.8 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffb703, metalness: 0.9, roughness: 0.2 });
+    
+    // Chest Base
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.5), woodMat);
+    base.castShadow = true;
+    chestGroup.add(base);
+    
+    // Chest Lid (tilted open slightly)
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.5), woodMat);
+    lid.position.set(0, 0.25, -0.05);
+    lid.rotation.x = -0.2; // slightly open
+    lid.castShadow = true;
+    chestGroup.add(lid);
+    
+    // Golden Trim
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.05, 0.52), goldMat);
+    trim.position.y = 0.18;
+    chestGroup.add(trim);
+
+    const lock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.06), goldMat);
+    lock.position.set(0, 0.15, 0.26);
+    chestGroup.add(lock);
+
+    group.add(chestGroup);
+
+    // 2. Barrels
+    const barrelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.55, 6);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.85 });
+    
+    const b1 = new THREE.Mesh(barrelGeo, barrelMat);
+    b1.position.set(-0.7, 0.275, -0.4);
+    b1.castShadow = true;
+    group.add(b1);
+    
+    const b2 = new THREE.Mesh(barrelGeo, barrelMat);
+    b2.position.set(0.7, 0.275, -0.4);
+    b2.rotation.z = Math.PI / 2.2; // fallen barrel
+    b2.position.y = 0.24;
+    b2.castShadow = true;
+    group.add(b2);
+
+    // 3. Tall Guard Flag/Banner
+    const bannerGroup = new THREE.Group();
+    bannerGroup.position.set(-0.6, 0, 0.5);
+    
+    const poleGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.5, 5);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.y = 1.25;
+    pole.castShadow = true;
+    bannerGroup.add(pole);
+
+    // Red Flag fabric
+    const flagGeo = new THREE.BoxGeometry(0.6, 0.4, 0.03);
+    const flagMat = new THREE.MeshStandardMaterial({ color: 0xd90429, roughness: 0.8, flatShading: true });
+    const flag = new THREE.Mesh(flagGeo, flagMat);
+    flag.position.set(0.3, 2.1, 0);
+    flag.rotation.y = 0.2;
+    flag.castShadow = true;
+    bannerGroup.add(flag);
+
+    group.add(bannerGroup);
+
+    // Simple wind waving animation
+    const animateBanner = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        flag.rotation.y = 0.2 + Math.sin(Date.now() * 0.005) * 0.08;
+        flag.rotation.z = Math.sin(Date.now() * 0.004) * 0.03;
+        requestAnimationFrame(animateBanner);
+    };
+    animateBanner();
+
+    if (!isPreview) Globals.scene.add(group);
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.6
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnShamanRitualCircle(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Central cauldron
+    const cauldronGroup = new THREE.Group();
+    cauldronGroup.position.set(0, 0, 0);
+    
+    const potGeo = new THREE.CylinderGeometry(0.35, 0.45, 0.6, 8);
+    const potMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.7, metalness: 0.6 });
+    const pot = new THREE.Mesh(potGeo, potMat);
+    pot.position.y = 0.3;
+    pot.castShadow = true;
+    cauldronGroup.add(pot);
+
+    // Glowing brew inside cauldron
+    const brewGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8);
+    const brewMat = new THREE.MeshStandardMaterial({
+        color: 0x2ecc71,
+        emissive: 0x2ecc71,
+        emissiveIntensity: 2.0,
+        roughness: 0.1
+    });
+    const brew = new THREE.Mesh(brewGeo, brewMat);
+    brew.position.y = 0.58;
+    cauldronGroup.add(brew);
+
+    // Bubbling green particles/bubbles rising
+    const bubbles = [];
+    for (let i = 0; i < 4; i++) {
+        const bGeo = new THREE.SphereGeometry(0.06, 5, 5);
+        const bMat = new THREE.MeshBasicMaterial({ color: 0x58d68d });
+        const b = new THREE.Mesh(bGeo, bMat);
+        b.position.set((Math.random() - 0.5) * 0.35, 0.6, (Math.random() - 0.5) * 0.35);
+        cauldronGroup.add(b);
+        bubbles.push({
+            mesh: b,
+            speed: 0.25 + Math.random() * 0.3,
+            offset: Math.random() * Math.PI
+        });
+    }
+    group.add(cauldronGroup);
+
+    // 3 Surrounding Shaman Totems
+    const totemGeo = new THREE.CylinderGeometry(0.12, 0.14, 1.4, 5);
+    const totemMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9, flatShading: true });
+    const wingMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 }); // painted wings
+
+    for (let i = 0; i < 3; i++) {
+        const angle = (i / 3) * Math.PI * 2 + Math.PI/6;
+        const r = 1.35;
+        const totemGroup = new THREE.Group();
+        totemGroup.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+        totemGroup.rotation.y = -angle - Math.PI / 2; // Face the cauldron
+
+        // Totem wood pole
+        const pole = new THREE.Mesh(totemGeo, totemMat);
+        pole.position.y = 0.7;
+        pole.castShadow = true;
+        totemGroup.add(pole);
+
+        // Wings crossbar
+        const wings = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.08), wingMat);
+        wings.position.set(0, 1.1, -0.05);
+        wings.castShadow = true;
+        totemGroup.add(wings);
+
+        // Glowing eyes (2 small beads)
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4), eyeMat);
+        eyeL.position.set(-0.05, 1.2, 0.13);
+        const eyeR = eyeL.clone();
+        eyeR.position.x = 0.05;
+        totemGroup.add(eyeL, eyeR);
+
+        group.add(totemGroup);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Animate brew bubbles
+    const animateRitual = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.003;
+        brew.scale.y = 1.0 + Math.sin(time) * 0.08;
+
+        bubbles.forEach(b => {
+            b.mesh.position.y = 0.6 + ((time * b.speed + b.offset) % 0.4);
+            const scale = Math.max(0.01, 1.0 - ((b.mesh.position.y - 0.6) / 0.4));
+            b.mesh.scale.setScalar(scale);
+        });
+
+        requestAnimationFrame(animateRitual);
+    };
+    animateRitual();
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.7
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnCursedCrypt(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Stone Slab Base
+    const baseGeo = new THREE.BoxGeometry(2.0, 0.15, 1.4);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.9 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.075;
+    base.receiveShadow = true;
+    base.castShadow = true;
+    group.add(base);
+
+    // Sarcophagus Body
+    const tombGeo = new THREE.BoxGeometry(1.2, 0.4, 0.6);
+    const tombMat = new THREE.MeshStandardMaterial({ color: 0x34495e, roughness: 0.8 });
+    const tomb = new THREE.Mesh(tombGeo, tombMat);
+    tomb.position.set(0, 0.35, 0);
+    tomb.castShadow = true;
+    group.add(tomb);
+
+    // Lid
+    const lidGeo = new THREE.BoxGeometry(1.22, 0.08, 0.62);
+    const lidMat = new THREE.MeshStandardMaterial({ color: 0x1a252f, roughness: 0.85 });
+    const lid = new THREE.Mesh(lidGeo, lidMat);
+    lid.position.set(0, 0.59, 0);
+    lid.castShadow = true;
+    group.add(lid);
+
+    // Glowing Magic Center
+    const runeGeo = new THREE.BoxGeometry(0.3, 0.02, 0.3);
+    const runeMat = new THREE.MeshBasicMaterial({ color: 0xa855f7 });
+    const rune = new THREE.Mesh(runeGeo, runeMat);
+    rune.position.set(0, 0.64, 0);
+    group.add(rune);
+
+    // Gravestone
+    const graveGeo = new THREE.BoxGeometry(0.15, 0.7, 0.45);
+    const graveMat = new THREE.MeshStandardMaterial({ color: 0x566573, roughness: 0.9 });
+    const grave = new THREE.Mesh(graveGeo, graveMat);
+    grave.position.set(-0.8, 0.5, 0);
+    grave.rotation.y = 0.1;
+    grave.castShadow = true;
+    group.add(grave);
+
+    // Floating skull particles
+    const floaters = [];
+    for (let i = 0; i < 2; i++) {
+        const skullGeo = new THREE.SphereGeometry(0.08, 5, 5);
+        const skullMat = new THREE.MeshBasicMaterial({ color: 0xecf0f1 });
+        const s = new THREE.Mesh(skullGeo, skullMat);
+        group.add(s);
+        floaters.push(s);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Floating animations
+    const animateCrypt = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.003;
+        
+        floaters.forEach((s, idx) => {
+            const angle = time * 0.8 + idx * Math.PI;
+            s.position.set(Math.cos(angle) * 0.5, 0.8 + Math.sin(time * 2 + idx) * 0.15, Math.sin(angle) * 0.5);
+            s.rotation.y += 0.05;
+        });
+
+        requestAnimationFrame(animateCrypt);
+    };
+    animateCrypt();
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.8
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnDruidShrine(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Mossy Stone Slab
+    const baseGeo = new THREE.CylinderGeometry(1.5, 1.6, 0.2, 8);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x3d5a1a, roughness: 0.95 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.1;
+    base.receiveShadow = true;
+    base.castShadow = true;
+    group.add(base);
+
+    // Glowing Green Crystal
+    const crystalGeo = new THREE.OctahedronGeometry(0.4, 0);
+    const crystalMat = new THREE.MeshStandardMaterial({
+        color: 0x10b981,
+        emissive: 0x10b981,
+        emissiveIntensity: 2.0,
+        roughness: 0.2
+    });
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    crystal.position.set(0, 1.1, 0);
+    crystal.castShadow = true;
+    group.add(crystal);
+
+    // Roots wrapping base
+    const rootGeo = new THREE.TorusGeometry(0.8, 0.08, 6, 12);
+    const rootMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.95 });
+    const root1 = new THREE.Mesh(rootGeo, rootMat);
+    root1.rotation.x = Math.PI / 2;
+    root1.position.set(0, 0.15, 0);
+    const root2 = root1.clone();
+    root2.scale.setScalar(1.2);
+    root2.rotation.z = Math.PI / 4;
+    group.add(root1, root2);
+
+    // Small floating leaf particles
+    const leaves = [];
+    for (let i = 0; i < 3; i++) {
+        const leafGeo = new THREE.BoxGeometry(0.08, 0.03, 0.12);
+        const leafMat = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+        const l = new THREE.Mesh(leafGeo, leafMat);
+        group.add(l);
+        leaves.push(l);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Animations
+    const animateShrine = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.002;
+
+        crystal.rotation.y += 0.015;
+        crystal.position.y = 1.0 + Math.sin(time) * 0.12;
+
+        leaves.forEach((l, idx) => {
+            const angle = time * 0.9 + (idx * Math.PI * 2) / 3;
+            l.position.set(Math.cos(angle) * 0.7, 0.9 + Math.sin(time * 2.5 + idx) * 0.1, Math.sin(angle) * 0.7);
+            l.rotation.x += 0.02;
+            l.rotation.y += 0.03;
+        });
+
+        requestAnimationFrame(animateShrine);
+    };
+    animateShrine();
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.8
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnVolcanicForge(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Dark Basalt base slab
+    const baseGeo = new THREE.CylinderGeometry(1.4, 1.5, 0.2, 8);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.1;
+    base.receiveShadow = true;
+    base.castShadow = true;
+    group.add(base);
+
+    // Glowing lava fissure
+    const lavaGeo = new THREE.RingGeometry(0.1, 0.8, 12);
+    const lavaMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+    const lava = new THREE.Mesh(lavaGeo, lavaMat);
+    lava.rotation.x = -Math.PI / 2;
+    lava.position.y = 0.21;
+    group.add(lava);
+
+    // Anvil Structure
+    const anvilGroup = new THREE.Group();
+    anvilGroup.position.set(0, 0.2, 0);
+
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.4 });
+    
+    // Anvil Base
+    const anvilBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.3), ironMat);
+    anvilBase.position.y = 0.125;
+    anvilBase.castShadow = true;
+    anvilGroup.add(anvilBase);
+
+    // Anvil Waist
+    const anvilWaist = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.15, 6), ironMat);
+    anvilWaist.position.y = 0.325;
+    anvilWaist.castShadow = true;
+    anvilGroup.add(anvilWaist);
+
+    // Anvil Horn (cone)
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 4), ironMat);
+    horn.rotation.z = Math.PI / 2;
+    horn.position.set(0.25, 0.4, 0);
+    horn.castShadow = true;
+    anvilGroup.add(horn);
+
+    // Anvil Tail (box)
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.1, 0.18), ironMat);
+    tail.position.set(-0.2, 0.4, 0);
+    tail.castShadow = true;
+    anvilGroup.add(tail);
+
+    group.add(anvilGroup);
+
+    // Floating Ember particles
+    const embers = [];
+    for (let i = 0; i < 4; i++) {
+        const emberGeo = new THREE.SphereGeometry(0.04, 4, 4);
+        const emberMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        const e = new THREE.Mesh(emberGeo, emberMat);
+        e.position.set((Math.random() - 0.5) * 1.2, 0.3, (Math.random() - 0.5) * 1.2);
+        group.add(e);
+        embers.push({
+            mesh: e,
+            speed: 0.3 + Math.random() * 0.4,
+            offset: Math.random() * Math.PI
+        });
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Animations
+    const animateForge = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.003;
+
+        embers.forEach(e => {
+            e.mesh.position.y = 0.3 + ((time * e.speed + e.offset) % 0.8);
+            const scale = Math.max(0.01, 1.0 - ((e.mesh.position.y - 0.3) / 0.8));
+            e.mesh.scale.setScalar(scale);
+        });
+
+        requestAnimationFrame(animateForge);
+    };
+    animateForge();
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.7
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnFrozenSpire(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Snowy/Ice Base Slab
+    const baseGeo = new THREE.CylinderGeometry(1.3, 1.4, 0.15, 8);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.075;
+    base.receiveShadow = true;
+    base.castShadow = true;
+    group.add(base);
+
+    // Jagged Ice Spire
+    const spireGeo = new THREE.ConeGeometry(0.4, 2.2, 5);
+    const spireMat = new THREE.MeshStandardMaterial({
+        color: 0x0ea5e9,
+        emissive: 0x0ea5e9,
+        emissiveIntensity: 0.8,
+        metalness: 0.9,
+        roughness: 0.1,
+        flatShading: true
+    });
+    const spire = new THREE.Mesh(spireGeo, spireMat);
+    spire.position.y = 1.1;
+    spire.castShadow = true;
+    spire.receiveShadow = true;
+    group.add(spire);
+
+    // Floating frost crystals
+    const shards = [];
+    for (let i = 0; i < 3; i++) {
+        const shardGeo = new THREE.OctahedronGeometry(0.12, 0);
+        const shardMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        const s = new THREE.Mesh(shardGeo, shardMat);
+        group.add(s);
+        shards.push(s);
+    }
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Animations
+    const animateSpire = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.002;
+
+        spire.rotation.y += 0.005;
+
+        shards.forEach((s, idx) => {
+            const angle = time * 0.7 + (idx * Math.PI * 2) / 3;
+            s.position.set(Math.cos(angle) * 0.75, 1.1 + Math.sin(time * 2.0 + idx) * 0.2, Math.sin(angle) * 0.75);
+            s.rotation.y += 0.02;
+            s.rotation.x += 0.01;
+        });
+
+        requestAnimationFrame(animateSpire);
+    };
+    animateSpire();
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.6
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
+}
+
+export function spawnAncientRuins(pos, isPreview = false) {
+    if (!isPreview && !Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Weathered Sand/Stone Base
+    const baseGeo = new THREE.CylinderGeometry(1.4, 1.5, 0.15, 8);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.95 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.075;
+    base.receiveShadow = true;
+    base.castShadow = true;
+    group.add(base);
+
+    // Broken antique column
+    const columnGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.2, 6);
+    const columnMat = new THREE.MeshStandardMaterial({ color: 0xa1a1aa, roughness: 0.9, flatShading: true });
+    const col = new THREE.Mesh(columnGeo, columnMat);
+    col.position.set(0.6, 0.6, -0.4);
+    col.rotation.set(0.2, 0.1, -0.1);
+    col.castShadow = true;
+    group.add(col);
+
+    // Golem stone face
+    const faceGeo = new THREE.DodecahedronGeometry(0.38, 0);
+    const faceMat = new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.9 });
+    const face = new THREE.Mesh(faceGeo, faceMat);
+    face.position.set(-0.4, 0.38, 0.3);
+    face.rotation.set(0.1, 0.5, 0.1);
+    face.castShadow = true;
+    group.add(face);
+
+    // Glowing eyes (yellow/gold runes)
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), eyeMat);
+    eyeL.position.set(-0.25, 0.45, 0.6);
+    const eyeR = eyeL.clone();
+    eyeR.position.x += 0.15;
+    eyeR.position.z -= 0.08;
+    group.add(eyeL, eyeR);
+
+    if (!isPreview) Globals.scene.add(group);
+
+    // Animation: Pulsing eyes
+    const animateRuins = () => {
+        if (!group.parent) {
+            group.userData.framesWithoutParent = (group.userData.framesWithoutParent || 0) + 1;
+            if (group.userData.framesWithoutParent > 10) return;
+        } else {
+            group.userData.framesWithoutParent = 0;
+        }
+        if (group.scale.x < 0.1) return;
+        const time = Date.now() * 0.005;
+        
+        const intensity = 0.5 + Math.sin(time) * 0.5;
+        eyeMat.color.setRGB(intensity * 0.9 + 0.1, intensity * 0.7 + 0.1, 0);
+
+        requestAnimationFrame(animateRuins);
+    };
+    animateRuins();
+
+    if (!isPreview) {
+        if (!Globals.obstacles) Globals.obstacles = [];
+        const obstacle = {
+            position: pos.clone(),
+            radius: 1.8
+        };
+        Globals.obstacles.push(obstacle);
+        return { group, obstacle };
+    }
+
+    return { group, obstacle: null };
 }
 
 export const GameLogic = {
@@ -249,16 +1262,17 @@ export const GameLogic = {
             }
         }
 
-        UI.updateHUD();
+        window.UI?.updateHUD();
     },
 
     spawnEnemy: function() {
         if (STATE.bossSpawned) return;
 
-        // --- 15 VARIANTES DE SPAWN (GANGS / PACKS) ---
+        // --- 20 VARIANTES DE SPAWN (GANGS / PACKS) ---
         const GANG_VARIANTS = [
-            // --- 7 VARIANTES STANDARD ---
+            // --- 10 VARIANTES STANDARD ---
             {
+                buildingType: 'barricade',
                 mobs: [
                     { type: 'sentinel' },
                     { type: 'rogue' },
@@ -268,6 +1282,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'barricade',
                 mobs: [
                     { type: 'sentinel' },
                     { type: 'sentinel' },
@@ -276,6 +1291,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'tent',
                 mobs: [
                     { type: 'rogue' },
                     { type: 'rogue' },
@@ -284,6 +1300,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'portal',
                 mobs: [
                     { type: 'warlock' },
                     { type: 'warlock' },
@@ -292,6 +1309,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'portal',
                 mobs: [
                     { type: 'corrupted' },
                     { type: 'corrupted' },
@@ -300,6 +1318,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'barricade',
                 mobs: [
                     { type: 'royal_guard' },
                     { type: 'royal_guard' },
@@ -308,17 +1327,92 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'barricade',
                 mobs: [
                     { type: 'sentinel' },
                     { type: 'warlock' },
                     { type: 'rogue' },
                     { type: 'corrupted' },
                     { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'obelisk', // Corrupted obelisk camp
+                mobs: [
+                    { type: 'corrupted' },
+                    { type: 'corrupted' },
+                    { type: 'warlock' },
+                    { type: 'shaman' },
+                    { type: 'rogue' }
+                ]
+            },
+            {
+                buildingType: 'treasure', // Royal guards guarding a chest camp
+                mobs: [
+                    { type: 'royal_guard' },
+                    { type: 'royal_guard' },
+                    { type: 'sentinel' },
+                    { type: 'rogue' }
+                ]
+            },
+            {
+                buildingType: 'crypt',
+                mobs: [
+                    { type: 'corrupted' },
+                    { type: 'corrupted' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'shrine',
+                mobs: [
+                    { type: 'rogue' },
+                    { type: 'rogue' },
+                    { type: 'shaman' },
+                    { type: 'sentinel' }
+                ]
+            },
+            {
+                buildingType: 'forge',
+                mobs: [
+                    { type: 'sentinel' },
+                    { type: 'royal_guard' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'frozen',
+                mobs: [
+                    { type: 'sentinel' },
+                    { type: 'sentinel' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'ruins',
+                mobs: [
+                    { type: 'royal_guard' },
+                    { type: 'royal_guard' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'ritual',
+                mobs: [
+                    { type: 'shaman' },
+                    { type: 'shaman' },
+                    { type: 'rogue' },
+                    { type: 'warlock' }
                 ]
             },
 
-            // --- 8 VARIANTES AVEC MINI-BOSS ---
+            // --- 10 VARIANTES AVEC MINI-BOSS ---
             {
+                buildingType: 'tent',
                 mobs: [
                     { type: 'rogue', miniBoss: 'verdant_stalker' },
                     { type: 'rogue' },
@@ -327,6 +1421,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'barricade',
                 mobs: [
                     { type: 'sentinel', miniBoss: 'iron_warden' },
                     { type: 'sentinel' },
@@ -335,6 +1430,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'portal',
                 mobs: [
                     { type: 'warlock', miniBoss: 'arcane_herald' },
                     { type: 'warlock' },
@@ -343,6 +1439,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'obelisk',
                 mobs: [
                     { type: 'corrupted', miniBoss: 'corrupt_warden' },
                     { type: 'corrupted' },
@@ -351,6 +1448,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'ritual',
                 mobs: [
                     { type: 'rogue', miniBoss: 'verdant_stalker' },
                     { type: 'warlock', miniBoss: 'arcane_herald' },
@@ -358,6 +1456,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'treasure',
                 mobs: [
                     { type: 'sentinel', miniBoss: 'iron_warden' },
                     { type: 'royal_guard' },
@@ -366,6 +1465,7 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'tent',
                 mobs: [
                     { type: 'rogue', miniBoss: 'verdant_stalker' },
                     { type: 'corrupted' },
@@ -374,11 +1474,64 @@ export const GameLogic = {
                 ]
             },
             {
+                buildingType: 'tent',
                 mobs: [
                     { type: 'corrupted', miniBoss: 'corrupt_warden' },
                     { type: 'sentinel', miniBoss: 'iron_warden' },
                     { type: 'rogue' },
                     { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'obelisk',
+                mobs: [
+                    { type: 'corrupted', miniBoss: 'corrupt_warden' },
+                    { type: 'corrupted' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'crypt',
+                mobs: [
+                    { type: 'corrupted', miniBoss: 'corrupt_warden' },
+                    { type: 'corrupted' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'shrine',
+                mobs: [
+                    { type: 'rogue', miniBoss: 'verdant_stalker' },
+                    { type: 'rogue' },
+                    { type: 'shaman' },
+                    { type: 'sentinel' }
+                ]
+            },
+            {
+                buildingType: 'forge',
+                mobs: [
+                    { type: 'royal_guard', miniBoss: 'iron_warden' },
+                    { type: 'royal_guard' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'frozen',
+                mobs: [
+                    { type: 'sentinel', miniBoss: 'iron_warden' },
+                    { type: 'warlock', miniBoss: 'arcane_herald' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                buildingType: 'ruins',
+                mobs: [
+                    { type: 'royal_guard', miniBoss: 'iron_warden' },
+                    { type: 'rogue', miniBoss: 'verdant_stalker' },
                     { type: 'shaman' }
                 ]
             }
@@ -388,16 +1541,41 @@ export const GameLogic = {
         const luckMini = (STATE.gameOptions && STATE.gameOptions.luckMultMiniBoss !== undefined) ? STATE.gameOptions.luckMultMiniBoss : 1.0;
         const miniBossChance = 0.25 * luckMini;
         const isMiniBossVariant = Math.random() < miniBossChance && STATE.level >= 2;
-        let variantIndex;
-        if (isMiniBossVariant) {
-            // Choose from variants index 7 to 14
-            variantIndex = 7 + Math.floor(Math.random() * 8);
-        } else {
-            // Choose from variants index 0 to 6
-            variantIndex = Math.floor(Math.random() * 7);
+        
+        // Filter standard or mini-boss variants by user weight/enable configurations
+        const pool = [];
+        const startIndex = isMiniBossVariant ? 15 : 0;
+        const endIndex = isMiniBossVariant ? 29 : 15;
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            const v = GANG_VARIANTS[i];
+            const type = v.buildingType;
+            const isEnabled = STATE.gameOptions && STATE.gameOptions[`camp_${type}_enabled`] !== false;
+            const weight = isEnabled ? (STATE.gameOptions[`camp_${type}_weight`] ?? 100) : 0;
+            if (weight > 0) {
+                pool.push({ variant: v, weight });
+            }
         }
 
-        const variant = GANG_VARIANTS[variantIndex];
+        // Weighted random selection
+        let variant = null;
+        if (pool.length > 0) {
+            const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+            let r = Math.random() * totalWeight;
+            for (const item of pool) {
+                r -= item.weight;
+                if (r <= 0) {
+                    variant = item.variant;
+                    break;
+                }
+            }
+        }
+        
+        // If all are disabled or weight total is 0, abort spawning (respect user preference)
+        if (!variant) {
+            console.warn("[Spawning] Aucun camp n'est activé ou tous les poids sont à 0. Spawning annulé.");
+            return;
+        }
 
         // Non-overlapping / Spaced-out spawn position finder
         let centerPos = null;
@@ -441,14 +1619,38 @@ export const GameLogic = {
         // Spawn building structure at the center
         let spawnedBuilding = false;
         let buildingData = null;
-        if (variantIndex === 2 || variantIndex === 7 || variantIndex === 13 || variantIndex === 14) {
+        if (variant.buildingType === 'tent') {
             buildingData = spawnRogueTent(centerPos);
             spawnedBuilding = true;
-        } else if (variantIndex === 3 || variantIndex === 4 || variantIndex === 9 || variantIndex === 10 || variantIndex === 11) {
+        } else if (variant.buildingType === 'portal') {
             buildingData = spawnArcanePortal(centerPos);
             spawnedBuilding = true;
-        } else if (variantIndex === 0 || variantIndex === 1 || variantIndex === 5 || variantIndex === 8 || variantIndex === 12) {
+        } else if (variant.buildingType === 'barricade') {
             buildingData = spawnSpikedBarricade(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'obelisk') {
+            buildingData = spawnCorruptedObelisk(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'treasure') {
+            buildingData = spawnTreasureOutpost(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'ritual') {
+            buildingData = spawnShamanRitualCircle(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'crypt') {
+            buildingData = spawnCursedCrypt(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'shrine') {
+            buildingData = spawnDruidShrine(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'forge') {
+            buildingData = spawnVolcanicForge(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'frozen') {
+            buildingData = spawnFrozenSpire(centerPos);
+            spawnedBuilding = true;
+        } else if (variant.buildingType === 'ruins') {
+            buildingData = spawnAncientRuins(centerPos);
             spawnedBuilding = true;
         }
 
@@ -604,7 +1806,7 @@ export const GameLogic = {
                 STATE.bossProgress['king']++;
                 const currentNG = STATE.bossProgress['king'];
 
-                UI.toast(`VICTOIRE ! ROI VAINCU (NG+${currentNG})`);
+                window.UI?.toast(`VICTOIRE ! ROI VAINCU (NG+${currentNG})`);
                 
                 this.gainXp(500 * (1 + currentNG * 0.2));
 
@@ -612,7 +1814,7 @@ export const GameLogic = {
                 this.setAmbiance('normal');
                 
                 setTimeout(() => {
-                    UI.toast("Les sceaux se reforment...");
+                    window.UI?.toast("Les sceaux se reforment...");
                     createAltars();
                 }, 4000);
             }
@@ -671,8 +1873,8 @@ export const GameLogic = {
         Globals.camera.lookAt(90, 0, 90);
 
         setTimeout(() => {
-            UI.toast("Choisissez un Fragment de depart !");
-            UI.showPrismaticReward();
+            window.UI?.toast("Choisissez un Fragment de depart !");
+            window.UI?.showPrismaticReward();
         }, 200);
 
         if (AudioSys.ctx && AudioSys.ctx.state === 'suspended') AudioSys.ctx.resume();
@@ -682,7 +1884,7 @@ export const GameLogic = {
         ConstellationEngine.recalculate();
         if (window.NewSkillUI?.updatePassiveDisplay) window.NewSkillUI.updatePassiveDisplay();
         if (window.BuffBar) window.BuffBar.render();
-        UI.updateHUD();
+        window.UI?.updateHUD();
     },
 
     updateActiveCamps: function(dt) {
@@ -751,7 +1953,7 @@ export const GameLogic = {
                     this.spawnBoss(targetAltar.userData.bossType); 
                 }
             } else {
-                UI.toast(`Il faut ${cost} kills (Actuel: ${STATE.enemiesKilled})`);
+                window.UI?.toast(`Il faut ${cost} kills (Actuel: ${STATE.enemiesKilled})`);
             }
         }
     }
@@ -778,7 +1980,7 @@ export const GameLauncher = {
             document.querySelector('.class-container-accordion').style.opacity = '0.5';
             document.querySelector('.class-container-accordion').style.pointerEvents = 'none';
             Network.send({ type: 'player-ready', class: STATE.class, id: STATE.multiplayer.id });
-            UI.toast("Prêt ! En attente de l'hôte...");
+            window.UI?.toast("Prêt ! En attente de l'hôte...");
         }
     }
 };

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
+import { CampPreview } from './campPreview';
 
 export const UICore = {
     // AJOUT DE 'forge' ET 'options' DANS LA LISTE DES ÉCRANS
@@ -12,6 +13,11 @@ export const UICore = {
             const el = document.getElementById(`screen-${s}`);
             if(el) el.classList.remove('active');
         });
+
+        // Dispose 3D Camp Preview if leaving options
+        if (id !== 'options' && CampPreview) {
+            CampPreview.dispose();
+        }
 
         // Affiche l'écran cible
         const target = document.getElementById(`screen-${id}`);
@@ -29,6 +35,10 @@ export const UICore = {
         if (id === 'compendium' && this.updateCompendium) this.updateCompendium(); 
         if (id === 'forge' && window.ForgeUI) window.ForgeUI.update();
         if (id === 'options' && STATE.gameOptions) {
+            // Force reset to the first tab (enemies) on screen load
+            const firstTab = document.querySelector('.options-tabs .tab-btn');
+            this.switchOptionsTab('enemies', firstTab);
+
             const setVal = (elId, valId, val, suffix = '') => {
                 const el = document.getElementById(elId);
                 const vel = document.getElementById(valId);
@@ -49,6 +59,37 @@ export const UICore = {
             setVal('opt-maxmobs', 'opt-val-maxmobs', STATE.gameOptions.maxMobDisplay);
             setVal('opt-luck-prism', 'opt-val-luck-prism', STATE.gameOptions.luckMultPrismatic, 'x');
             setVal('opt-luck-mini', 'opt-val-luck-mini', STATE.gameOptions.luckMultMiniBoss, 'x');
+
+            // Camps options initialization
+            const setCamp = (type) => {
+                const isEnabled = STATE.gameOptions[`camp_${type}_enabled`] !== false;
+                const weight = STATE.gameOptions[`camp_${type}_weight`] ?? 100;
+                
+                const chk = document.getElementById(`opt-camp-${type}-enabled`);
+                if (chk) chk.checked = isEnabled;
+                
+                const sld = document.getElementById(`opt-camp-${type}-weight`);
+                if (sld) sld.value = weight;
+                
+                const valSpan = document.getElementById(`opt-val-camp-${type}`);
+                if (valSpan) valSpan.innerText = weight + '%';
+                
+                // Initialize card opacity
+                const card = document.getElementById(`camp-card-${type}`);
+                if (card) card.style.opacity = isEnabled ? '1.0' : '0.55';
+            };
+
+            setCamp('tent');
+            setCamp('portal');
+            setCamp('barricade');
+            setCamp('obelisk');
+            setCamp('treasure');
+            setCamp('ritual');
+            setCamp('crypt');
+            setCamp('shrine');
+            setCamp('forge');
+            setCamp('frozen');
+            setCamp('ruins');
 
             // Presets check
             const presets = {
@@ -130,6 +171,26 @@ export const UICore = {
         STATE.gameOptions.luckMultPrismatic = getVal('opt-luck-prism');
         STATE.gameOptions.luckMultMiniBoss = getVal('opt-luck-mini');
         
+        // Save camp configurations
+        const saveCamp = (type) => {
+            const chk = document.getElementById(`opt-camp-${type}-enabled`);
+            STATE.gameOptions[`camp_${type}_enabled`] = chk ? chk.checked : true;
+            
+            const sld = document.getElementById(`opt-camp-${type}-weight`);
+            STATE.gameOptions[`camp_${type}_weight`] = sld ? parseInt(sld.value) : 100;
+        };
+        saveCamp('tent');
+        saveCamp('portal');
+        saveCamp('barricade');
+        saveCamp('obelisk');
+        saveCamp('treasure');
+        saveCamp('ritual');
+        saveCamp('crypt');
+        saveCamp('shrine');
+        saveCamp('forge');
+        saveCamp('frozen');
+        saveCamp('ruins');
+
         // Save to localStorage
         try {
             localStorage.setItem('slime_game_options', JSON.stringify(STATE.gameOptions));
@@ -189,12 +250,39 @@ export const UICore = {
             btn.classList.remove('active');
         });
         if (clickedBtn) clickedBtn.classList.add('active');
+
+        if (tabName === 'camps') {
+            setTimeout(() => {
+                if (CampPreview) {
+                    CampPreview.init();
+                }
+            }, 50);
+        } else {
+            if (CampPreview) {
+                CampPreview.dispose();
+            }
+        }
     },
 
     onSliderChange: function() {
         document.querySelectorAll('.btn-preset').forEach(btn => {
             btn.classList.remove('active');
         });
+    },
+    
+    toggleAllCamps: function(enable) {
+        const camps = ['tent', 'portal', 'barricade', 'obelisk', 'treasure', 'ritual', 'crypt', 'shrine', 'forge', 'frozen', 'ruins'];
+        camps.forEach(type => {
+            const chk = document.getElementById(`opt-camp-${type}-enabled`);
+            if (chk) {
+                chk.checked = enable;
+                const card = document.getElementById(`camp-card-${type}`);
+                if (card) {
+                    card.style.opacity = enable ? '1.0' : '0.55';
+                }
+            }
+        });
+        this.onSliderChange();
     },
     
     updateHUD: function() {

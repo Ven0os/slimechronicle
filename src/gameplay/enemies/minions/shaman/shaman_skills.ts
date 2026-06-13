@@ -69,6 +69,7 @@ export class ShamanSkills {
 
         // Immobilize target ally
         targetAlly.isChanneling = true;
+        targetAlly.gnomeHealTimer = 2.0; // 2s heal green outline effect
 
         // Spawn green shackle link
         createSkillVisual('shackles_link', this.enemy.position, 2.0, 0x2ecc71, {

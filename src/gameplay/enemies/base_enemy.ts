@@ -60,6 +60,7 @@ export class BaseEnemy extends THREE.Group {
         this.attackCooldown = 0;
         this.gnomeShieldTimer = 0;
         this.gnomeDamageBoostTimer = 0;
+        this.gnomeHealTimer = 0;
         
         this.activeTelegraphs = [];
         
@@ -80,6 +81,57 @@ export class BaseEnemy extends THREE.Group {
         this.mesh.castShadow = true;
         this.add(this.mesh);
         Globals.scene.add(this);
+    }
+
+    initStatusOutlines() {
+        if (!this.mesh || this._statusOutlinesInitialized) return;
+        this._statusOutlinesInitialized = true;
+
+        this._healOutlineMat = new THREE.MeshBasicMaterial({
+            color: 0x2ecc71,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.55,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+
+        this._boostOutlineMat = new THREE.MeshBasicMaterial({
+            color: 0xe74c3c,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.55,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+
+        this._healOutlines = [];
+        this._boostOutlines = [];
+
+        const targetMeshes = [];
+        this.mesh.traverse(child => {
+            if (child.isMesh) {
+                // Skip UI components, healthbars, custom transparent materials, etc.
+                if (child.name && (child.name.includes("hpBar") || child.name.includes("telegraph") || child.name.includes("glow") || child.name.includes("magicMat") || child.material?.transparent && child.material?.opacity < 0.9)) {
+                    return;
+                }
+                targetMeshes.push(child);
+            }
+        });
+
+        targetMeshes.forEach(child => {
+            const healOutline = new THREE.Mesh(child.geometry, this._healOutlineMat);
+            healOutline.scale.setScalar(1.14);
+            healOutline.visible = false;
+            child.add(healOutline);
+            this._healOutlines.push(healOutline);
+
+            const boostOutline = new THREE.Mesh(child.geometry, this._boostOutlineMat);
+            boostOutline.scale.setScalar(1.14);
+            boostOutline.visible = false;
+            child.add(boostOutline);
+            this._boostOutlines.push(boostOutline);
+        });
     }
 
     update(dt) {
@@ -191,6 +243,7 @@ export class BaseEnemy extends THREE.Group {
             }
         }
 
+        // Tick status timers
         if (this.gnomeShieldTimer && this.gnomeShieldTimer > 0) {
             this.gnomeShieldTimer -= dt;
             if (Math.random() < 0.15 && Globals.scene) {
@@ -201,6 +254,79 @@ export class BaseEnemy extends THREE.Group {
             this.gnomeDamageBoostTimer -= dt;
             if (Math.random() < 0.15 && Globals.scene) {
                 spawnParticles(this.position.clone().add(new THREE.Vector3((Math.random()-0.5)*this.radius*2, Math.random()*1.5, (Math.random()-0.5)*this.radius*2)), 0xe74c3c, 1);
+            }
+        }
+        if (this.gnomeHealTimer && this.gnomeHealTimer > 0) {
+            this.gnomeHealTimer -= dt;
+        }
+
+        // Manage status visual representations
+        if (this.dead || this.isDying) {
+            if (this.shieldVisualBubble) this.shieldVisualBubble.visible = false;
+            if (this._healOutlines) this._healOutlines.forEach(o => o.visible = false);
+            if (this._boostOutlines) this._boostOutlines.forEach(o => o.visible = false);
+        } else {
+            // 1. Shield Bubble
+            if (this.gnomeShieldTimer && this.gnomeShieldTimer > 0) {
+                if (!this.shieldVisualBubble) {
+                    const bubbleGroup = new THREE.Group();
+                    const size = Math.max(1.0, this.radius) * 1.35;
+                    const bubbleGeo = new THREE.SphereGeometry(size, 16, 16);
+                    const bubbleMat = new THREE.MeshBasicMaterial({
+                        color: 0x3498db,
+                        transparent: true,
+                        opacity: 0.12,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending,
+                        side: THREE.DoubleSide
+                    });
+                    const bubbleMesh = new THREE.Mesh(bubbleGeo, bubbleMat);
+                    bubbleGroup.add(bubbleMesh);
+
+                    const wireGeo = new THREE.SphereGeometry(size + 0.01, 10, 10);
+                    const wireMat = new THREE.MeshBasicMaterial({
+                        color: 0x5dade2,
+                        transparent: true,
+                        opacity: 0.3,
+                        wireframe: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+                    bubbleGroup.add(wireMesh);
+
+                    bubbleGroup.position.set(0, this.scaleVal * 0.8, 0);
+                    this.add(bubbleGroup);
+                    this.shieldVisualBubble = bubbleGroup;
+                }
+                this.shieldVisualBubble.visible = true;
+                this.shieldVisualBubble.rotation.y += dt * 0.6;
+                this.shieldVisualBubble.rotation.x += dt * 0.3;
+            } else {
+                if (this.shieldVisualBubble) {
+                    this.shieldVisualBubble.visible = false;
+                }
+            }
+
+            // 2. Heal / Damage Boost Outlines
+            if (this.mesh && !this._statusOutlinesInitialized) {
+                this.initStatusOutlines();
+            }
+
+            if (this._statusOutlinesInitialized) {
+                const isHealed = this.gnomeHealTimer && this.gnomeHealTimer > 0;
+                const isBoosted = this.gnomeDamageBoostTimer && this.gnomeDamageBoostTimer > 0;
+
+                if (this._healOutlines) {
+                    this._healOutlines.forEach(o => {
+                        o.visible = !!isHealed;
+                    });
+                }
+                if (this._boostOutlines) {
+                    this._boostOutlines.forEach(o => {
+                        o.visible = !!isBoosted;
+                    });
+                }
             }
         }
 
