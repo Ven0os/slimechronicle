@@ -120,6 +120,7 @@ export function resolveBeamRoutes(
   lenses: ChronoLens[],
   coneAmp = 1,
   refinedPrisms = false,
+  lensSplitCount = 3,
 ): BeamRouteResult {
   const mainDir = dir.clone().normalize();
   const entries = prepareActiveLenses(lenses);
@@ -132,10 +133,10 @@ export function resolveBeamRoutes(
   }
 
   if (!refinedPrisms) {
-    return resolveSingleLensRoutes(hitOrigin, mainDir, entries, coneAmp);
+    return resolveSingleLensRoutes(hitOrigin, mainDir, entries, coneAmp, lensSplitCount);
   }
 
-  return resolveRefinedChainRoutes(hitOrigin, mainDir, entries, coneAmp);
+  return resolveRefinedChainRoutes(hitOrigin, mainDir, entries, coneAmp, lensSplitCount);
 }
 
 /** Mode base : première lentille sur le rayon → 3 splits, pas de chaîne. */
@@ -144,6 +145,7 @@ function resolveSingleLensRoutes(
   mainDir: THREE.Vector3,
   entries: LensEntry[],
   coneAmp: number,
+  lensSplitCount = 3,
 ): BeamRouteResult {
   const hit = findNearestLensOnRay(hitOrigin, mainDir, entries, new Set());
   if (!hit) {
@@ -155,11 +157,24 @@ function resolveSingleLensRoutes(
 
   const lensPos = hit.entry.lens.pos.clone();
   const spread = CHRONO_SKILLS.lens.cone * coneAmp;
-  const rays: BeamRay[] = [
-    { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, -spread), split: true, prismDepth: 1 },
-    { origin: lensPos.clone(), dir: mainDir.clone(), split: true, prismDepth: 1 },
-    { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, spread), split: true, prismDepth: 1 },
-  ];
+  const rays: BeamRay[] = [];
+  if (lensSplitCount >= 4) {
+    const offsets = [-1.5, -0.5, 0.5, 1.5];
+    for (const off of offsets) {
+      rays.push({
+        origin: lensPos.clone(),
+        dir: rotateDirXZ(mainDir, spread * off),
+        split: true,
+        prismDepth: 1,
+      });
+    }
+  } else {
+    rays.push(
+      { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, -spread), split: true, prismDepth: 1 },
+      { origin: lensPos.clone(), dir: mainDir.clone(), split: true, prismDepth: 1 },
+      { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, spread), split: true, prismDepth: 1 },
+    );
+  }
 
   return {
     trunk: [{ from: hitOrigin.clone(), to: lensPos.clone() }],
@@ -176,6 +191,7 @@ function resolveRefinedChainRoutes(
   mainDir: THREE.Vector3,
   entries: LensEntry[],
   coneAmp: number,
+  lensSplitCount = 3,
 ): BeamRouteResult {
   const trunk: BeamTrunkSegment[] = [];
   const rays: BeamRay[] = [];

@@ -10,6 +10,8 @@ import { applyMiniBossVariant } from '../gameplay/enemies/minions/mini_boss';
 import { setOvershield } from '../gameplay/enemies/minions/mini_boss_combat';
 import {
   applyMiniBossTierState,
+  getMiniBossTierLabels,
+  logMiniBossTierPipeline,
   parseMiniBossTiers,
   serializeMiniBossTiers,
 } from '../gameplay/enemies/minions/mini_boss_tiers';
@@ -184,11 +186,17 @@ export const NetSync = {
                     }
                 }
 
-                if (eData.isMiniBoss && eData.miniBossTiers) {
-                    const tiers = parseMiniBossTiers(eData.miniBossTiers);
-                    if (tiers.length > 0) {
-                        applyMiniBossTierState(enemy, tiers);
+                if (eData.isMiniBoss) {
+                    const tiers = parseMiniBossTiers(eData.miniBossTiers ?? '');
+                    if (tiers.length > 0 || enemy.isMiniBoss) {
+                        applyMiniBossTierState(enemy, tiers, 'network');
                         syncMiniBossUiTiers(enemy);
+                        if (!enemy._tierSyncLogged) {
+                            enemy._tierSyncLogged = true;
+                            logMiniBossTierPipeline('client-sync', enemy, {
+                                replicated: getMiniBossTierLabels(tiers).join(', '),
+                            });
+                        }
                     }
                 }
 

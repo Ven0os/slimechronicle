@@ -38,6 +38,7 @@ export class BaseEnemy extends THREE.Group {
         this.miniBossId = null;
         this.miniBossTiers = [];
         this.miniBossStats = null;
+        this.defense = 0;
         this.stateVersion = 0;
         this.speed = 4.8;
         this.attackRange = 1.5;

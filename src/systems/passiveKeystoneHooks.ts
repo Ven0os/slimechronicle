@@ -2,9 +2,14 @@
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { ConvergenceEffects } from '@/systems/convergenceEffects';
-import { createDamageText, createSkillVisual } from '@/visual/effects';
+import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
 import { NetClassState } from '@/multiplayer/net_class_state';
 import { isServerAuthority } from '@/multiplayer/net_combat';
+import { getPlayerDefense } from '@/gameplay/combat/defense';
+import { ConstellationEngine } from '@/systems/constellationEngine';
+import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
+import { canApplyGameplay, canDealDamageDirectly } from '@/multiplayer/net_authority';
+import { Projectile } from '@/gameplay/entities';
 
 function rank(key: string): number {
   const p = STATE.passives as Record<string, number> | undefined;
@@ -17,7 +22,114 @@ function passives() {
 }
 
 export const PassiveKeystoneHooks = {
-  // ——— Mage ———
+  getGuardianWarCryMods() {
+    if (!rank('guardianWarCry')) return { healMult: 1, radius: 0, allyDefRatio: 0, allyDefDuration: 0 };
+    return { healMult: 0.65, radius: 12, allyDefRatio: 0.1, allyDefDuration: 6 };
+  },
+
+  applyGuardianWarCryAllies(warrior: { position: THREE.Vector3; dead?: boolean }) {
+    const mods = this.getGuardianWarCryMods();
+    if (!mods.radius || !warrior || warrior.dead) return;
+    const defBonus = Math.floor(getPlayerDefense() * mods.allyDefRatio);
+    const applyTo = (ally: { position: THREE.Vector3; dead?: boolean; addBuff?: (n: string, d: number, i: string) => void; _guardianDefBonus?: number }) => {
+      if (!ally || ally.dead || ally === warrior) return;
+      if (ally.position.distanceTo(warrior.position) > mods.radius) return;
+      ally._guardianDefBonus = defBonus;
+      ally.addBuff?.('Cri du Gardien', mods.allyDefDuration, 'fa-shield-heart');
+      createDamageText(`+${defBonus} DEF`, ally.position, '#ffd700');
+    };
+    if (STATE.multiplayer?.remotePlayers) {
+      for (const id of Object.keys(STATE.multiplayer.remotePlayers)) {
+        applyTo(STATE.multiplayer.remotePlayers[id]);
+      }
+    }
+  },
+
+  tickGuardianDefBonus(player: { _guardianDefBonus?: number; buffs?: Array<{ name: string }> }) {
+    if (!player?._guardianDefBonus) return;
+    const hasBuff = player.buffs?.some((b) => b.name === 'Cri du Gardien');
+    if (!hasBuff) player._guardianDefBonus = 0;
+  },
+
+  getBloodPistolTransfusionMods() {
+    if (!rank('acceleratedTransfusion')) {
+      return { atkSpeedMult: 1, selfDmgMult: 1, dmgMult: 1, projectileSpeedMult: 1 };
+    }
+    return { atkSpeedMult: 1.4, selfDmgMult: 0.7, dmgMult: 0.85, projectileSpeedMult: 1.25 };
+  },
+
+  registerParadoxClone(player: { paradoxClones?: Array<{ pos: THREE.Vector3; until: number }> }, pos: THREE.Vector3) {
+    if (!rank('paradoxReplicated') || !player) return;
+    if (!player.paradoxClones) player.paradoxClones = [];
+    const now = Date.now();
+    player.paradoxClones = player.paradoxClones.filter((c) => c.until > now);
+    if (player.paradoxClones.length >= 2) player.paradoxClones.shift();
+    player.paradoxClones.push({ pos: pos.clone(), until: now + 8000 });
+  },
+
+  tickParadoxClones(player: { paradoxClones?: Array<{ pos: THREE.Vector3; until: number }> }) {
+    if (!player?.paradoxClones?.length) return;
+    const now = Date.now();
+    player.paradoxClones = player.paradoxClones.filter((c) => c.until > now);
+  },
+
+  replicateMageSkill(
+    player: {
+      paradoxClones?: Array<{ pos: THREE.Vector3; until: number }>;
+      _cloneReplicating?: boolean;
+      position?: THREE.Vector3;
+    },
+    key: string,
+    ctx: { targetDir?: THREE.Vector3; skillDmg?: number } = {},
+  ) {
+    if (!rank('paradoxReplicated') || !player || player._cloneReplicating || key === 'e') return;
+    const clones = (player.paradoxClones || []).filter((c) => c.until > Date.now());
+    if (!clones.length || !canDealDamageDirectly()) return;
+    const eff = 0.25;
+    player._cloneReplicating = true;
+    const dir = ctx.targetDir?.clone() || new THREE.Vector3(0, 0, 1);
+    dir.y = 0;
+    if (dir.lengthSq() > 0.001) dir.normalize();
+
+    if (player.cooldowns && player.maxCooldowns && player.cooldowns[key] > 0) {
+      player.cooldowns[key] = Math.max(0, player.cooldowns[key] - player.maxCooldowns[key] * 0.1);
+    }
+
+    for (const clone of clones) {
+      if (key === 'space') {
+        const dmg = (ctx.skillDmg || STATE.stats.atk * 0.75) * eff;
+        const spread = 0.15;
+        for (const i of [-1, 0, 1]) {
+          const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), i * spread);
+          const pGeo = new THREE.DodecahedronGeometry(0.25);
+          const pMat = new THREE.MeshStandardMaterial({ color: 0x3498db, emissive: 0x00ffff, emissiveIntensity: 0.8 });
+          const p = new Projectile(
+            pGeo,
+            pMat,
+            clone.pos.clone().add(new THREE.Vector3(0, 1.8, 0)),
+            d,
+            0.9,
+            dmg,
+            'player',
+            0x3498db,
+          );
+          Globals.projectiles.push(p);
+        }
+        spawnParticles(clone.pos, 0x3498db, 4);
+      } else if (key === 'shift') {
+        const stasis = this.getDeepStasisMods();
+        const radius = stasis.radius * 0.85;
+        createSkillVisual('shockwave', clone.pos, radius, 0x00ffff);
+        Globals.enemies?.forEach((e) => {
+          if (e.dead || e.position.distanceTo(clone.pos) > radius) return;
+          const dmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8 * eff, { skill: true, skillKey: 'shift' });
+          dealDamageToEnemy(e, dmg, { pos: e.position });
+        });
+      }
+    }
+    player._cloneReplicating = false;
+  },
+
   getDeepStasisMods() {
     if (!rank('deepStasis')) return { radius: 15, slowFactor: 0.05, duration: 2500 };
     return { radius: 16, slowFactor: 0.15, duration: 3000 };
@@ -42,7 +154,52 @@ export const PassiveKeystoneHooks = {
     return rank('cloneExtend') ? 1 : 0;
   },
 
-  // ——— Blade ———
+  isBloodFrenzyActive(player: { _bloodFrenzyUntil?: number }) {
+    return !!(rank('bloodFrenzy') && player?._bloodFrenzyUntil && Date.now() < player._bloodFrenzyUntil);
+  },
+
+  tickBloodFrenzy(player: {
+    hp: number;
+    maxHp: number;
+    dead?: boolean;
+    _bloodFrenzyUntil?: number;
+    _bloodFrenzyStart?: number;
+    addBuff?: (n: string, d: number, i: string) => void;
+    position?: THREE.Vector3;
+  }) {
+    if (!rank('bloodFrenzy') || !player || player.dead || player.maxHp <= 0) return;
+    const now = Date.now();
+    if (player.hp / player.maxHp < 0.5) {
+      if (!player._bloodFrenzyUntil || now >= player._bloodFrenzyUntil) {
+        player._bloodFrenzyStart = now;
+        player._bloodFrenzyUntil = now + 6000;
+        player.addBuff?.('Frénésie', 6, 'fa-fire-flame-curved');
+        createDamageText('FRÉNÉSIE', player.position, '#e74c3c');
+      }
+    }
+    if (player._bloodFrenzyUntil && now >= player._bloodFrenzyUntil) {
+      player._bloodFrenzyUntil = 0;
+      player._bloodFrenzyStart = 0;
+    }
+  },
+
+  extendBloodFrenzyOnCrit(player: { _bloodFrenzyUntil?: number; _bloodFrenzyStart?: number; addBuff?: (n: string, d: number, i: string) => void }) {
+    if (!this.isBloodFrenzyActive(player) || !player?._bloodFrenzyStart) return;
+    const cap = player._bloodFrenzyStart + 10000;
+    player._bloodFrenzyUntil = Math.min(cap, (player._bloodFrenzyUntil || 0) + 500);
+    const remainSec = Math.max(0.1, ((player._bloodFrenzyUntil || 0) - Date.now()) / 1000);
+    player.addBuff?.('Frénésie', remainSec, 'fa-fire-flame-curved');
+  },
+
+  getBloodFrenzyAttackSpeedMult(player: { _bloodFrenzyUntil?: number }) {
+    return this.isBloodFrenzyActive(player) ? 1.25 : 1;
+  },
+
+  getBloodFrenzyFlatDamage(player: { maxHp?: number; _bloodFrenzyUntil?: number }) {
+    if (!this.isBloodFrenzyActive(player) || !player?.maxHp) return 0;
+    return player.maxHp * 0.1;
+  },
+
   onCritApplyHemorrhage(enemy: { dead?: boolean; position?: THREE.Vector3; hemorrhageStacks?: number }, dmg: number) {
     if (!rank('hemorrhage') || !enemy || enemy.dead) return;
     enemy.hemorrhageStacks = Math.min(3, (enemy.hemorrhageStacks || 0) + 1);
@@ -102,7 +259,6 @@ export const PassiveKeystoneHooks = {
     return rank('earlyThirst') ? 0.3 : 0;
   },
 
-  // ——— Pacificateur ———
   getBloodShieldMaxMult(): number {
     let m = 1;
     if (rank('shieldOverflow')) m += 0.25;
@@ -153,10 +309,33 @@ export const PassiveKeystoneHooks = {
     return false;
   },
 
-  // ——— Éclipse ———
+  getExtraPrismLensMods() {
+    if (!rank('extraPrismLens')) return { splitCount: 3, splitDmgMult: 1, burnOnSplit: false };
+    return { splitCount: 4, splitDmgMult: 0.85, burnOnSplit: true };
+  },
+
+  applyPrismLensBurn(enemy: { dead?: boolean; position?: THREE.Vector3 }, tickDmg: number) {
+    if (!enemy || enemy.dead) return;
+    for (let t = 1; t <= 2; t++) {
+      setTimeout(() => {
+        if (!enemy.dead && canApplyGameplay()) {
+          dealDamageToEnemy(enemy, tickDmg * 0.35, { pos: enemy.position, noCrit: true, skillKey: 'primary' });
+          createDamageText('BRÛLURE', enemy.position, '#ff6600');
+        }
+      }, t * 500);
+    }
+  },
+
   getSolarFlareMods() {
     if (!rank('solarFlare')) return { dotMult: 0.3, dotTicks: 1, extraBounces: 0 };
     return { dotMult: 0.42, dotTicks: 3, extraBounces: 2 };
+  },
+
+  getDevouringSunMods() {
+    if (!rank('devouringSun')) {
+      return { spearRangeMult: 1, burnDmgMult: 1, burnTicks: 1, burnIntervalMs: 1000, burnStartMs: 500 };
+    }
+    return { spearRangeMult: 1.3, burnDmgMult: 1.4, burnTicks: 3, burnIntervalMs: 1000, burnStartMs: 500 };
   },
 
   getLunarSpikeMods() {
@@ -206,7 +385,13 @@ export const PassiveKeystoneHooks = {
     return rank('voidPull') ? 0.2 : 0;
   },
 
-  // ——— Sentinelle (compléments) ———
+  getStellarOverchargeMods() {
+    if (!rank('stellarOvercharge')) {
+      return { enabled: false, maxChargeRatio: 1, baseChargeMs: 1000, overchargeMs: 1500 };
+    }
+    return { enabled: true, maxChargeRatio: 2.5, baseChargeMs: 1000, overchargeMs: 1500 };
+  },
+
   onSentinelBeamFired(player: { addBuff?: (n: string, d: number, i: string) => void; speed?: number }) {
     if (!rank('beamHaste') || !player) return;
     player.addBuff?.('Hâte solaire', 2, 'fa-sun');

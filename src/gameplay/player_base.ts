@@ -122,13 +122,13 @@ export class PlayerBase extends THREE.Group {
         STATE.stats.skillCdMods = createDefaultSkillCdMods();
         STATE.stats.titanBonus = 0;
         STATE.stats.titanDefBonus = 0;
-        STATE.stats.def = 0;
 
         const classCfg = CLASS_STATS_CONFIG[this.className];
         if (classCfg) {
             const b = classCfg.base;
             STATE.stats.maxHp = b.maxHp;
             STATE.stats.atk = b.atk;
+            STATE.stats.defense = b.defense ?? 10;
             STATE.stats.speed = b.speed;
             this.attackMaxCooldown = b.attackMaxCooldown;
             this.maxCooldowns = { ...b.cooldowns };

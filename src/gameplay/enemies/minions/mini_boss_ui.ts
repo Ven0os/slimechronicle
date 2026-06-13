@@ -7,6 +7,8 @@ import { getMaxOvershieldHp, getOvershieldHp } from './mini_boss_combat_core';
 import {
   dedupeMiniBossTiers,
   formatMiniBossTierDisplay,
+  getMiniBossTierLabels,
+  logMiniBossTierPipeline,
   type MiniBossTierId,
 } from './mini_boss_tiers';
 
@@ -91,9 +93,27 @@ function drawBar(
   }
 }
 
-function getTierDisplay(enemy: { miniBossTiers?: MiniBossTierId[]; miniBossUi?: { tiers?: MiniBossTierId[] } }) {
-  const tiers = dedupeMiniBossTiers(enemy.miniBossTiers || enemy.miniBossUi?.tiers || []);
-  return formatMiniBossTierDisplay(tiers);
+function getActiveMiniBossTiers(enemy: {
+  miniBossTiers?: MiniBossTierId[];
+  miniBossUi?: { tiers?: MiniBossTierId[] };
+}): MiniBossTierId[] {
+  if (enemy.miniBossTiers?.length) return dedupeMiniBossTiers(enemy.miniBossTiers);
+  if (enemy.miniBossUi?.tiers?.length) return dedupeMiniBossTiers(enemy.miniBossUi.tiers);
+  return dedupeMiniBossTiers(enemy.miniBossTiers || enemy.miniBossUi?.tiers || []);
+}
+
+function getTierDisplay(
+  enemy: { miniBossTiers?: MiniBossTierId[]; miniBossUi?: { tiers?: MiniBossTierId[]; ctx?: CanvasRenderingContext2D } },
+) {
+  const tiers = getActiveMiniBossTiers(enemy);
+  const ctx = enemy.miniBossUi?.ctx;
+  const measure = ctx
+    ? (text: string, fontSize: number) => {
+        ctx.font = `600 ${fontSize}px system-ui, sans-serif`;
+        return ctx.measureText(text).width;
+      }
+    : undefined;
+  return formatMiniBossTierDisplay(tiers, INNER_W, measure);
 }
 
 function paintPlate(
@@ -186,12 +206,14 @@ export function setupMiniBossUi(
   }
   if (enemy.hudGroup) enemy.hudGroup.visible = false;
 
-  const tiers = dedupeMiniBossTiers(config.tiers || enemy.miniBossTiers || []);
+  const fromConfig = config.tiers?.length ? dedupeMiniBossTiers(config.tiers) : [];
+  const fromEnemy = enemy.miniBossTiers?.length ? dedupeMiniBossTiers(enemy.miniBossTiers) : [];
+  const tiers = fromConfig.length ? fromConfig : fromEnemy;
   enemy.miniBossTiers = tiers;
   enemy.miniBossAccent = config.accentHex;
   enemy.miniBossName = config.name;
 
-  const tierDisplay = formatMiniBossTierDisplay(tiers);
+  const tierDisplay = formatMiniBossTierDisplay(tiers, INNER_W);
   const plateH = computePlateHeight(tierDisplay.lines.length);
 
   const canvas = document.createElement('canvas');
@@ -239,10 +261,16 @@ export function setupMiniBossUi(
   texture.needsUpdate = true;
 }
 
-export function syncMiniBossUiTiers(enemy: { miniBossTiers?: MiniBossTierId[]; miniBossUi?: Record<string, unknown> }): void {
+export function syncMiniBossUiTiers(enemy: {
+  miniBossTiers?: MiniBossTierId[];
+  miniBossUi?: Record<string, unknown>;
+  isMiniBoss?: boolean;
+  miniBossName?: string;
+}): void {
   if (!enemy.miniBossUi) return;
-  const tiers = dedupeMiniBossTiers(enemy.miniBossTiers || []);
+  const tiers = getActiveMiniBossTiers(enemy);
   enemy.miniBossUi.tiers = tiers;
+  enemy.miniBossTiers = tiers;
 }
 
 export function triggerMiniBossShieldFlash(enemy: { miniBossUi?: { shieldFlash: number } }): void {
@@ -290,11 +318,16 @@ export function updateMiniBossUi(
   const cam = camera || Globals.camera;
   if (!cam) return;
 
-  const tiers = dedupeMiniBossTiers(enemy.miniBossTiers || ui.tiers || []);
+  const tiers = getActiveMiniBossTiers(enemy);
   ui.tiers = tiers;
   enemy.miniBossTiers = tiers;
 
   const tierDisplay = getTierDisplay(enemy);
+  const renderedKey = tierDisplay.lines.join('|');
+  if (ui._lastRenderedTiers !== renderedKey) {
+    ui._lastRenderedTiers = renderedKey;
+    logMiniBossTierPipeline('ui-render', enemy, { rendered: tierDisplay.lines.join(' • ') });
+  }
   const plateH = computePlateHeight(tierDisplay.lines.length);
   ensureCanvasSize(ui, plateH);
   ui.plateH = plateH;

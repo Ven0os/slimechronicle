@@ -6,6 +6,7 @@ import { createDamageText, createSkillVisual, createTelegraph, spawnParticles } 
 import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { CHRONO_ASCENDANT, CHRONO_BEAM, CHRONO_FRACTURE, CHRONO_SKILLS } from './chrono/constants';
 import { dedupeBeamRays, getBeamHitInfo, resolveBeamRoutes, rayHitsLens } from './chrono/beamHelpers';
@@ -1212,9 +1213,10 @@ export class Chronoregulator extends PlayerBase {
     this.destroyBeamVisuals();
     const mainDir = this.getAimDir();
     const staffOrigin = this.getBeamVisualOrigin();
+    const prismMods = PassiveKeystoneHooks.getExtraPrismLensMods();
     const coneAmp = STATE.passives?.continuumBurst ? 1.15 : 1;
     const refined = ConvergenceEffects.hasRefinedPrisms();
-    const routes = resolveBeamRoutes(staffOrigin, mainDir, this.lenses, coneAmp, refined);
+    const routes = resolveBeamRoutes(staffOrigin, mainDir, this.lenses, coneAmp, refined, prismMods.splitCount);
 
     for (const seg of routes.trunk) {
       if (seg.from.distanceTo(seg.to) > 0.15) {
@@ -1265,12 +1267,14 @@ export class Chronoregulator extends PlayerBase {
     const hitOrigin = this.getBeamHitOrigin();
     const mainDir = this.getAimDir();
     const refined = ConvergenceEffects.hasRefinedPrisms();
+    const prismMods = PassiveKeystoneHooks.getExtraPrismLensMods();
     const routes = resolveBeamRoutes(
       hitOrigin,
       mainDir,
       this.lenses,
       STATE.passives?.continuumBurst ? 1.15 : 1,
       refined,
+      prismMods.splitCount,
     );
     const rays = dedupeBeamRays(routes.rays);
     const tickDt = this.getBeamTickInterval();
@@ -1293,12 +1297,16 @@ export class Chronoregulator extends PlayerBase {
       focusEnemy = enemy;
 
       let tickDmg = baseDmg;
+      if (ray.split) tickDmg *= prismMods.splitDmgMult;
       if (this.isEnemyInstabilityMarked(enemy)) {
         tickDmg *= 1 + CHRONO_SKILLS.dephasing.beamMarkedBonus;
       }
 
       const dealt = this.dealMagicDamage(enemy, tickDmg, { skillKey: 'primary', prismDepth: ray.prismDepth || 0 });
       this.recordBeamDamage(enemy, dealt);
+      if (ray.split && prismMods.burnOnSplit) {
+        PassiveKeystoneHooks.applyPrismLensBurn(enemy, tickDmg);
+      }
 
       if (this.isConverging) {
         this.convergenceHitCount += 1;

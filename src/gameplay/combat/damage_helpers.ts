@@ -20,14 +20,12 @@ import { NetClassState } from '@/multiplayer/net_class_state';
 
 import { NetAuthority, registerDamageEvent, makeDamageEventKey } from '@/multiplayer/net_authority';
 
+import { applyDefenseReduction, getEnemyDefense } from '@/gameplay/combat/defense';
+
 import {
-
   blocksCriticalHits,
-
   shouldApplyMarkedBonus,
-
   shouldApplyCataclysmVuln,
-
 } from '@/gameplay/enemies/minions/mini_boss_combat';
 
 
@@ -110,6 +108,11 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
         scaled *= ConvergenceEffects.getCataclysmVulnMult(enemy);
 
+    }
+
+    const enemyDef = getEnemyDefense(enemy);
+    if (enemyDef > 0) {
+        scaled = applyDefenseReduction(scaled, enemyDef, { allowZero: true });
     }
 
 

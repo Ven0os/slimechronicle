@@ -3,6 +3,7 @@
 
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
+import { getPlayerDefense } from '@/gameplay/combat/defense';
 import { CHRONO_FRACTURE, CHRONO_SKILLS } from '@/gameplay/classes/chrono/constants';
 import {
   getFractureDamageMult as computeFractureDamageMult,
@@ -51,7 +52,7 @@ function passives() {
   return STATE.passives as Record<string, unknown>;
 }
 
-const PARADOX_STAT_KEYS = ['atk', 'maxHp', 'speed', 'crit', 'critDmg', 'def', 'regen', 'lifesteal'] as const;
+const PARADOX_STAT_KEYS = ['atk', 'maxHp', 'speed', 'crit', 'critDmg', 'defense', 'regen', 'lifesteal'] as const;
 
 export const ConvergenceEffects = {
   isChronoApexActive,
@@ -89,8 +90,8 @@ export const ConvergenceEffects = {
   // ——— Guerrier : Parade réfléchissante ———
   calcParryReflectDamage(blocked: number): number {
     if (rank('runicColossus') < 2) return 0;
-    const def = STATE.stats.def || 0;
-    return blocked * 0.3 + def * 0.05;
+    const defense = getPlayerDefense();
+    return blocked * 0.3 + defense * 0.05;
   },
 
   // ——— Mage : Récompense paradoxale ———

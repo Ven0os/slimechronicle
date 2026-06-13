@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Règles combat Mini-Boss — overshield, immunités, tiers, pipeline dégâts. */
 
-import { createDamageText } from '@/visual/effects';
+import { applyDefenseReduction, getEnemyDefense } from '@/gameplay/combat/defense';
 import { triggerMiniBossShieldFlash } from './mini_boss_ui';
 import type { MiniBossAggregatedStats } from './mini_boss_tiers';
 
@@ -82,7 +82,8 @@ export function applyMiniBossIncomingDamage(
   if (!enemy.isMiniBoss || !enemy.miniBossStats) return dmg;
 
   const s = enemy.miniBossStats;
-  if (s.defenseReduction > 0) dmg *= 1 - s.defenseReduction;
+  const enemyDef = getEnemyDefense(enemy) || s.defense || 0;
+  if (enemyDef > 0) dmg = applyDefenseReduction(dmg, enemyDef, { allowZero: true });
   if (enemy._gardienBuffUntil && Date.now() < enemy._gardienBuffUntil && s.gardienBuff > 0) {
     dmg *= 1 - s.gardienBuff;
   }

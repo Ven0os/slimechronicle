@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
 import {
-  CONSTELLATION_APEX_MIN_NODES,
   getConstellationForClass,
   getNodeById,
   type ClassId,
@@ -208,6 +207,25 @@ function branchProgress(classId: ClassId, branchId: string): { unlocked: number;
   return { unlocked, total: branch.nodes.length };
 }
 
+function apexProgressCardClass(state: string): string {
+  if (state === 'unlocked') return 'apex-progress-card apex-unlocked-state';
+  if (state === 'ready') return 'apex-progress-card apex-ready-state';
+  return 'apex-progress-card apex-locked-state';
+}
+
+function apexStatusLabel(state: string): string {
+  if (state === 'unlocked') return 'DÉBLOQUÉ';
+  if (state === 'ready') return 'APEX READY';
+  return 'Verrouillé';
+}
+
+function centerStarClass(state: string, apexUnlocked: boolean): string {
+  const base = 'center-star';
+  if (apexUnlocked) return `${base} apex-multicolor apex-unlocked`;
+  if (state === 'ready') return `${base} apex-multicolor apex-ready`;
+  return base;
+}
+
 function nodeStatus(nodeId: string): 'locked' | 'available' | 'unlocked' {
   if (ConstellationEngine.isNodeUnlocked(nodeId)) return 'unlocked';
   if (ConstellationEngine.canUnlock(nodeId).ok) return 'available';
@@ -268,14 +286,16 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
   if (!node) {
     const meta = CONSTELLATION_META[classId];
     const c = getConstellationForClass(classId);
-    const total = ConstellationEngine.getUnlockedCountForClass(classId);
+    const total = ConstellationEngine.getUnlockedNonApexCount(classId);
+    const totalNodes = ConstellationEngine.getNonApexNodeTotal(classId);
+    const apexState = ConstellationEngine.getApexProgressState(classId);
     panel.innerHTML = `
       <div class="detail-empty">
         <p class="detail-lore">${meta.lore}</p>
         <p class="detail-motto">« ${meta.motto} »</p>
         <div class="detail-stats-row">
-          <span><i class="fas fa-star"></i> ${total} / 16 nœuds</span>
-          <span><i class="fas fa-crown"></i> Apex ${ConstellationEngine.isNodeUnlocked(c.apex.id) ? 'actif' : 'verrouillé'}</span>
+          <span><i class="fas fa-star"></i> ${total} / ${totalNodes} nœuds</span>
+          <span><i class="fas fa-crown"></i> Apex ${apexState === 'unlocked' ? 'actif' : apexState === 'ready' ? 'prêt' : 'verrouillé'}</span>
         </div>
         <div class="detail-legend">
           <span><i class="node-legend-dot locked"></i> Verrouillé</span>
@@ -297,16 +317,24 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
   const check = ConstellationEngine.canUnlock(node.id);
   const rewardKind = getNodeRewardKind(node);
   const isStatNode = rewardKind === 'stat';
+  const isKeystone = rewardKind === 'keystone';
   const effectPills = formatEffectPills(node.effects, !isStatNode, classId);
   const passiveMeta = !isStatNode && node.effects.passive ? getPassiveMeta(node.effects.passive) : null;
-  const statPills = isStatNode ? effectPills : (hasStatEffects(node.effects) ? formatEffectPills(node.effects, false, classId) : '');
+  const statPills = isStatNode
+    ? effectPills
+    : (hasStatEffects(node.effects, isKeystone, classId)
+      ? formatEffectPills(node.effects, false, classId, isKeystone)
+      : '');
 
   let reqText = '';
   if (node.requires?.length) {
     reqText = node.requires.map((r) => getNodeById(r)?.name || r).join('  →  ');
   }
   if (node.branch === 'apex') {
-    reqText = `${CONSTELLATION_APEX_MIN_NODES} nœuds débloqués dans au moins 3 branches`;
+    const missing = ConstellationEngine.getNonApexNodeTotal(classId) - ConstellationEngine.getUnlockedNonApexCount(classId);
+    reqText = missing > 0
+      ? `Tous les nœuds de constellation (${missing} restant${missing > 1 ? 's' : ''})`
+      : 'Tous les nœuds débloqués — Apex disponible';
   }
 
   const reqHtml = reqText
@@ -363,7 +391,7 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
 
       ${effectSectionHtml}
 
-      ${statPills ? `<div class="detail-section"><div class="detail-section-title">${isStatNode ? 'Attributs augmentés' : 'Bonus de stats inclus'}</div><div class="effect-pills">${statPills}</div></div>` : ''}
+      ${statPills ? `<div class="detail-section${isStatNode ? '' : ' detail-section-stat-bonus'}"><div class="detail-section-title">${isStatNode ? 'Attributs augmentés' : 'BONUS DE STATS'}</div><div class="effect-pills${isStatNode ? '' : ' effect-pills-animated'}">${statPills}</div></div>` : ''}
 
       ${reqHtml}
       <div class="detail-status-msg">${statusMsg}</div>
@@ -498,7 +526,13 @@ export const ConstellationUI = {
     const classId = (STATE.class || 'warrior') as ClassId;
     const data = getConstellationForClass(classId);
     const meta = CONSTELLATION_META[classId];
-    const apexProg = ConstellationEngine.getUnlockedCountForClass(classId);
+    const apexProg = ConstellationEngine.getUnlockedNonApexCount(classId);
+    const apexTotal = ConstellationEngine.getNonApexNodeTotal(classId);
+    const apexState = ConstellationEngine.getApexProgressState(classId);
+    const apexUnlocked = apexState === 'unlocked';
+    const apexPct = apexTotal > 0 ? Math.min(100, (apexProg / apexTotal) * 100) : 0;
+    const keystones = ConstellationEngine.getUnlockedKeystoneCount(classId);
+    const keystonesTotal = ConstellationEngine.getKeystoneTotal(classId);
 
     mount.style.setProperty('--constellation-theme', data.themeColor);
     selectedNodeId = null;
@@ -512,10 +546,11 @@ export const ConstellationUI = {
             <div class="sidebar-sub">${data.subtitle}</div>
           </div>
         </div>
-        <div class="apex-progress-card">
-          <div class="apex-progress-label"><i class="fas fa-crown"></i> Apex stellaire</div>
-          <div class="apex-progress-bar"><div class="apex-progress-fill" style="width:${Math.min(100, (apexProg / CONSTELLATION_APEX_MIN_NODES) * 100)}%"></div></div>
-          <div class="apex-progress-text">${apexProg} / ${CONSTELLATION_APEX_MIN_NODES} nœuds · ${ConstellationEngine.isNodeUnlocked(data.apex.id) ? 'DÉBLOQUÉ' : 'En cours'}</div>
+        <div class="${apexProgressCardClass(apexState)}">
+          <div class="apex-progress-label"><i class="fas fa-crown"></i> Apex Progress</div>
+          <div class="apex-progress-bar"><div class="apex-progress-fill" style="width:${apexPct}%"></div></div>
+          <div class="apex-progress-text">${apexProg} / ${apexTotal} Nœuds · ${keystones} / ${keystonesTotal} Passifs</div>
+          <div class="apex-progress-status">${apexStatusLabel(apexState)}</div>
         </div>
         <div class="sidebar-node-hint">
           <p><span class="hint-dot hint-stat"></span> Paliers 1–3 : stats</p>
@@ -526,7 +561,7 @@ export const ConstellationUI = {
       <div class="constellation-canvas">
         <svg class="constellation-svg" id="constellation-svg"></svg>
         <div class="constellation-nodes-layer" id="constellation-nodes"></div>
-        <div class="center-star apex-multicolor ${ConstellationEngine.isNodeUnlocked(data.apex.id) ? 'apex-unlocked' : ''}" id="node-apex" data-node-id="${data.apex.id}">
+        <div class="${centerStarClass(apexState, apexUnlocked)}" id="node-apex" data-node-id="${data.apex.id}">
           <span class="apex-rainbow-ring" aria-hidden="true"></span>
           <span class="apex-rainbow-ring apex-rainbow-delay" aria-hidden="true"></span>
           <span class="apex-sparkle-field" aria-hidden="true"></span>
@@ -599,21 +634,35 @@ export const ConstellationUI = {
       else el.classList.add('node-locked');
     }
 
+    const apexState = ConstellationEngine.getApexProgressState(classId);
+    const apexUnlockedNode = ConstellationEngine.isNodeUnlocked(data.apex.id);
+
     const apexEl = document.getElementById('node-apex');
     if (apexEl) {
-      apexEl.classList.toggle('apex-unlocked', ConstellationEngine.isNodeUnlocked(data.apex.id));
+      apexEl.className = centerStarClass(apexState, apexUnlockedNode);
+      apexEl.classList.toggle('selected', selectedNodeId === data.apex.id);
     }
 
-    const svg = document.getElementById('constellation-svg');
-    if (svg) drawOrbits(svg, classId, data.themeColor);
+    const apexCard = document.querySelector('.apex-progress-card');
+    if (apexCard) {
+      apexCard.className = apexProgressCardClass(apexState);
+    }
 
     const apexFill = document.querySelector('.apex-progress-fill');
     const apexText = document.querySelector('.apex-progress-text');
-    const prog = ConstellationEngine.getUnlockedCountForClass(classId);
-    if (apexFill) apexFill.style.width = `${Math.min(100, (prog / CONSTELLATION_APEX_MIN_NODES) * 100)}%`;
+    const apexStatusEl = document.querySelector('.apex-progress-status');
+    const prog = ConstellationEngine.getUnlockedNonApexCount(classId);
+    const total = ConstellationEngine.getNonApexNodeTotal(classId);
+    const keystones = ConstellationEngine.getUnlockedKeystoneCount(classId);
+    const keystonesTotal = ConstellationEngine.getKeystoneTotal(classId);
+    if (apexFill) apexFill.style.width = `${total > 0 ? Math.min(100, (prog / total) * 100) : 0}%`;
     if (apexText) {
-      apexText.textContent = `${prog} / ${CONSTELLATION_APEX_MIN_NODES} nœuds · ${ConstellationEngine.isNodeUnlocked(data.apex.id) ? 'DÉBLOQUÉ' : 'En cours'}`;
+      apexText.textContent = `${prog} / ${total} Nœuds · ${keystones} / ${keystonesTotal} Passifs`;
     }
+    if (apexStatusEl) apexStatusEl.textContent = apexStatusLabel(apexState);
+
+    const svg = document.getElementById('constellation-svg');
+    if (svg) drawOrbits(svg, classId, data.themeColor);
 
     if (selectedNodeId) {
       const node = getNodeById(selectedNodeId);

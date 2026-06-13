@@ -149,7 +149,8 @@ export class Blade extends PlayerBase {
 
     getBladeDamage(skillKey, passiveMult = 1) {
         const base = calcSkillBaseDamage('blade', skillKey) * passiveMult;
-        return ConstellationEngine.modifyDamageDealt(base, { skill: true, skillKey });
+        const flat = PassiveKeystoneHooks.getBloodFrenzyFlatDamage(this);
+        return ConstellationEngine.modifyDamageDealt(base + flat, { skill: true, skillKey });
     }
 
     animateCharacter(dt) {
@@ -289,7 +290,7 @@ export class Blade extends PlayerBase {
     performAttack() {
         if(this.isAttacking) return;
         this.faceMouse(); 
-        this.attackCooldown = 0.2 * (STATE.stats.attackSpeedMod || 1); 
+        this.attackCooldown = 0.2 * (STATE.stats.attackSpeedMod || 1) / PassiveKeystoneHooks.getBloodFrenzyAttackSpeedMult(this);
         this.isAttacking = true;
         this.animState.override = true;
         
@@ -348,7 +349,10 @@ export class Blade extends PlayerBase {
                     const toE = e.position.clone().sub(this.position).normalize();
                     if(dir.dot(toE) > 0.4) { 
                         const dmg = this.getBladeDamage('primary', multiplier);
-                        dealDamageToEnemy(e, dmg, { pos: e.position });
+                        dealDamageToEnemy(e, dmg, {
+                            pos: e.position,
+                            onCrit: () => PassiveKeystoneHooks.extendBloodFrenzyOnCrit(this),
+                        });
                         spawnParticles(e.position, 0x00ffff, 3);
                     }
                 }

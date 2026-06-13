@@ -215,7 +215,10 @@ export class Pacifier extends PlayerBase {
         this.faceMouse(); 
         
         this.attackCooldown = this.attackMaxCooldown * (STATE.stats.attackSpeedMod || 1);
-        if(this.bloodPistolActive) this.attackCooldown *= 0.6; 
+        if(this.bloodPistolActive) {
+            const trans = PassiveKeystoneHooks.getBloodPistolTransfusionMods();
+            this.attackCooldown *= 0.6 / trans.atkSpeedMult;
+        }
         
         this.isAttacking = true;
         this.animState.override = true;
@@ -294,8 +297,9 @@ export class Pacifier extends PlayerBase {
             Network.send({ type: 'net-action', action: 'attack-range', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.pacifier, class: 'pacifier' });
         }
 
-        const cost = this.maxHp * 0.02;
-        this.hp = Math.max(1, this.hp - cost); 
+        const trans = this.bloodPistolActive ? PassiveKeystoneHooks.getBloodPistolTransfusionMods() : null;
+        const cost = this.maxHp * 0.02 * (trans?.selfDmgMult ?? 1);
+        this.hp = Math.max(1, this.hp - cost);
         UI.updateHUD();
         
         const maxDist = 20.0;
@@ -312,7 +316,7 @@ export class Pacifier extends PlayerBase {
             const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({color: 0xff0000, transparent:true, opacity:0.8}));
             beam.position.copy(this.position).add(shootVec.clone().multiplyScalar(maxDist/2)).add(new THREE.Vector3(0,0.6,0));
             beam.lookAt(beamEnd.clone().add(new THREE.Vector3(0,0.6,0)));
-            this.addLocalVisual(beam, 0.1, (m, t) => m.material.opacity = t*10);
+            this.addLocalVisual(beam, (trans?.projectileSpeedMult ?? 1) > 1 ? 0.08 : 0.1, (m, t) => m.material.opacity = t*10);
         }
 
         if (!canDealDamageDirectly()) return;
@@ -349,7 +353,7 @@ export class Pacifier extends PlayerBase {
                 const shotIdx = STATE.multiplayer.active
                     ? NetClassState.authorizePacifierShot(playerId)
                     : ConvergenceEffects.getPacifierShotIndex(this);
-                const pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: false });
+                let pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8 * (trans?.dmgMult ?? 1), { skill: false });
                 const megaCrit = ConvergenceEffects.isMegaCritShot(shotIdx);
                 if (PassiveKeystoneHooks.isEnemyMarked(closestHit)) createDamageText('EXECUTE!', closestHit.position, '#e74c3c');
                 dealDamageToEnemy(closestHit, pDmg, { pos: closestHit.position, megaCrit });

@@ -10,20 +10,21 @@ import {
   type SkillKey,
 } from '@/data/classStatsConfig';
 import {
-  CONSTELLATION_APEX_MIN_NODES,
   getConstellationForClass,
   getNodeById,
   type ClassId,
   type ConstellationNode,
   type NodeEffects,
 } from '@/data/constellations';
+
+export type ApexProgressState = 'locked' | 'ready' | 'unlocked';
 import { getPassiveMeta } from '@/data/passiveCatalog';
 import {
   formatPassiveDetailHtml,
   formatPassiveScalingText,
   getUnlockedPassiveDetails,
 } from '@/data/passiveScalingConfig';
-import { getWarriorDefPower } from '@/data/classStatsConfig';
+import { getPlayerDefense, applyDefenseReduction } from '@/gameplay/combat/defense';
 import { APEX_PASSIVE_BY_CLASS, ConvergenceEffects, getApexPassiveRank, isChronoApexActive } from '@/systems/convergenceEffects';
 import { clampFracture } from '@/gameplay/classes/chrono/fractureHelpers';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
@@ -59,7 +60,8 @@ function applyStatEffects(effects: NodeEffects): void {
   }
   if (effects.regen) s.regen = (s.regen || 0) + effects.regen;
   if (effects.lifesteal) s.lifesteal = (s.lifesteal || 0) + effects.lifesteal;
-  if (effects.def) s.def = (s.def || 0) + effects.def;
+  const defBonus = effects.defense ?? effects.def;
+  if (defBonus) s.defense = (s.defense ?? 10) + defBonus;
   if (effects.xpMod) s.xpMod = (s.xpMod || 1) + effects.xpMod;
   if (effects.skillMods) {
     if (!s.skillMods) s.skillMods = createDefaultSkillMods();
@@ -118,16 +120,13 @@ export const ConstellationEngine = {
     if (STATE.unlockedNodes.includes(nodeId)) return { ok: false, reason: 'Déjà débloqué' };
 
     if (node.branch === 'apex') {
-      const classNodes = STATE.unlockedNodes.filter((id) => id.startsWith(classId) && !id.endsWith('-apex'));
-      if (classNodes.length < CONSTELLATION_APEX_MIN_NODES) {
-        return { ok: false, reason: `Il faut ${CONSTELLATION_APEX_MIN_NODES} nœuds de classe` };
+      const missing = this.getNonApexNodes(classId).filter((n) => !STATE.unlockedNodes.includes(n.id));
+      if (missing.length > 0) {
+        return {
+          ok: false,
+          reason: `Tous les nœuds requis (${missing.length} restant${missing.length > 1 ? 's' : ''})`,
+        };
       }
-      const branches = new Set<string>();
-      classNodes.forEach((id) => {
-        const parts = id.split('-');
-        if (parts.length >= 3) branches.add(parts[1]);
-      });
-      if (branches.size < 3) return { ok: false, reason: 'Investissez dans 3 branches minimum' };
     } else if (node.requires?.length) {
       for (const req of node.requires) {
         if (!STATE.unlockedNodes.includes(req)) {
@@ -234,13 +233,51 @@ export const ConstellationEngine = {
   },
 
   getUnlockedCountForClass(classId?: ClassId): number {
+    return this.getUnlockedNonApexCount(classId);
+  },
+
+  getNonApexNodes(classId?: ClassId): ConstellationNode[] {
     const cid = classId || this.getActiveClass();
-    return STATE.unlockedNodes.filter((id) => id.startsWith(`${cid}-`) && !id.endsWith('-apex')).length;
+    return getConstellationForClass(cid).branches.flatMap((b) => b.nodes);
+  },
+
+  getNonApexNodeTotal(classId?: ClassId): number {
+    return this.getNonApexNodes(classId).length;
+  },
+
+  getUnlockedNonApexCount(classId?: ClassId): number {
+    const cid = classId || this.getActiveClass();
+    const nonApexIds = new Set(this.getNonApexNodes(cid).map((n) => n.id));
+    return STATE.unlockedNodes.filter((id) => nonApexIds.has(id)).length;
+  },
+
+  getUnlockedKeystoneCount(classId?: ClassId): number {
+    return this.getNonApexNodes(classId).filter(
+      (n) => n.keystone && STATE.unlockedNodes.includes(n.id),
+    ).length;
+  },
+
+  getKeystoneTotal(classId?: ClassId): number {
+    return this.getNonApexNodes(classId).filter((n) => n.keystone).length;
+  },
+
+  getApexProgressState(classId?: ClassId): ApexProgressState {
+    const cid = classId || this.getActiveClass();
+    const apexId = getConstellationForClass(cid).apex.id;
+    if (this.isNodeUnlocked(apexId)) return 'unlocked';
+    if (this.getUnlockedNonApexCount(cid) >= this.getNonApexNodeTotal(cid)) return 'ready';
+    return 'locked';
+  },
+
+  areAllNonApexNodesUnlocked(classId?: ClassId): boolean {
+    const state = this.getApexProgressState(classId);
+    return state === 'ready' || state === 'unlocked';
   },
 
   isApexAvailable(): boolean {
-    return this.canUnlock(`${this.getActiveClass()}-apex`).ok
-      || this.canUnlock(`${this.getActiveClass()}-apex`).reason === 'Pas assez de points';
+    const cid = this.getActiveClass();
+    const check = this.canUnlock(`${cid}-apex`);
+    return check.ok || check.reason === 'Pas assez de points';
   },
 
   getPassiveRank(key: string): number {
@@ -315,6 +352,9 @@ export const ConstellationEngine = {
     this.tickSolarInspiration(dt);
     this.tickSolarLightField(dt);
     PassiveKeystoneHooks.tickOrbitalWeave();
+    PassiveKeystoneHooks.tickParadoxClones(player);
+    if (player.className === 'blade') PassiveKeystoneHooks.tickBloodFrenzy(player);
+    PassiveKeystoneHooks.tickGuardianDefBonus(player);
 
     if (player.className === 'blade' && this.isApexPassiveActive('eternalThirst', 'blade')) {
       ConvergenceEffects.syncBladeThirstCrit(player);
@@ -368,10 +408,7 @@ export const ConstellationEngine = {
 
   modifyDamageTaken(amount: number): number {
     const p = ensurePassives();
-    let dmg = amount;
-
-    const def = STATE.stats.def || 0;
-    if (def > 0) dmg *= Math.max(0.4, 1 - def * 0.008);
+    let dmg = applyDefenseReduction(amount, getPlayerDefense());
 
     if (p.ironWall) dmg *= 0.92;
     if (['warrior', 'blade', 'pacifier', 'eclipse'].includes(Globals.player?.className)) {
@@ -416,11 +453,14 @@ export const ConstellationEngine = {
     };
   },
 
-  calcStellarBeamDamage(player: { maxHp?: number } = Globals.player): number {
+  calcStellarBeamDamage(
+    player: { maxHp?: number } = Globals.player,
+    chargeRatio = 1,
+  ): number {
     const mods = this.getStellarBeamKeystoneMods();
     const hpBonus = (player?.maxHp || 0) * mods.hpRatio;
     const base = STATE.stats.atk * 3.0 + hpBonus;
-    return this.modifyDamageDealt(base, { skill: true, skillKey: 'space' });
+    return this.modifyDamageDealt(base * chargeRatio, { skill: true, skillKey: 'space' });
   },
 
   isInSolarInspirationZone(forPlayer: { position: THREE.Vector3; dead?: boolean }, source = this.getSolarInspirationSource()): boolean {
@@ -713,7 +753,7 @@ export const ConstellationEngine = {
   },
 
   calcWarriorParryExplosion(blockedTotal: number): number {
-    const base = getWarriorDefPower() * 1.6;
+    const base = getPlayerDefense() * 1.6;
     const bonus = blockedTotal * 0.5;
     return this.modifyDamageDealt(base + bonus, { skill: true, skillKey: 'e' });
   },

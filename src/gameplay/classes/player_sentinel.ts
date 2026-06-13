@@ -9,7 +9,7 @@ import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
-import { canApplyGameplay } from '../../multiplayer/net_authority';
+import { Input } from '../../core/input';
 
 export class Sentinel extends PlayerBase {
     constructor() {
@@ -690,36 +690,55 @@ export class Sentinel extends PlayerBase {
         ConstellationEngine.onSkillUsed(key);
 
         if(key === 'space') { 
-            // --- RAYON STELLAIRE ---
             this.isCasting = true; 
             createDamageText("CHARGE STELLAIRE...", this.position, '#ffffaa');
             
-            const chargeTime = 1000;
+            const over = PassiveKeystoneHooks.getStellarOverchargeMods();
+            const chargeTime = over.baseChargeMs;
             const startTime = Date.now();
             this.animState.rightArmOverride = true;
+            this.stellarCharging = true;
+            this.stellarChargeDir = dir.clone();
+
+            const finishCharge = (ratio: number) => {
+                if (!this.stellarCharging) return;
+                this.stellarCharging = false;
+                this.isCasting = false;
+                this.fireStellarBeam(this.stellarChargeDir || dir, ratio);
+            };
 
             const chargeAnim = () => {
-                if(!this.isCasting) return;
+                if(!this.stellarCharging) return;
                 const elapsed = Date.now() - startTime;
-                const p = Math.min(1, elapsed / chargeTime);
+                const maxRatio = over.enabled ? over.maxChargeRatio : 1;
+                const ratio = Math.min(maxRatio, elapsed / chargeTime);
 
-                this.armR.rotation.x = -Math.PI / 2 - (p * 0.5); 
-                this.body.rotation.x = -0.3 * p; 
-                this.armL.rotation.x = -1.0 * p;
+                this.armR.rotation.x = -Math.PI / 2 - (ratio * 0.5); 
+                this.body.rotation.x = -0.3 * Math.min(1, ratio); 
+                this.armL.rotation.x = -1.0 * Math.min(1, ratio);
                 
-                // Float higher during charge
-                this.body.position.y += 0.015 * p;
+                this.body.position.y += 0.015 * Math.min(1, ratio);
 
-                if(Math.random() < p) {
+                if(Math.random() < Math.min(1, ratio)) {
                     const tipPos = this.position.clone().add(new THREE.Vector3(0, 1.6, 0)).add(dir.clone().multiplyScalar(-1.0));
                     spawnParticles(tipPos, 0xffffaa, 1);
                 }
 
-                if(elapsed < chargeTime) {
-                    requestAnimationFrame(chargeAnim);
-                } else {
-                    this.fireStellarBeam(dir);
+                if (!over.enabled) {
+                    if (elapsed < chargeTime) {
+                        requestAnimationFrame(chargeAnim);
+                    } else {
+                        finishCharge(1);
+                    }
+                    return;
                 }
+
+                const released = !Input.keys['Space'] && elapsed >= 200;
+                if (ratio >= maxRatio || released) {
+                    finishCharge(Math.max(0.15, ratio));
+                    return;
+                }
+                requestAnimationFrame(chargeAnim);
             };
             chargeAnim();
 
@@ -803,7 +822,7 @@ export class Sentinel extends PlayerBase {
         }
     }
 
-    fireStellarBeam(dir) {
+    fireStellarBeam(dir, chargeRatio = 1) {
         AudioSys.sfx.sentinel.laser();
         
         let targetPos;
@@ -818,7 +837,6 @@ export class Sentinel extends PlayerBase {
             targetPos = this.position.clone().add(dir.clone().multiplyScalar(15.0));
         }
 
-        // Recoil Animation
         const recoilAnim = () => {
             this.body.rotation.x = 0.5; this.armR.rotation.x = 0.5; 
             setTimeout(() => {
@@ -829,9 +847,12 @@ export class Sentinel extends PlayerBase {
         recoilAnim();
 
         const beamMods = ConstellationEngine.getStellarBeamKeystoneMods();
-        const hitRadius = 4.0 * beamMods.sizeMult;
+        let hitRadius = 4.0 * beamMods.sizeMult;
+        if (ConstellationEngine.getPassiveRank('stellarOvercharge') && chargeRatio >= 2.5) {
+            hitRadius *= 1.2;
+        }
         const beamThickness = 0.6 * beamMods.sizeMult;
-        const beamDmg = ConstellationEngine.calcStellarBeamDamage(this);
+        const beamDmg = ConstellationEngine.calcStellarBeamDamage(this, chargeRatio);
 
         const startPos = this.position.clone().add(new THREE.Vector3(0, 1.5, 0));
         const dist = startPos.distanceTo(targetPos);
@@ -873,6 +894,9 @@ export class Sentinel extends PlayerBase {
                 e.pushBack(targetPos, 5 * beamMods.sizeMult); 
             }
         });
+        if (chargeRatio > 1.05) {
+            createDamageText(`${Math.round(chargeRatio * 100)}%`, this.position, '#ffcc00');
+        }
         PassiveKeystoneHooks.onSentinelBeamFired(this);
     }
 }

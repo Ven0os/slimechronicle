@@ -1,6 +1,19 @@
 import type { ClassId, ConstellationNode, NodeEffects } from './constellations';
-import { formatSkillCdLabel, formatSkillModLabel, type AbilityKey, type SkillKey } from './classStatsConfig';
+import { formatSkillCdLabel, formatSkillModLabel, getSkillLabel, type AbilityKey, type SkillKey } from './classStatsConfig';
 import { getPassiveMeta } from './passiveCatalog';
+
+/** Labels de sort primary affichés comme « % Attaque » — interdits en bonus stats keystone. */
+const FLAT_STAT_ATTACK_LABELS = new Set(['Attaque', 'Attaque arcane']);
+
+export function isPctAttackStatSkillMod(classId: ClassId, skillKey: SkillKey): boolean {
+  if (skillKey !== 'primary') return false;
+  return FLAT_STAT_ATTACK_LABELS.has(getSkillLabel(classId, skillKey));
+}
+
+/** Bonus % HP / ATK / DEF interdits — affichage pills stats uniquement en valeurs plates. */
+export function isForbiddenFlatStatPillKey(key: keyof NodeEffects): boolean {
+  return key === 'maxHpPct';
+}
 
 export interface BranchMeta {
   desc: string;
@@ -22,17 +35,22 @@ export function getNodeRewardKind(node: ConstellationNode): NodeRewardKind {
   return 'stat';
 }
 
-export function hasStatEffects(effects: NodeEffects): boolean {
+export function hasStatEffects(effects: NodeEffects, keystoneStats = false, classId?: ClassId): boolean {
   const keys: (keyof NodeEffects)[] = [
     'atk', 'maxHpPct', 'maxHpFlat', 'speed', 'speedPct', 'crit', 'critDmg',
     'attackSpeedMod', 'regen', 'lifesteal', 'def', 'xpMod',
   ];
   const hasScalar = keys.some((k) => {
+    if (keystoneStats && isForbiddenFlatStatPillKey(k)) return false;
     const v = effects[k];
     return typeof v === 'number' && v !== 0;
   });
   const hasSkillMods = effects.skillMods
-    && Object.values(effects.skillMods).some((v) => typeof v === 'number' && v !== 0);
+    && Object.entries(effects.skillMods).some(([key, v]) => {
+      if (typeof v !== 'number' || v === 0) return false;
+      if (keystoneStats && classId && isPctAttackStatSkillMod(classId, key as SkillKey)) return false;
+      return true;
+    });
   const hasSkillCdMods = effects.skillCdMods
     && Object.values(effects.skillCdMods).some((v) => typeof v === 'number' && v !== 0);
   return hasScalar || !!hasSkillMods || !!hasSkillCdMods;
@@ -40,13 +58,14 @@ export function hasStatEffects(effects: NodeEffects): boolean {
 
 export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
   warrior: {
-    lore: 'Paliers 1 à 3 : bonus de stats permanents (PV, ATK, sprint, recharge…). Le nœud final de chaque branche débloque un passif unique.',
+    lore: 'Paliers 1 à 3 : bonus de stats permanents (HP, ATK, sprint, recharge…). Le nœud final de chaque branche débloque un passif unique.',
     motto: 'Tiens la ligne. Frappe le sol.',
     branches: {
-      rempart: { desc: 'PV, défense — keystone : mur impénétrable.', icon: 'fa-shield-halved', focus: 'Défense' },
+      rempart: { desc: 'HP, DEF — keystone : mur impénétrable.', icon: 'fa-shield-halved', focus: 'DEF' },
       fureur: { desc: 'ATK et dégâts — keystone : Sang de Titan (DEF runique).', icon: 'fa-fire', focus: 'Offense' },
       cri: { desc: 'Sprint et recharge — keystone : parade réactive.', icon: 'fa-bullhorn', focus: 'Contrôle' },
       seisme: { desc: 'Critiques et burst — keystone : charge sismique.', icon: 'fa-mountain', focus: 'Burst' },
+      gardien: { desc: 'Cri de Guerre — fin de branche : Cri du Gardien.', icon: 'fa-shield-heart', focus: 'Support' },
     },
   },
   mage: {
@@ -54,19 +73,21 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
     motto: 'Le temps est une ressource.',
     branches: {
       flux: { desc: 'ATK et dégâts sorts — keystone : surcharge arcane.', icon: 'fa-wand-magic-sparkles', focus: 'DPS' },
-      givre: { desc: 'PV et défense — keystone : stase profonde.', icon: 'fa-snowflake', focus: 'Contrôle' },
+      givre: { desc: 'HP et DEF — keystone : stase profonde.', icon: 'fa-snowflake', focus: 'Contrôle' },
       mirage: { desc: 'Sprint et CD sorts — keystone : transfert maîtrisé.', icon: 'fa-ghost', focus: 'Mobilité' },
       prisme: { desc: 'Critiques et XP — keystone : clones persistants.', icon: 'fa-atom', focus: 'Maîtrise' },
+      replique: { desc: 'Clones — fin de branche : Paradoxe Répliqué.', icon: 'fa-clone', focus: 'Spécialisation' },
     },
   },
   sentinel: {
     lore: 'Investissez dans les stats pour tenir la ligne. Les keystones activent des mécaniques de soin, rayon ou bouclier.',
     motto: 'Éclaire. Soigne. Protège.',
     branches: {
-      rayon: { desc: 'ATK et rayon — keystone : faisceau accéléré.', icon: 'fa-sun', focus: 'Burst' },
-      sanctuaire: { desc: 'PV et régénération — keystone : soins amplifiés.', icon: 'fa-church', focus: 'Support' },
+      rayon: { desc: 'ATK et rayon — keystone : faisceau dévastateur.', icon: 'fa-sun', focus: 'Burst' },
+      sanctuaire: { desc: 'HP et régénération — keystone : soins amplifiés.', icon: 'fa-church', focus: 'Support' },
       aile: { desc: 'Sprint et CD — keystone : hâte solaire.', icon: 'fa-feather', focus: 'Mobilité' },
-      egide: { desc: 'Défense et PV — keystone : martyr.', icon: 'fa-shield', focus: 'Défense' },
+      egide: { desc: 'DEF et HP — keystone : martyr.', icon: 'fa-shield', focus: 'DEF' },
+      surcharge: { desc: 'Rayon Stellaire — fin de branche : Surcharge Stellaire.', icon: 'fa-star', focus: 'Spécialisation' },
     },
   },
   blade: {
@@ -76,17 +97,19 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
       hemo: { desc: 'Critiques et vol de vie — keystone : saignée.', icon: 'fa-droplet', focus: 'Offense' },
       ombre: { desc: 'Sprint et cadence — keystone : pas du néant.', icon: 'fa-ghost', focus: 'Assassin' },
       cyclone: { desc: 'Dégâts AoE — keystone : maelström.', icon: 'fa-hurricane', focus: 'AoE' },
-      survie: { desc: 'PV et regen — keystone : dernier souffle.', icon: 'fa-heart', focus: 'Survie' },
+      survie: { desc: 'HP et regen — keystone : dernier souffle.', icon: 'fa-heart', focus: 'Survie' },
+      sanguine: { desc: 'HP manquants — fin de branche : Frénésie Sanglante.', icon: 'fa-fire-flame-curved', focus: 'Spécialisation' },
     },
   },
   pacifier: {
     lore: 'Stats de tir et de survie sur les paliers 1-3. Les keystones renforcent bouclier, exécution ou frénésie.',
     motto: 'Le sang paie les dettes.',
     branches: {
-      transfusion: { desc: 'PV et regen — keystone : overflow.', icon: 'fa-heart-pulse', focus: 'Survie' },
+      transfusion: { desc: 'HP et regen — keystone : overflow.', icon: 'fa-heart-pulse', focus: 'Survie' },
       jugement: { desc: 'ATK et verdict — keystone : exécution.', icon: 'fa-gavel', focus: 'Offense' },
       frénésie: { desc: 'Sprint et cadence de tir — keystone : adrénaline.', icon: 'fa-gun', focus: 'DPS' },
       rituel: { desc: 'Critiques et XP — keystone : saut vampirique+.', icon: 'fa-crosshairs', focus: 'Maîtrise' },
+      pistol: { desc: 'Blood Pistol — fin de branche : Transfusion Accélérée.', icon: 'fa-syringe', focus: 'Spécialisation' },
     },
   },
   eclipse: {
@@ -96,7 +119,8 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
       soleil: { desc: 'ATK et DoT — keystone : corona.', icon: 'fa-sun', focus: 'DoT' },
       lune: { desc: 'Critiques lunaires — keystone : pleine lune.', icon: 'fa-moon', focus: 'Burst' },
       orbite: { desc: 'Sprint et CD — keystone : tissage orbital.', icon: 'fa-yin-yang', focus: 'Synergie' },
-      vide: { desc: 'PV et défense — keystone : trou noir.', icon: 'fa-circle-dot', focus: 'Contrôle' },
+      vide: { desc: 'HP et DEF — keystone : trou noir.', icon: 'fa-circle-dot', focus: 'Contrôle' },
+      devoration: { desc: 'Lance solaire — fin de branche : Soleil Dévorant.', icon: 'fa-sun-plant-wilt', focus: 'Spécialisation' },
     },
   },
   chronoregulator: {
@@ -107,6 +131,7 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
       echo: { desc: 'Dégâts de rupture — keystone : explosion volontaire amplifiée.', icon: 'fa-burst', focus: 'Burst' },
       distorsion: { desc: 'Sprint et CD — keystone : coût Fracture réduit.', icon: 'fa-hourglass-half', focus: 'Mobilité' },
       paradoxe: { desc: 'Critiques et XP — keystone : déphasage renforcé.', icon: 'fa-atom', focus: 'Synergie' },
+      lentille: { desc: 'Lentilles — fin de branche : Prisme Supplémentaire.', icon: 'fa-gem', focus: 'Spécialisation' },
     },
   },
 };
@@ -117,16 +142,17 @@ const EFFECT_PILL_DEFS: Array<{
   label: (v: number) => string;
 }> = [
   { key: 'atk', cls: 'pill-atk', label: (v) => `+${v} ATK` },
-  { key: 'maxHpPct', cls: 'pill-hp', label: (v) => `+${Math.round(v * 100)}% PV max` },
-  { key: 'maxHpFlat', cls: 'pill-hp', label: (v) => `+${v} PV max` },
+  { key: 'maxHpPct', cls: 'pill-hp', label: (v) => `+${Math.round(v * 100)}% HP` },
+  { key: 'maxHpFlat', cls: 'pill-hp', label: (v) => `+${v} HP` },
   { key: 'speed', cls: 'pill-spd', label: (v) => `+${v} Sprint` },
   { key: 'speedPct', cls: 'pill-spd', label: (v) => `+${Math.round(v * 100)}% Sprint` },
-  { key: 'crit', cls: 'pill-crit', label: (v) => `+${Math.round(v * 100)}% Critique` },
-  { key: 'critDmg', cls: 'pill-crit', label: (v) => `+${Math.round(v * 100)}% Dégâts crit.` },
+  { key: 'crit', cls: 'pill-crit-chance', label: (v) => `+${Math.round(v * 100)}% Crit Chance` },
+  { key: 'critDmg', cls: 'pill-crit-dmg', label: (v) => `+${Math.round(v * 100)}% Crit Damage` },
   { key: 'attackSpeedMod', cls: 'pill-as', label: (v) => `${Math.round(v * 100)}% Vitesse d'attaque` },
-  { key: 'regen', cls: 'pill-hp', label: (v) => `+${v} PV/s` },
+  { key: 'regen', cls: 'pill-hp', label: (v) => `+${v} HP/s` },
   { key: 'lifesteal', cls: 'pill-ls', label: (v) => `+${Math.round(v * 100)}% Vol de vie` },
-  { key: 'def', cls: 'pill-def', label: (v) => `+${v} Défense` },
+  { key: 'defense', cls: 'pill-def', label: (v) => `+${v} DEF` },
+  { key: 'def', cls: 'pill-def', label: (v) => `+${v} DEF` },
   { key: 'xpMod', cls: 'pill-xp', label: (v) => `+${Math.round(v * 100)}% XP` },
 ];
 
@@ -143,11 +169,17 @@ function formatSkillCdModPills(classId: ClassId, skillCdMods: NodeEffects['skill
   return parts.join(asHtml ? '' : ' · ');
 }
 
-function formatSkillModPills(classId: ClassId, skillMods: NodeEffects['skillMods'], asHtml = false): string {
+function formatSkillModPills(
+  classId: ClassId,
+  skillMods: NodeEffects['skillMods'],
+  asHtml = false,
+  keystoneStats = false,
+): string {
   if (!skillMods) return '';
   const parts: string[] = [];
   for (const [key, val] of Object.entries(skillMods)) {
     if (typeof val !== 'number' || val === 0) continue;
+    if (isPctAttackStatSkillMod(classId, key as SkillKey)) continue;
     const label = formatSkillModLabel(classId, key as SkillKey, val);
     parts.push(asHtml
       ? `<span class="effect-pill pill-magic">${label}</span>`
@@ -180,16 +212,22 @@ export function formatEffectSummary(
   return parts.length ? parts.join(' · ') : 'Effet spécial';
 }
 
-export function formatEffectPills(effects: NodeEffects, includePassive = true, classId?: ClassId): string {
+export function formatEffectPills(
+  effects: NodeEffects,
+  includePassive = true,
+  classId?: ClassId,
+  keystoneStats = false,
+): string {
   const pills: string[] = [];
   for (const def of EFFECT_PILL_DEFS) {
+    if (isForbiddenFlatStatPillKey(def.key)) continue;
     const val = effects[def.key];
     if (typeof val === 'number' && val !== 0) {
       pills.push(`<span class="effect-pill ${def.cls}">${def.label(val)}</span>`);
     }
   }
   if (classId) {
-    pills.push(formatSkillModPills(classId, effects.skillMods, true));
+    pills.push(formatSkillModPills(classId, effects.skillMods, true, keystoneStats));
     pills.push(formatSkillCdModPills(classId, effects.skillCdMods, true));
   }
   if (includePassive && effects.passive) {
@@ -217,9 +255,8 @@ export function formatSimpleEffect(node: ConstellationNode, classId?: ClassId): 
   if (kind === 'stat') {
     const bits: string[] = [];
     if (e.atk) bits.push(`+${e.atk} ATK`);
-    if (e.maxHpPct) bits.push(`+${Math.round(e.maxHpPct * 100)}% PV max`);
-    if (e.maxHpFlat) bits.push(`+${e.maxHpFlat} PV max`);
-    if (e.def) bits.push(`+${e.def} défense`);
+    if (e.maxHpFlat) bits.push(`+${e.maxHpFlat} HP`);
+    if (e.defense || e.def) bits.push(`+${e.defense || e.def} DEF`);
     if (e.speed) bits.push(`+${e.speed} vitesse sprint`);
     if (e.speedPct) bits.push(`+${Math.round(e.speedPct * 100)}% sprint`);
     if (e.skillMods) {
@@ -230,10 +267,10 @@ export function formatSimpleEffect(node: ConstellationNode, classId?: ClassId): 
       const cd = formatSkillCdModPills(cid, e.skillCdMods, false);
       if (cd) bits.push(cd);
     }
-    if (e.crit) bits.push(`+${Math.round(e.crit * 100)}% critique`);
-    if (e.critDmg) bits.push(`+${Math.round(e.critDmg * 100)}% dégâts critiques`);
+    if (e.crit) bits.push(`+${Math.round(e.crit * 100)}% Crit Chance`);
+    if (e.critDmg) bits.push(`+${Math.round(e.critDmg * 100)}% Crit Damage`);
     if (e.attackSpeedMod) bits.push(`${Math.round(e.attackSpeedMod * 100)}% vitesse d'attaque`);
-    if (e.regen) bits.push(`+${e.regen} PV/s`);
+    if (e.regen) bits.push(`+${e.regen} HP/s`);
     if (e.lifesteal) bits.push(`+${Math.round(e.lifesteal * 100)}% vol de vie`);
     if (e.xpMod) bits.push(`+${Math.round(e.xpMod * 100)}% XP`);
     return bits.length
@@ -242,9 +279,6 @@ export function formatSimpleEffect(node: ConstellationNode, classId?: ClassId): 
   }
 
   const parts: string[] = [];
-  if (hasStatEffects(e)) {
-    parts.push('Inclut aussi un bonus de stats (voir ci-dessous).');
-  }
   if (e.passive) {
     const meta = getPassiveMeta(e.passive);
     if (meta) {

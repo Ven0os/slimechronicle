@@ -22,6 +22,35 @@
     --rarity-epic: #9b59b6;
     --rarity-legendary: #f1c40f;
     --rarity-mythic: #ff0055;
+
+    /* Stat theme colors (pills, chips, badges) */
+    --stat-atk: #e74c3c;
+    --stat-atk-rgb: 231, 76, 60;
+    --stat-atk-text: #ff8a7a;
+    --stat-hp: #2ecc71;
+    --stat-hp-rgb: 46, 204, 113;
+    --stat-hp-text: #7ddea0;
+    --stat-def: #070FA6;
+    --stat-def-rgb: 7, 15, 166;
+    --stat-def-text: #6e76ef;
+    --stat-spd: #3498db;
+    --stat-spd-rgb: 52, 152, 219;
+    --stat-spd-text: #7ec8f0;
+    --stat-crit-chance: #FFD700;
+    --stat-crit-chance-rgb: 255, 215, 0;
+    --stat-crit-chance-text: #FFE566;
+    --stat-crit-dmg: #FF4D4D;
+    --stat-crit-dmg-rgb: 255, 77, 77;
+    --stat-crit-dmg-text: #FF8080;
+    --stat-cd: #9b59b6;
+    --stat-cd-rgb: 155, 89, 182;
+    --stat-cd-text: #c9a0dc;
+    --stat-as: #e67e22;
+    --stat-as-rgb: 230, 126, 34;
+    --stat-as-text: #f0b27a;
+    --stat-ls: #c0392b;
+    --stat-ls-rgb: 192, 57, 43;
+    --stat-ls-text: #e88a7a;
 }
 
 * { box-sizing: border-box; }

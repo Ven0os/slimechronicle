@@ -13,6 +13,7 @@ import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { ConvergenceEffects } from '../../systems/convergenceEffects';
 
 import { dealDamageToEnemy } from '../combat/damage_helpers';
@@ -750,7 +751,10 @@ export class Warrior extends PlayerBase {
 
             createDamageText("RAGE!", this.position, '#fff');
 
-            this.heal(ConstellationEngine.calcWarriorSkillDamage('shift'));
+            const warCryMods = PassiveKeystoneHooks.getGuardianWarCryMods();
+            const healAmt = ConstellationEngine.calcWarriorSkillDamage('shift') * warCryMods.healMult;
+            this.heal(healAmt);
+            PassiveKeystoneHooks.applyGuardianWarCryAllies(this);
 
 
 

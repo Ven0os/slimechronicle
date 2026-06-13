@@ -1158,7 +1158,8 @@ export class Eclipse extends PlayerBase {
         let hitAnyEnemy = false;
 
         if (canDealDamageDirectly()) {
-            const range = 3.5;
+            const sunMods = PassiveKeystoneHooks.getDevouringSunMods();
+            const range = 3.5 * sunMods.spearRangeMult;
             const threshold = 0.4;
             Globals.enemies.forEach(e => {
                 if (e.dead) return;
@@ -1174,15 +1175,17 @@ export class Eclipse extends PlayerBase {
                             dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
                             spawnParticles(e.position, 0xffaa00, 5);
                             
-                            // Applique l'effet de brûlure (DoT)
-                            const burnDmg = STATE.stats.atk * 0.2 * empMult;
-                            setTimeout(() => { 
-                                if(!e.dead && canApplyGameplay()) { 
-                                    dealDamageToEnemy(e, burnDmg, { pos: e.position, noCrit: true, skillKey: 'primary' }); 
-                                    createDamageText("FEU", e.position, '#ffa500'); 
-                                    ConvergenceEffects.applyCataclysmVulnerability(e); 
-                                } 
-                            }, 500);
+                            const burnDmg = STATE.stats.atk * 0.2 * empMult * sunMods.burnDmgMult;
+                            for (let t = 0; t < sunMods.burnTicks; t++) {
+                                const delay = sunMods.burnStartMs + t * sunMods.burnIntervalMs;
+                                setTimeout(() => { 
+                                    if(!e.dead && canApplyGameplay()) { 
+                                        dealDamageToEnemy(e, burnDmg, { pos: e.position, noCrit: true, skillKey: 'primary' }); 
+                                        createDamageText("FEU", e.position, '#ffa500'); 
+                                        ConvergenceEffects.applyCataclysmVulnerability(e); 
+                                    } 
+                                }, delay);
+                            }
                         }
                         if (fireMoon) {
                             const damage = STATE.stats.atk * 1.2 * empMult;
