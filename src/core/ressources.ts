@@ -4,6 +4,14 @@
 export const AudioSys = {
     sounds: {},
     activeLoops: {},
+    /** SFX dont le chargement a échoué — ne pas réessayer. */
+    _failedSounds: null,
+    /** SFX déjà signalés en console — un seul avertissement. */
+    _warnedSounds: null,
+    /** Alias vers un SFX existant quand le fichier demandé est absent. */
+    sfxAliases: {
+        solar_beam: 'king_laser',
+    },
     
     musicTracks: {
         'menu': '/songs/musics/music_menu.wav',
@@ -73,13 +81,26 @@ export const AudioSys = {
 
     // Méthode pour charger un son à la demande de manière asynchrone
     loadSound: function(name) {
+        const resolvedName = this.sfxAliases?.[name] || name;
         if (this.sounds[name]) return Promise.resolve(this.sounds[name]);
+        if (this.sounds[resolvedName] && resolvedName !== name) {
+            this.sounds[name] = this.sounds[resolvedName];
+            return Promise.resolve(this.sounds[name]);
+        }
+        if (!this._failedSounds) this._failedSounds = new Set();
+        if (this._failedSounds.has(name) || this._failedSounds.has(resolvedName)) {
+            return Promise.reject(new Error('cached-fail'));
+        }
         if (!this._loadingPromises) this._loadingPromises = {};
-        if (this._loadingPromises[name]) {
-            return this._loadingPromises[name];
+        const loadKey = resolvedName;
+        if (this._loadingPromises[loadKey]) {
+            return this._loadingPromises[loadKey].then((buf) => {
+                this.sounds[name] = buf;
+                return buf;
+            });
         }
 
-        this._loadingPromises[name] = fetch(`/songs/sfx/${name}.mp3`)
+        this._loadingPromises[loadKey] = fetch(`/songs/sfx/${loadKey}.mp3`)
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.arrayBuffer();
@@ -91,17 +112,26 @@ export const AudioSys = {
                 return this.ctx.decodeAudioData(arrayBuffer);
             })
             .then(audioBuffer => {
-                this.sounds[name] = audioBuffer;
-                delete this._loadingPromises[name];
+                this.sounds[loadKey] = audioBuffer;
+                if (loadKey !== name) this.sounds[name] = audioBuffer;
+                delete this._loadingPromises[loadKey];
                 return audioBuffer;
             })
             .catch(e => {
-                console.warn(`SFX ignoré ou introuvable : ${name} (${e.message})`);
-                delete this._loadingPromises[name];
+                if (!this._failedSounds) this._failedSounds = new Set();
+                if (!this._warnedSounds) this._warnedSounds = new Set();
+                this._failedSounds.add(name);
+                this._failedSounds.add(loadKey);
+                if (!this._warnedSounds.has(name)) {
+                    this._warnedSounds.add(name);
+                    if (loadKey !== name) this._warnedSounds.add(loadKey);
+                    console.warn(`SFX ignoré ou introuvable : ${name} (${e.message})`);
+                }
+                delete this._loadingPromises[loadKey];
                 throw e;
             });
 
-        return this._loadingPromises[name];
+        return this._loadingPromises[loadKey];
     },
 
     stopLoop: function(key) {
@@ -184,6 +214,9 @@ export const AudioSys = {
 
     play: function(name, volume = 1.0, pitchVar = 0.0) {
         if (!this.ctx) return;
+        if (!this._failedSounds) this._failedSounds = new Set();
+        const resolvedName = this.sfxAliases?.[name] || name;
+        if (this._failedSounds.has(name) || this._failedSounds.has(resolvedName)) return;
         
         // Tentative de reprise automatique si suspendu (peut échouer sans gesture)
         if (this.ctx.state === 'suspended') {
@@ -197,7 +230,7 @@ export const AudioSys = {
                 .then(() => {
                     this._playBuffer(name, volume, pitchVar);
                 })
-                .catch(() => {}); // Déjà warné dans loadSound
+                .catch(() => {}); // Déjà warné / mis en cache dans loadSound
         }
     },
 

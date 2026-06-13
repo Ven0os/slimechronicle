@@ -5,6 +5,7 @@ import { STATE, CONFIG } from '../../../core/config';
 import { ENEMY_ATTACKS } from '../../../core/enemy_attacks_config';
 import { AudioSys } from '../../../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual, createTelegraph } from '../../../visual/effects';
+import { flashMeshDamage, safeMaterialSetHex } from '../../../visual/meshMaterialUtils';
 import { Network } from '../../../multiplayer/network';
 import { damagePlayer, getAllLivingPlayers } from '../../../multiplayer/net_combat';
 import { Projectile } from '../../entities';
@@ -577,16 +578,16 @@ export class KingSlime extends BaseEnemy {
             if (AudioSys.play) AudioSys.play('boss_roar', 1.2);
             createDamageText("MODE OFFENSIF", this.position, '#ff8800', 3.0);
             if (this.materials.energy) {
-                this.materials.energy.color.setHex(0xffaa00);
-                this.materials.energy.emissive.setHex(0xff4400);
+                safeMaterialSetHex(this.materials.energy, 0xffaa00, { emissive: false, color: true });
+                safeMaterialSetHex(this.materials.energy, 0xff4400);
             }
         }
         else if (phase === 3) {
             if (this.materials.energy) {
-                this.materials.energy.color.setHex(0xff0000);
-                this.materials.energy.emissive.setHex(0xff0000);
+                safeMaterialSetHex(this.materials.energy, 0xff0000, { emissive: false, color: true });
+                safeMaterialSetHex(this.materials.energy, 0xff0000);
             }
-            if (this.materials.gold) this.materials.gold.color.setHex(0x330000);
+            if (this.materials.gold) safeMaterialSetHex(this.materials.gold, 0x330000, { emissive: false, color: true });
             this.triggerEpicPhase3();
         }
     }
@@ -598,17 +599,18 @@ export class KingSlime extends BaseEnemy {
         if (this.hp <= 0 && !this.dead) this.die();
         if (this.mesh) {
             if (this.flashTimeout) clearTimeout(this.flashTimeout);
-            this.mesh.traverse((c) => { if (c.isMesh && c.material) { if (!c.userData.baseEmissive) c.userData.baseEmissive = c.material.emissive ? c.material.emissive.getHex() : 0x000000; c.material.emissive.setHex(0xffffff); } });
+            flashMeshDamage(this.mesh);
             this.flashTimeout = setTimeout(() => {
-                if (this.dead) return;
+                this.flashTimeout = null;
+                if (this.dead || !this.mesh) return;
                 if (this.materials) {
-                    if (this.materials.gold) this.materials.gold.emissive.setHex(0xaa6600);
-                    if (this.materials.darkMetal) this.materials.darkMetal.emissive.setHex(0x000000);
-                    if (this.materials.clothRed) this.materials.clothRed.emissive.setHex(0x000000);
+                    safeMaterialSetHex(this.materials.gold, 0xaa6600);
+                    safeMaterialSetHex(this.materials.darkMetal, 0x000000);
+                    safeMaterialSetHex(this.materials.clothRed, 0x000000);
                     let energyColor = 0x00ff00;
                     if (this.bossPhase === 2) energyColor = 0xff4400;
                     if (this.bossPhase === 3) energyColor = 0xff0000;
-                    if (this.materials.energy) this.materials.energy.emissive.setHex(energyColor);
+                    safeMaterialSetHex(this.materials.energy, energyColor);
                 }
             }, 80);
         }
@@ -617,6 +619,7 @@ export class KingSlime extends BaseEnemy {
     applyStun(duration) { return; }
 
     die() {
+        if (this.flashTimeout) { clearTimeout(this.flashTimeout); this.flashTimeout = null; }
         if (STATE.multiplayer.active && !STATE.multiplayer.isHost) { super.die(); return; }
 
         const bossHud = document.getElementById('boss-hud');
