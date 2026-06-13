@@ -228,6 +228,11 @@ export function handleNetworkMessage(data) {
              if(STATE.enemiesKilled >= cost && GameActions.spawnBoss) GameActions.spawnBoss(data.bossType); 
         }
     } 
+    else if (data.type === 'request-wipe') {
+        if (STATE.multiplayer.isHost && GameActions.triggerWipe) {
+            GameActions.triggerWipe();
+        }
+    }
     else if (data.type === 'request-damage') {
         if (STATE.multiplayer.isHost) handleRequestDamage(data);
     }
@@ -259,4 +264,34 @@ export function handleNetworkMessage(data) {
             NetSync.updateRemotePlayer(data.id, {x:0, y:0, z:0}, 0, data.class, false); 
         }
     } 
+    else if (data.type === 'start-boss-cinematic') {
+        const seal = Globals.enemies.find(e => e.type === 'royal_seal');
+        if (seal && typeof seal.startSummoningCinematic === 'function') {
+            seal.startSummoningCinematic();
+        }
+    }
+    else if (data.type === 'request-pillar-activate') {
+        if (STATE.multiplayer.isHost) {
+            const seal = Globals.enemies.find(e => e.type === 'royal_seal');
+            if (seal && seal.pillars) {
+                const pillar = seal.pillars.find(p => p.symbolInfo.index === data.symbolIndex);
+                if (pillar) pillar.activate();
+            }
+        }
+    }
+    else if (data.type === 'pillar-glow') {
+        const seal = Globals.enemies.find(e => e.type === 'royal_seal');
+        if (seal && seal.pillars) {
+            const pillar = seal.pillars.find(p => p.symbolInfo.index === data.symbolIndex);
+            if (pillar) pillar.setGlow(data.glow);
+        }
+    }
+    else if (data.type === 'pillar-glow-reset') {
+        const seal = Globals.enemies.find(e => e.type === 'royal_seal');
+        if (seal && seal.pillars) {
+            for (let p of seal.pillars) {
+                p.setGlow(false);
+            }
+        }
+    }
 }

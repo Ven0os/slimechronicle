@@ -169,6 +169,7 @@ document.addEventListener(
 );
 
 window.addEventListener('keydown', (e) => {
+  if (STATE.cinematicActive) return;
   if (e.code === 'KeyF') {
     if (!WorldEvents.tryInteract()) GameLogic.tryInteractLocal();
   }
@@ -285,7 +286,10 @@ function animate(): void {
     }
   }
 
-  if (camTarget) {
+  if (Globals.cameraOverride) {
+    Globals.camera.position.copy(Globals.cameraOverride.position);
+    Globals.camera.lookAt(Globals.cameraOverride.lookAt);
+  } else if (camTarget) {
     Globals.camera.position.x = camTarget.position.x;
     Globals.camera.position.z = camTarget.position.z + 12;
     Globals.camera.position.y = camTarget.position.y + 14;
@@ -297,6 +301,15 @@ function animate(): void {
     Globals.camera.position.z = Math.sin(time) * radius;
     Globals.camera.position.y = 5;
     Globals.camera.lookAt(0, 0, 0);
+  }
+
+  if (Globals.cameraShake) {
+    Globals.camera.position.x += Globals.cameraShake.x;
+    Globals.camera.position.y += Globals.cameraShake.y;
+    Globals.camera.position.z += Globals.cameraShake.z;
+    Globals.cameraShake.x *= 0.88;
+    Globals.cameraShake.y *= 0.88;
+    Globals.cameraShake.z *= 0.88;
   }
 
   Globals.renderer.render(Globals.scene, Globals.camera);

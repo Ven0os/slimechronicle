@@ -164,7 +164,7 @@ export function createTelegraph(pos, shape, size, duration, color, onComplete, r
         group.add(rectMesh);
     }
     else if (shape === 'cone') {
-        const sweepAngle = Math.PI / 3; // 60 degrees
+        const sweepAngle = Math.PI * 2 / 3; // 120 degrees (matches the damage cone)
         const coneMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 32, 0, sweepAngle), mat); 
         coneMesh.rotation.x = -Math.PI / 2;
         // The circle sector starts at 0 (along local +X) and goes to sweepAngle.

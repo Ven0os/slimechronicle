@@ -8,6 +8,7 @@ import { Player } from './player';
 import { Enemy } from './enemy';
 import { createDamageText } from '../visual/effects';
 import { createAltars } from './environment';
+import { removeBossArenaBarrier } from './environment/royal_seal';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { pickMobSpawnType, randomWildSpawnPos, BOSS_ZONE, getRegionAt, getGroundLevelAt } from './world/worldZones';
 
@@ -1777,7 +1778,7 @@ export const GameLogic = {
         const e = new Enemy(type, pos);
         addEnemy(e);
 
-        const msg = type === 'king' ? "LE ROI EST LÀ !" : "LE SEIGNEUR SLIME APPROCHE !";
+        const msg = type === 'king' ? "AETHELGARD EST LÀ !" : "LE SEIGNEUR SLIME APPROCHE !";
         const color = type === 'king' ? "#ffd700" : "#9b59b6";
         if (Globals.player) createDamageText(msg, Globals.player.position, color);
     },
@@ -1802,6 +1803,7 @@ export const GameLogic = {
             this.setAmbiance('normal');
             AudioSys.playBgm('explore'); 
             
+            removeBossArenaBarrier();
             createAltars();
 
             document.getElementById('boss-hud').style.display = 'none';
@@ -1823,6 +1825,8 @@ export const GameLogic = {
                 console.log("BOSS VAINCU - VICTOIRE");
                 STATE.bossSpawned = false;
                 STATE.isBossFight = false;
+
+                removeBossArenaBarrier();
 
                 if (!STATE.bossProgress['king']) STATE.bossProgress['king'] = 0;
                 STATE.bossProgress['king']++;
@@ -1957,11 +1961,25 @@ export const GameLogic = {
     
     tryInteractLocal: function() {
         if (!Globals.player || STATE.bossSpawned) return;
+        
+        // Intercepter d'abord l'interaction avec un pilier du rituel
+        for (let e of Globals.enemies) {
+            if (e.type === 'boss_pillar' && Globals.player.position.distanceTo(e.position) < 5) {
+                e.activate();
+                return;
+            }
+        }
+
         let targetAltar = null;
         for (let m of Globals.menhirs) {
             if (Globals.player.position.distanceTo(m.position) < 6) { targetAltar = m; break; }
         }
         if (targetAltar) {
+            if (targetAltar.type === 'royal_seal') {
+                window.UI?.toast("Résolvez le rituel des 4 piliers pour réveiller le Souverain d'Ambre...");
+                return;
+            }
+
             const cost = targetAltar.userData.bossType === 'slime_lord' ? 20 : 10;
             if (STATE.enemiesKilled >= cost) {
                 if (STATE.multiplayer.active) {

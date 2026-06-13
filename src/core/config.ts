@@ -68,6 +68,7 @@ export const CONFIG = {
 
 export const STATE = {
     class: null, 
+    cinematicActive: false,
     level: 1, 
     xp: 0, 
     xpToNext: 100, 

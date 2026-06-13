@@ -29,18 +29,31 @@ export function applyToMeshMaterials(root, callback) {
 
 /** Flash blanc : emissive si disponible, sinon color. */
 export function flashMeshDamage(root, flashHex = 0xffffff, storageKey = 'damageFlashStored') {
+  const originalValues = new Map();
+
+  // First pass: collect original values for all unique materials before we modify any of them
   applyToMeshMaterials(root, (mat, mesh) => {
-    const store = mesh.userData;
-    if (store[storageKey] === undefined) {
-      if (mat.emissive && typeof mat.emissive.getHex === 'function') {
-        const hex = mat.emissive.getHex();
-        store[storageKey] = { type: 'emissive', hex: hex === flashHex ? 0x000000 : hex };
-      } else if (mat.color && typeof mat.color.getHex === 'function') {
-        const hex = mat.color.getHex();
-        store[storageKey] = { type: 'color', hex: hex === flashHex ? 0x000000 : hex };
+    if (!originalValues.has(mat)) {
+      const stored = mesh.userData[storageKey];
+      if (stored !== undefined) {
+        originalValues.set(mat, stored);
       } else {
-        return;
+        if (mat.emissive && typeof mat.emissive.getHex === 'function') {
+          const hex = mat.emissive.getHex();
+          originalValues.set(mat, { type: 'emissive', hex: hex === flashHex ? 0x000000 : hex });
+        } else if (mat.color && typeof mat.color.getHex === 'function') {
+          const hex = mat.color.getHex();
+          originalValues.set(mat, { type: 'color', hex: hex === flashHex ? 0x000000 : hex });
+        }
       }
+    }
+  });
+
+  // Second pass: apply the flash and ensure every mesh's userData has the original value stored
+  applyToMeshMaterials(root, (mat, mesh) => {
+    const orig = originalValues.get(mat);
+    if (orig && mesh.userData[storageKey] === undefined) {
+      mesh.userData[storageKey] = orig;
     }
     if (mat.emissive && typeof mat.emissive.setHex === 'function') {
       mat.emissive.setHex(flashHex);
@@ -60,6 +73,7 @@ export function restoreMeshDamageFlash(root, storageKey = 'damageFlashStored') {
     } else if (stored.type === 'color') {
       safeSetHex(mat.color, stored.hex);
     }
+    delete mesh.userData[storageKey];
   });
 }
 
