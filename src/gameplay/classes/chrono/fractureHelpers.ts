@@ -49,17 +49,21 @@ export function isOverloadImminenceActive(gauge: number): boolean {
 }
 
 export type FractureDecayState = {
-  inactivityTimer: number;
-  decayTimer: number;
+  /** Temps écoulé depuis la dernière action offensive (s). */
+  inactivityTime: number;
 };
 
 export function createFractureDecayState(): FractureDecayState {
-  return { inactivityTimer: 0, decayTimer: 0 };
+  return { inactivityTime: 0 };
 }
 
 export function resetFractureDecayState(state: FractureDecayState): void {
-  state.inactivityTimer = 0;
-  state.decayTimer = 0;
+  state.inactivityTime = 0;
+}
+
+/** Vitesse de décroissance en points/s (4 % du plafond actuel). */
+export function getFractureDecayPerSecond(max = getMaxFracture()): number {
+  return max * CHRONO_FRACTURE.decayPerSecondPct;
 }
 
 /** Vrai lorsque la jauge décroît activement (après le délai d'inactivité). */
@@ -69,12 +73,12 @@ export function isFractureDecaying(
   isAttacking: boolean,
 ): boolean {
   if (isAttacking || gauge <= 0) return false;
-  return state.inactivityTimer >= CHRONO_FRACTURE.decayDelay;
+  return state.inactivityTime >= CHRONO_FRACTURE.decayDelay;
 }
 
 /**
- * Décroissance Fracture : 1 s d'inactivité, puis −2 % toutes les 0,5 s.
- * isAttacking = true stoppe immédiatement la décroissance et remet les timers à zéro.
+ * Décroissance Fracture fluide : 1 s d'inactivité, puis −4 % du plafond / s.
+ * Équivalent à −2 % toutes les 0,5 s, appliqué frame par frame via dt.
  */
 export function tickFractureDecay(
   gauge: number,
@@ -91,19 +95,13 @@ export function tickFractureDecay(
     return 0;
   }
 
-  state.inactivityTimer += dt;
-  if (state.inactivityTimer < CHRONO_FRACTURE.decayDelay) {
-    state.decayTimer = 0;
+  state.inactivityTime += dt;
+  if (state.inactivityTime < CHRONO_FRACTURE.decayDelay) {
     return clampFracture(gauge);
   }
 
-  state.decayTimer += dt;
-  let next = gauge;
-  while (state.decayTimer >= CHRONO_FRACTURE.decayInterval) {
-    state.decayTimer -= CHRONO_FRACTURE.decayInterval;
-    next = Math.max(0, next - CHRONO_FRACTURE.decayPerTick);
-  }
-  return clampFracture(next);
+  const decayRate = getFractureDecayPerSecond();
+  return clampFracture(gauge - decayRate * dt);
 }
 
 /** +0,33 % dégâts par point de Fracture (Apex uniquement). */
