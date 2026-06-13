@@ -58,6 +58,10 @@ export class Projectile {
         this.mesh.rotateZ(this.rotSpeed * dt);
         this.mesh.rotateX(this.rotSpeed * 0.5 * dt);
 
+        if (this.mesh.userData && typeof this.mesh.userData.animate === 'function') {
+            this.mesh.userData.animate(dt);
+        }
+
         // Traînée de particules
         if (this.hasTrail) {
             this.trailTimer += dt; 

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import * as THREE from 'three';
 import { STATE, CONFIG } from '../core/config';
 import { Globals, GameActions, setPlayer, addEnemy, removeEnemy } from '../core/globals';
 import { AudioSys } from '../core/ressources';
@@ -21,6 +22,172 @@ const MINI_BOSS_MOB_TYPE: Record<string, string> = {
 };
 
 import { applyMiniBossVariant } from './enemies/minions/mini_boss';
+
+function spawnRogueTent(pos) {
+    if (!Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Canvas Cover (Cone)
+    const coverGeo = new THREE.ConeGeometry(1.6, 2.0, 5);
+    const coverMat = new THREE.MeshStandardMaterial({
+        color: 0x70523d, // Rustic canvas brown
+        roughness: 0.9,
+        flatShading: true
+    });
+    const cover = new THREE.Mesh(coverGeo, coverMat);
+    cover.position.y = 1.0;
+    cover.rotation.y = Math.PI / 5;
+    cover.castShadow = true;
+    cover.receiveShadow = true;
+    group.add(cover);
+
+    // Support Poles (V-shape at front)
+    const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.2, 5);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.8 });
+    
+    const poleL = new THREE.Mesh(poleGeo, poleMat);
+    poleL.position.set(-0.6, 0.9, 1.1);
+    poleL.rotation.z = -0.3;
+    poleL.rotation.y = 0.2;
+    group.add(poleL);
+
+    const poleR = new THREE.Mesh(poleGeo, poleMat);
+    poleR.position.set(0.6, 0.9, 1.1);
+    poleR.rotation.z = 0.3;
+    poleR.rotation.y = -0.2;
+    group.add(poleR);
+
+    // Inner Glowing Campfire (warm orange light) - Mesh only, no pointlight to prevent WebGL compile lag
+    const fireGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const fireMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const fire = new THREE.Mesh(fireGeo, fireMat);
+    fire.position.set(0, 0.1, 0.8);
+    group.add(fire);
+
+    Globals.scene.add(group);
+    
+    // Add collision
+    if (!Globals.obstacles) Globals.obstacles = [];
+    const obstacle = {
+        position: pos.clone(),
+        radius: 1.8
+    };
+    Globals.obstacles.push(obstacle);
+
+    return { group, obstacle };
+}
+
+function spawnArcanePortal(pos) {
+    if (!Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    // Runic Base (Dark stone cylinder)
+    const baseGeo = new THREE.CylinderGeometry(1.3, 1.4, 0.15, 8);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x221a2b, roughness: 0.85, flatShading: true });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.075;
+    base.receiveShadow = true;
+    group.add(base);
+
+    // Glowing void glyph center (Torus)
+    const glyphGeo = new THREE.TorusGeometry(1.0, 0.08, 8, 24);
+    const glyphMat = new THREE.MeshBasicMaterial({ color: 0x9d4edd });
+    const glyph = new THREE.Mesh(glyphGeo, glyphMat);
+    glyph.rotation.x = Math.PI / 2;
+    glyph.position.y = 0.16;
+    group.add(glyph);
+
+    // Floating Crystal (Obelisk)
+    const crystalGeo = new THREE.OctahedronGeometry(0.38, 0);
+    const crystalMat = new THREE.MeshStandardMaterial({
+        color: 0x2b0f54,
+        emissive: 0xbd00ff,
+        emissiveIntensity: 2.5,
+        roughness: 0.1,
+        metalness: 0.95
+    });
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    crystal.position.y = 1.2;
+    crystal.castShadow = true;
+    group.add(crystal);
+
+    Globals.scene.add(group);
+
+    // Simple floating rotation animation
+    const animatePortal = () => {
+        if (!group.parent || group.scale.x < 0.1) return;
+        crystal.rotation.y += 0.02;
+        crystal.position.y = 1.2 + Math.sin(Date.now() * 0.003) * 0.15;
+        requestAnimationFrame(animatePortal);
+    };
+    animatePortal();
+
+    // Add collision
+    if (!Globals.obstacles) Globals.obstacles = [];
+    const obstacle = {
+        position: pos.clone(),
+        radius: 1.4
+    };
+    Globals.obstacles.push(obstacle);
+
+    return { group, obstacle };
+}
+
+function spawnSpikedBarricade(pos) {
+    if (!Globals.scene) return null;
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    group.position.y = 0;
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3c, roughness: 0.9 });
+    const spikeMat = new THREE.MeshStandardMaterial({ color: 0x423429, roughness: 0.8 });
+
+    // Spiked log 1, 2, 3
+    const logHeight = 1.4;
+    const logGeo = new THREE.CylinderGeometry(0.12, 0.12, logHeight, 5);
+    const tipGeo = new THREE.ConeGeometry(0.12, 0.35, 5);
+
+    const offsetsX = [-0.6, 0, 0.6];
+    offsetsX.forEach(ox => {
+        const logGroup = new THREE.Group();
+        logGroup.position.set(ox, logHeight/2, 0);
+        logGroup.rotation.x = -0.3; // Tilt forward
+
+        const log = new THREE.Mesh(logGeo, woodMat);
+        log.castShadow = true;
+        logGroup.add(log);
+
+        const tip = new THREE.Mesh(tipGeo, spikeMat);
+        tip.position.y = logHeight / 2 + 0.15;
+        tip.castShadow = true;
+        logGroup.add(tip);
+
+        group.add(logGroup);
+    });
+
+    // Crossbar log
+    const barGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 5);
+    const bar = new THREE.Mesh(barGeo, woodMat);
+    bar.rotation.z = Math.PI / 2;
+    bar.position.set(0, 0.5, 0.15);
+    group.add(bar);
+
+    Globals.scene.add(group);
+
+    // Add collision
+    if (!Globals.obstacles) Globals.obstacles = [];
+    const obstacle = {
+        position: pos.clone(),
+        radius: 1.6
+    };
+    Globals.obstacles.push(obstacle);
+
+    return { group, obstacle };
+}
 
 export const GameLogic = {
     
@@ -83,14 +250,225 @@ export const GameLogic = {
     spawnEnemy: function() {
         if (STATE.bossSpawned) return;
 
-        const spawnType = pickMobSpawnType(STATE.level);
-        const pos = randomWildSpawnPos();
+        // --- 15 VARIANTES DE SPAWN (GANGS / PACKS) ---
+        const GANG_VARIANTS = [
+            // --- 7 VARIANTES STANDARD ---
+            {
+                mobs: [
+                    { type: 'sentinel' },
+                    { type: 'rogue' },
+                    { type: 'rogue' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'sentinel' },
+                    { type: 'sentinel' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'rogue' },
+                    { type: 'rogue' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'warlock' },
+                    { type: 'warlock' },
+                    { type: 'sentinel' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'corrupted' },
+                    { type: 'corrupted' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'royal_guard' },
+                    { type: 'royal_guard' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'sentinel' },
+                    { type: 'warlock' },
+                    { type: 'rogue' },
+                    { type: 'corrupted' },
+                    { type: 'shaman' }
+                ]
+            },
 
-        const type = spawnType.mobs[Math.floor(Math.random() * spawnType.mobs.length)];
-        const spawnMini = Math.random() < MINI_BOSS_SPAWN_CHANCE && spawnType.miniBoss;
-        const e = new Enemy(type, pos);
-        if (spawnMini && spawnType.miniBoss) applyMiniBossVariant(e, spawnType.miniBoss);
-        addEnemy(e);
+            // --- 8 VARIANTES AVEC MINI-BOSS ---
+            {
+                mobs: [
+                    { type: 'rogue', miniBoss: 'verdant_stalker' },
+                    { type: 'rogue' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'sentinel', miniBoss: 'iron_warden' },
+                    { type: 'sentinel' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'warlock', miniBoss: 'arcane_herald' },
+                    { type: 'warlock' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'corrupted', miniBoss: 'corrupt_warden' },
+                    { type: 'corrupted' },
+                    { type: 'corrupted' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'rogue', miniBoss: 'verdant_stalker' },
+                    { type: 'warlock', miniBoss: 'arcane_herald' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'sentinel', miniBoss: 'iron_warden' },
+                    { type: 'royal_guard' },
+                    { type: 'royal_guard' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'rogue', miniBoss: 'verdant_stalker' },
+                    { type: 'corrupted' },
+                    { type: 'warlock' },
+                    { type: 'shaman' }
+                ]
+            },
+            {
+                mobs: [
+                    { type: 'corrupted', miniBoss: 'corrupt_warden' },
+                    { type: 'sentinel', miniBoss: 'iron_warden' },
+                    { type: 'rogue' },
+                    { type: 'rogue' },
+                    { type: 'shaman' }
+                ]
+            }
+        ];
+
+        // 25% chance of spawning a mini-boss pack if player level is at least 2
+        const isMiniBossVariant = Math.random() < 0.25 && STATE.level >= 2;
+        let variantIndex;
+        if (isMiniBossVariant) {
+            // Choose from variants index 7 to 14
+            variantIndex = 7 + Math.floor(Math.random() * 8);
+        } else {
+            // Choose from variants index 0 to 6
+            variantIndex = Math.floor(Math.random() * 7);
+        }
+
+        const variant = GANG_VARIANTS[variantIndex];
+
+        // Non-overlapping / Spaced-out spawn position finder
+        let centerPos = null;
+        let attempts = 0;
+        const minDistanceToPlayer = 22.0;
+        const minDistanceToOtherEnemies = 20.0;
+
+        while (attempts < 50) {
+            const candidate = randomWildSpawnPos();
+            attempts++;
+
+            // Distance to player check
+            if (Globals.player) {
+                if (candidate.distanceTo(Globals.player.position) < minDistanceToPlayer) {
+                    continue;
+                }
+            }
+
+            // Distance to other active enemies check
+            let tooClose = false;
+            if (Globals.enemies) {
+                for (const e of Globals.enemies) {
+                    if (e.dead) continue;
+                    if (candidate.distanceTo(e.position) < minDistanceToOtherEnemies) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!tooClose) {
+                centerPos = candidate;
+                break;
+            }
+        }
+
+        if (!centerPos) {
+            centerPos = randomWildSpawnPos(); // Fallback
+        }
+
+        // Spawn building structure at the center
+        let spawnedBuilding = false;
+        let buildingData = null;
+        if (variantIndex === 2 || variantIndex === 7 || variantIndex === 13 || variantIndex === 14) {
+            buildingData = spawnRogueTent(centerPos);
+            spawnedBuilding = true;
+        } else if (variantIndex === 3 || variantIndex === 4 || variantIndex === 9 || variantIndex === 10 || variantIndex === 11) {
+            buildingData = spawnArcanePortal(centerPos);
+            spawnedBuilding = true;
+        } else if (variantIndex === 0 || variantIndex === 1 || variantIndex === 5 || variantIndex === 8 || variantIndex === 12) {
+            buildingData = spawnSpikedBarricade(centerPos);
+            spawnedBuilding = true;
+        }
+
+        const campMobs = [];
+        // Spawn enemies around the camp center
+        variant.mobs.forEach((mobDef, idx) => {
+            const angle = (idx / variant.mobs.length) * Math.PI * 2;
+            // Radius is slightly larger if a building is spawned at center to avoid overlapping with it
+            const r = spawnedBuilding ? (3.2 + Math.random() * 1.5) : (1.5 + Math.random() * 2.0);
+            const spawnPos = centerPos.clone().add(new THREE.Vector3(Math.cos(angle) * r, 0, Math.sin(angle) * r));
+            
+            const e = new Enemy(mobDef.type, spawnPos);
+            if (mobDef.miniBoss) {
+                applyMiniBossVariant(e, mobDef.miniBoss);
+            }
+            campMobs.push(e);
+            addEnemy(e);
+        });
+
+        if (spawnedBuilding && buildingData) {
+            Globals.activeCamps = Globals.activeCamps || [];
+            Globals.activeCamps.push({
+                building: buildingData.group,
+                obstacle: buildingData.obstacle,
+                mobs: campMobs
+            });
+        }
     },
 
     /** Debug : spawn Mini-Boss. tiers optionnel : 'champion|executeur' ou tableau. */
@@ -267,6 +645,52 @@ export const GameLogic = {
         if (window.NewSkillUI?.updatePassiveDisplay) window.NewSkillUI.updatePassiveDisplay();
         if (window.BuffBar) window.BuffBar.render();
         UI.updateHUD();
+    },
+
+    updateActiveCamps: function(dt) {
+        if (!Globals.activeCamps) return;
+        
+        for (let i = Globals.activeCamps.length - 1; i >= 0; i--) {
+            const camp = Globals.activeCamps[i];
+            
+            // Check if all mobs in this camp are dead or removed from Globals.enemies
+            const allDead = camp.mobs.every(m => m.dead || !Globals.enemies.includes(m));
+            
+            if (allDead) {
+                // Despawn building with a shrink animation
+                if (camp.building) {
+                    const b = camp.building;
+                    const shrink = () => {
+                        if (b.scale.x > 0.05) {
+                            b.scale.multiplyScalar(0.85); // Shrink out
+                            requestAnimationFrame(shrink);
+                        } else {
+                            if (b.parent) b.parent.remove(b);
+                            // Dispose geometries and materials
+                            b.traverse(child => {
+                                if (child.geometry) child.geometry.dispose();
+                                if (child.material) {
+                                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                                    else child.material.dispose();
+                                }
+                            });
+                        }
+                    };
+                    shrink();
+                }
+                
+                // Remove obstacle collision from Globals.obstacles
+                if (camp.obstacle && Globals.obstacles) {
+                    const idx = Globals.obstacles.indexOf(camp.obstacle);
+                    if (idx > -1) {
+                        Globals.obstacles.splice(idx, 1);
+                    }
+                }
+                
+                // Remove camp from active list
+                Globals.activeCamps.splice(i, 1);
+            }
+        }
     },
     
     tryInteractLocal: function() {

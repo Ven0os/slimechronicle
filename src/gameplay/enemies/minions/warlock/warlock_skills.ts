@@ -16,7 +16,9 @@ export class WarlockSkills {
     checkAttackTrigger(target, dt) {
         if (this.enemy.attackCooldown > 0 || !target) return;
         const dist = this.enemy.position.distanceTo(target.position);
-        if (dist < 6.0 && Math.random() < 0.12) this.attackWarlockTeleport(target);
+        
+        if (dist < 10.0 && dist > 4.0 && Math.random() < 0.15) this.attackWarlockShackles(target);
+        else if (dist < 6.0 && Math.random() < 0.12) this.attackWarlockTeleport(target);
         else if (dist < 10.0 && Math.random() < 0.14) this.attackWarlockZone(target);
         else if (dist < 14.0 && Math.random() < 0.12) this.attackWarlockBeam(target);
         else if (dist < 16.0 && Math.random() < 0.22) this.attackWarlockBolt(target);
@@ -34,32 +36,58 @@ export class WarlockSkills {
             const dir = target.position.clone().sub(this.enemy.position).normalize();
             const startPos = this.enemy.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(dir.clone().multiplyScalar(0.5));
             
-            // Premium projectile geometry (sphere core)
-            const projGeo = new THREE.SphereGeometry(0.18, 16, 16);
-            const projMat = new THREE.MeshStandardMaterial({ color: 0x240046, emissive: 0x9d4edd, emissiveIntensity: 3.0 });
-            const proj = new Projectile(projGeo, projMat, startPos, dir, cfg.speed, cfg.damage, 'enemy', 0xbd00ff);
+            // Premium projectile geometry (faceted cosmic runic prism)
+            const projGeo = new THREE.CylinderGeometry(0, 0.13, 0.55, 4); 
+            projGeo.rotateX(Math.PI / 2); // align along Z
+            const projMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1a052e, 
+                emissive: 0x9d4edd, 
+                emissiveIntensity: 3.5,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const proj = new Projectile(projGeo, projMat, startPos, dir, cfg.speed, cfg.damage, 'enemy', 0xbd00ff, true);
             
-            // Add a floating orbiting gold ring and smaller glowing crystal shards around the main orb
-            const orbRing = new THREE.Mesh(
-                new THREE.TorusGeometry(0.32, 0.03, 4, 16), 
-                new THREE.MeshStandardMaterial({
-                    color: 0xffb703,
-                    metalness: 0.9,
-                    roughness: 0.1,
-                    emissive: 0xffaa00,
-                    emissiveIntensity: 0.5
-                })
+            // Add dual concentric orbiting rings rotating in opposite directions
+            const innerRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.24, 0.015, 3, 12),
+                new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 0.9, roughness: 0.2 })
             );
-            orbRing.rotation.x = Math.PI / 2;
-            proj.mesh.add(orbRing);
-            
-            const shardL = new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-            shardL.position.set(-0.36, 0, 0);
-            proj.mesh.add(shardL);
+            innerRing.rotation.x = Math.PI / 2;
+            proj.mesh.add(innerRing);
 
-            const shardR = new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
-            shardR.position.set(0.36, 0, 0);
-            proj.mesh.add(shardR);
+            const outerRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.34, 0.015, 3, 16),
+                new THREE.MeshStandardMaterial({ color: 0xffb703, metalness: 0.9, roughness: 0.2 })
+            );
+            outerRing.rotation.y = Math.PI / 2;
+            proj.mesh.add(outerRing);
+
+            // Add 3 small floating crystals orbiting the core
+            const crystalGeo = new THREE.OctahedronGeometry(0.06);
+            const crystalMat = new THREE.MeshBasicMaterial({ color: 0xe0aaff });
+            const crystals = [];
+            for (let i = 0; i < 3; i++) {
+                const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+                const angle = (i / 3) * Math.PI * 2;
+                crystal.position.set(Math.cos(angle) * 0.42, Math.sin(angle) * 0.42, 0);
+                proj.mesh.add(crystal);
+                crystals.push(crystal);
+            }
+
+            // Animate rings and crystals in the update loop via userData hook
+            proj.mesh.userData = {
+                animate: (dt) => {
+                    const time = Date.now() * 0.005;
+                    innerRing.rotation.z += dt * 6;
+                    outerRing.rotation.x -= dt * 4;
+                    // Orbiting crystals
+                    crystals.forEach((c, idx) => {
+                        const customAngle = (idx / 3) * Math.PI * 2 + time * 5;
+                        c.position.set(Math.cos(customAngle) * 0.42, Math.sin(customAngle) * 0.42, Math.sin(time * 8 + idx) * 0.1);
+                    });
+                }
+            };
 
             proj.sourceEnemy = this.enemy;
             proj.isAbility = true;
@@ -152,6 +180,64 @@ export class WarlockSkills {
             this.enemy.animState = 'idle';
         }, cfg.castTime * 1000); 
         this.enemy.attackCooldown = cfg.cooldown; 
+    }
+
+    attackWarlockShackles(target) {
+        this.enemy.isChanneling = true;
+        this.enemy.animState = 'cast_beam'; // Leans forward and channels
+        const cfg = {
+            damage: 5, // tick damage
+            heal: 5, // heal amount
+            duration: 3.0,
+            cooldown: 8.0,
+            sound: 'warlock_curse'
+        };
+
+        if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound);
+        createDamageText("LIEN DU NÉANT !", this.enemy.position, '#bd00ff');
+
+        // Spawn link visual
+        createSkillVisual('shackles_link', this.enemy.position, cfg.duration, 0xbd00ff, {
+            source: this.enemy,
+            target: target
+        });
+
+        let ticks = 0;
+        const maxTicks = 6;
+        const intervalId = setInterval(() => {
+            if (this.enemy.dead || !this.enemy.isChanneling) {
+                clearInterval(intervalId);
+                this.enemy.isChanneling = false;
+                if (!this.enemy.dead) this.enemy.animState = 'idle';
+                return;
+            }
+
+            // Check distance
+            const dist = this.enemy.position.distanceTo(target.position);
+            if (dist > 13.0) {
+                clearInterval(intervalId);
+                return;
+            }
+
+            // Deal damage to target and heal warlock
+            this.enemy.dealPlayerDamage(target, cfg.damage, { isAbility: true });
+            
+            // Heal warlock (capped at max Hp)
+            if (!this.enemy.dead) {
+                this.enemy.hp = Math.min(this.enemy.maxHp, this.enemy.hp + cfg.heal);
+                createDamageText(`+${cfg.heal}`, this.enemy.position, '#2ecc71');
+                spawnParticles(this.enemy.position, 0x2ecc71, 3);
+            }
+
+            ticks++;
+            if (ticks >= maxTicks) {
+                clearInterval(intervalId);
+                this.enemy.isChanneling = false;
+                this.enemy.animState = 'idle';
+            }
+        }, 500);
+
+        this.enemy.attackCooldown = cfg.cooldown;
     }
 
     spawnTelegraphNetwork(pos, shape, size, duration, color, onComplete, rotationY = 0) {

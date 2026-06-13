@@ -27,16 +27,20 @@ export class Warlock extends BaseEnemy {
         this.skills = new WarlockSkills(this);
 
         // --- ANIMATION D'APPARITION (Rituel) ---
-        this.isSpawning = true;
-        this.spawnTimer = 0;
-        
-        // On le cache sous le sol
-        this.targetY = this.position.y;
-        this.position.y -= 3.0; 
-        if(this.mesh) this.mesh.scale.set(0,0,0);
+        if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
+            this.isSpawning = true;
+            this.spawnTimer = 0;
+            
+            // On le cache sous le sol
+            this.targetY = this.position.y;
+            this.position.y -= 3.0; 
+            if(this.mesh) this.mesh.scale.set(0,0,0);
 
-        if (this.config.spawn && this.config.spawn.sound) {
-            if(AudioSys.play) AudioSys.play(this.config.spawn.sound, 0.7);
+            if (this.config.spawn && this.config.spawn.sound) {
+                if(AudioSys.play) AudioSys.play(this.config.spawn.sound, 0.7);
+            }
+        } else {
+            this.isSpawning = false;
         }
     }
 

@@ -31,14 +31,18 @@ export class Rogue extends BaseEnemy {
         this.skills = new RogueSkills(this);
 
         // --- ANIMATION D'APPARITION ---
-        this.isSpawning = true;
-        this.spawnTimer = 0;
-        if(this.mesh) this.mesh.scale.set(0, 0, 0);
-        
-        if (this.config.spawn && this.config.spawn.sound) {
-            if(AudioSys.play) AudioSys.play(this.config.spawn.sound, 0.6);
+        if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
+            this.isSpawning = true;
+            this.spawnTimer = 0;
+            if(this.mesh) this.mesh.scale.set(0, 0, 0);
+            
+            if (this.config.spawn && this.config.spawn.sound) {
+                if(AudioSys.play) AudioSys.play(this.config.spawn.sound, 0.6);
+            }
+            spawnParticles(this.position, 0x555555, 10);
+        } else {
+            this.isSpawning = false;
         }
-        spawnParticles(this.position, 0x555555, 10);
     }
 
     update(dt) {
@@ -76,7 +80,7 @@ export class Rogue extends BaseEnemy {
         this.model.updateAnim(dt);
 
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
-            if (this.isAttacking) { } 
+            if (this.isAttacking || this.isChanneling) { } 
             else if (target) {
                 let moveDir = this.ai.update(dt, target);
                 moveDir = this.ai.applyMiniBossPursuit(moveDir);

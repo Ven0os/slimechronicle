@@ -7,12 +7,13 @@ import { Rogue } from './enemies/minions/rogue/rogue';
 import { Warlock } from './enemies/minions/warlock/warlock';
 import { RoyalGuard } from './enemies/minions/royal_guard/royal_guard';
 import { Corrupted } from './enemies/minions/corrupted/corrupted';
+import { Shaman } from './enemies/minions/shaman/shaman';
 
 // Factory pattern: Centralise la création des ennemis
 export class Enemy extends BaseEnemy {
     constructor(type, position, id = null) {
         // --- BOSS ---\
-        if (type === 'king') return new KingSlime(position, id);
+        if (type === 'king' || type === 'king_slime') return new KingSlime(position, id);
         if (type === 'slime_lord') return new SlimeLord(position, id);
 
         // --- ENEMIES CLASSIQUES ---\
@@ -20,6 +21,7 @@ export class Enemy extends BaseEnemy {
         if (type === 'sentinel' || type === 'iron') return new Sentinel(position, id);
         if (type === 'warlock' || type === 'mage' || type === 'blue' || type === 'fire') return new Warlock(position, id);
         if (type === 'corrupted') return new Corrupted(position, id);
+        if (type === 'shaman' || type === 'support') return new Shaman(position, id);
         
         // Par défaut: Assassin (Rogue) - Rapide et au corps à corps
         return new Rogue(position, id);

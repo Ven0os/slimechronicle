@@ -115,7 +115,9 @@ export const NetSync = {
                     stateVer: (e.stateVersion = (e.stateVersion || 0) + 1),
                     atk: e.isAttacking ? 1 : 0,
                     anim: e.animState || 'idle',
-                    atkType: atkType
+                    atkType: atkType,
+                    gnomeShield: e.gnomeShieldTimer && e.gnomeShieldTimer > 0 ? 1 : 0,
+                    gnomeBoost: e.gnomeDamageBoostTimer && e.gnomeDamageBoostTimer > 0 ? 1 : 0
                 };
             });
 
@@ -193,6 +195,13 @@ export const NetSync = {
                 }
 
                 if (eData.anim) enemy.animState = eData.anim;
+
+                if (eData.gnomeShield !== undefined) {
+                    enemy.gnomeShieldTimer = eData.gnomeShield ? 5.0 : 0;
+                }
+                if (eData.gnomeBoost !== undefined) {
+                    enemy.gnomeDamageBoostTimer = eData.gnomeBoost ? 5.0 : 0;
+                }
 
                 if (eData.atk === 1) {
                     if (!enemy.isAttacking) {

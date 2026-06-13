@@ -144,6 +144,32 @@ export const ENEMY_ATTACKS = {
         }
     },
 
+    // --- SHAMAN (SUPPORT) ---
+    shaman: {
+        spawn: { sound: 'warlock_spawn' },
+        heal: {
+            cooldown: 5.0,
+            range: 15.0,
+            sound: 'warlock_curse'
+        },
+        shield: {
+            cooldown: 6.0,
+            range: 15.0,
+            sound: 'war_cry'
+        },
+        boost: {
+            cooldown: 7.0,
+            range: 15.0,
+            sound: 'war_cry'
+        },
+        ray: {
+            damage: 12,
+            speed: 0.45,
+            cooldown: 2.5,
+            sound: 'shoot'
+        }
+    },
+
     // --- KING SLIME (BOSS) ---
     king_slime: {
         spawn: { sound: 'boss_spawn' },

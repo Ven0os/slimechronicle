@@ -56,6 +56,8 @@ export class BaseEnemy extends THREE.Group {
         this.isAttacking = false;
         this.isChanneling = false;
         this.attackCooldown = 0;
+        this.gnomeShieldTimer = 0;
+        this.gnomeDamageBoostTimer = 0;
         
         this.activeTelegraphs = [];
         
@@ -187,6 +189,19 @@ export class BaseEnemy extends THREE.Group {
             }
         }
 
+        if (this.gnomeShieldTimer && this.gnomeShieldTimer > 0) {
+            this.gnomeShieldTimer -= dt;
+            if (Math.random() < 0.15 && Globals.scene) {
+                spawnParticles(this.position.clone().add(new THREE.Vector3((Math.random()-0.5)*this.radius*2, Math.random()*1.5, (Math.random()-0.5)*this.radius*2)), 0x3498db, 1);
+            }
+        }
+        if (this.gnomeDamageBoostTimer && this.gnomeDamageBoostTimer > 0) {
+            this.gnomeDamageBoostTimer -= dt;
+            if (Math.random() < 0.15 && Globals.scene) {
+                spawnParticles(this.position.clone().add(new THREE.Vector3((Math.random()-0.5)*this.radius*2, Math.random()*1.5, (Math.random()-0.5)*this.radius*2)), 0xe74c3c, 1);
+            }
+        }
+
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
             this.resolveCollisions();
             if(this.attackCooldown > 0) {
@@ -197,6 +212,12 @@ export class BaseEnemy extends THREE.Group {
         
         // Ensure position Y is updated
         this.position.y = this.airY;
+    }
+
+    updateAnim(dt) {
+        if (this.model && typeof this.model.updateAnim === 'function') {
+            this.model.updateAnim(dt);
+        }
     }
 
     resolveCollisions() {
@@ -253,6 +274,10 @@ export class BaseEnemy extends THREE.Group {
     dealPlayerDamage(target, baseAmount, opts = {}) {
         let amount = baseAmount;
         let outOpts = { ...opts };
+
+        if (this.gnomeDamageBoostTimer && this.gnomeDamageBoostTimer > 0) {
+            amount *= 1.2;
+        }
 
         if (this.isMiniBoss && this.miniBossStats) {
             const s = this.miniBossStats;
@@ -312,6 +337,10 @@ export class BaseEnemy extends THREE.Group {
     }
 
     takeDamage(amount, opts = {}) {
+        if (this.gnomeShieldTimer && this.gnomeShieldTimer > 0) {
+            amount *= 0.5;
+        }
+
         if (
             shouldApplySolarLightAmp(this)
             && this._solarLightDebuffUntil

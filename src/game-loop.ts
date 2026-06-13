@@ -207,7 +207,7 @@ function animate(): void {
     if (STATE.multiplayer.isHost) {
       Network.sendWorldState();
       enemySpawnTimer += dt * STATE.timeScale;
-      if (!STATE.bossSpawned && Globals.enemies.length < 12 && enemySpawnTimer > 2.0) {
+      if (!STATE.bossSpawned && Globals.enemies.length < 15 && enemySpawnTimer > 9.0) {
         if (Globals.player && !isInSafeZone(Globals.player.position) && !isNoMobZone(Globals.player.position)) {
           GameLogic.spawnEnemy();
           enemySpawnTimer = 0;
@@ -216,7 +216,7 @@ function animate(): void {
     }
   } else if (!STATE.multiplayer.active && Globals.player && !Globals.player.dead) {
     enemySpawnTimer += dt * STATE.timeScale;
-    if (enemySpawnTimer > 2.0 && Globals.enemies.length < 25) {
+    if (enemySpawnTimer > 9.0 && Globals.enemies.length < 30) {
       if (!isInSafeZone(Globals.player.position) && !isNoMobZone(Globals.player.position)) {
         GameLogic.spawnEnemy();
       }
@@ -226,6 +226,7 @@ function animate(): void {
 
   if (Globals.player) Globals.player.update(dt);
   GameLogic.checkBossVictory();
+  GameLogic.updateActiveCamps(dt);
   updateTelegraphs(dt);
   updateSkillVisuals(dt);
   updateMenhirVisuals();

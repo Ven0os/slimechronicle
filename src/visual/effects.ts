@@ -659,4 +659,152 @@ export function createSkillVisual(type, pos, size, color, dir) {
         };
         fall();
     }
+    else if (type === 'poison_cloud') {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        Globals.scene.add(group);
+
+        const cloudMat = new THREE.MeshBasicMaterial({
+            color: 0x39ff14,
+            transparent: true,
+            opacity: 0.12,
+            blending: THREE.AdditiveBlending
+        });
+        const cloudGeo = new THREE.SphereGeometry(size * 0.35, 8, 8);
+        const puffCount = 10;
+        const puffs = [];
+
+        for (let i = 0; i < puffCount; i++) {
+            const mesh = new THREE.Mesh(cloudGeo, cloudMat);
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * (size * 0.55);
+            mesh.position.set(Math.cos(angle) * dist, 0.15 + Math.random() * 0.25, Math.sin(angle) * dist);
+            
+            const scale = 0.6 + Math.random() * 1.0;
+            mesh.scale.setScalar(scale);
+            
+            group.add(mesh);
+            puffs.push({
+                mesh: mesh,
+                angle: angle,
+                speed: 0.15 + Math.random() * 0.3,
+                wobbleSpeed: 2.0 + Math.random() * 2.0,
+                baseY: mesh.position.y
+            });
+        }
+
+        const duration = 4.0; // cloud lasts 4s
+        let elapsed = 0;
+
+        const animateCloud = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+
+            puffs.forEach(p => {
+                // Expand
+                const scale = (0.6 + progress * 1.6);
+                p.mesh.scale.setScalar(scale);
+                
+                // Float up and drift
+                p.mesh.position.y = p.baseY + progress * 1.5;
+                p.mesh.position.x += Math.sin(elapsed * p.wobbleSpeed) * 0.006;
+                p.mesh.position.z += Math.cos(elapsed * p.wobbleSpeed) * 0.006;
+            });
+
+            // Pulse opacity (fade out at the end)
+            if (progress > 0.7) {
+                cloudMat.opacity = (1.0 - (progress - 0.7) / 0.3) * 0.12;
+            } else {
+                cloudMat.opacity = 0.12 + Math.sin(elapsed * 2) * 0.02;
+            }
+
+            // Spawn particles
+            if (Math.random() < 0.22 && progress < 0.9) {
+                const pPos = pos.clone().add(new THREE.Vector3(
+                    (Math.random() - 0.5) * size * 1.3,
+                    0.2 + Math.random() * 0.9,
+                    (Math.random() - 0.5) * size * 1.3
+                ));
+                spawnParticles(pPos, 0x39ff14, 1);
+            }
+
+            if (progress >= 1.0) {
+                Globals.scene.remove(group);
+                cloudGeo.dispose();
+                cloudMat.dispose();
+            } else {
+                requestAnimationFrame(animateCloud);
+            }
+        };
+        animateCloud();
+    }
+    else if (type === 'shackles_link') {
+        const cylinderGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.0, 6);
+        cylinderGeo.rotateX(Math.PI / 2); // align along Z
+        const linkColor = dir.color || 0xbd00ff;
+        const cylinderMat = new THREE.MeshBasicMaterial({
+            color: linkColor,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        const mesh = new THREE.Mesh(cylinderGeo, cylinderMat);
+        Globals.scene.add(mesh);
+
+        const sourceObj = dir.source;
+        const targetObj = dir.target;
+
+        const duration = size; // duration passed in size parameter
+        let elapsed = 0;
+
+        const animateLink = () => {
+            elapsed += 0.016;
+            
+            // Check if either is dead or if elapsed duration exceeded
+            if (elapsed >= duration || sourceObj.dead || targetObj.dead || !sourceObj.mesh || !targetObj.mesh) {
+                Globals.scene.remove(mesh);
+                cylinderGeo.dispose();
+                cylinderMat.dispose();
+                return;
+            }
+
+            // Get source staff position and target chest position
+            const pStart = sourceObj.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+            const pEnd = targetObj.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+            
+            // Distance check to break shackle
+            const dist = pStart.distanceTo(pEnd);
+            if (dist > 13.0) {
+                Globals.scene.remove(mesh);
+                cylinderGeo.dispose();
+                cylinderMat.dispose();
+                sourceObj.isChanneling = false; // break channeling
+                sourceObj.animState = 'idle';
+                createDamageText("BRISÉ !", targetObj.position, '#' + new THREE.Color(linkColor).getHexString());
+                return;
+            }
+
+            // Position at midpoint
+            mesh.position.copy(pStart).add(pEnd).multiplyScalar(0.5);
+            
+            // Orient mesh from start to end
+            mesh.lookAt(pEnd);
+            
+            // Scale length along Z axis
+            mesh.scale.set(1.0 + Math.sin(elapsed * 20) * 0.1, 1.0 + Math.sin(elapsed * 20) * 0.1, dist);
+
+            // Pulsing opacity
+            cylinderMat.opacity = 0.6 + Math.sin(elapsed * 25) * 0.2;
+
+            // Spawn particles along the link
+            if (Math.random() < 0.35) {
+                const lerpVal = Math.random();
+                const pPos = pStart.clone().lerp(pEnd, lerpVal);
+                spawnParticles(pPos, linkColor, 1);
+            }
+
+            requestAnimationFrame(animateLink);
+        };
+        animateLink();
+    }
 }
