@@ -780,25 +780,25 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Énergie Pure', desc: '+8 ATK', icon: 'fa-gem', effects: { atk: 8 } },
         {
           name: 'Prisme Affiné',
-          desc: 'Passif : cône lentille élargi, rayon +8%, Convergence +0,5 s.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
+          desc: 'Passif : cône prisme élargi, rayon +8%, Convergence +0,5 s.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
           icon: 'fa-gem',
           keystone: true,
           effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'continuumBurst' }
         }
       ]),
-      branch10('chronoregulator', 'lentille', 'mst', 'Lentille', [
+      branch10('chronoregulator', 'lentille', 'mst', 'Prisme', [
         { name: 'Facette', desc: '+4% Crit Chance', icon: 'fa-gem', effects: { crit: 0.04 } },
-        { name: 'Réfraction', desc: '+8% Lentille de Focalisation', icon: 'fa-wave-square', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Réfraction', desc: '+8% Prisme', icon: 'fa-wave-square', effects: { skillMods: { space: 0.08 } } },
         { name: 'Prisme Brut', desc: '+5 ATK', icon: 'fa-eye', effects: { atk: 5 } },
-        { name: 'Optique de Rupture', desc: '-5% CD Lentille', icon: 'fa-stopwatch', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Optique de Rupture', desc: '-5% CD Prisme', icon: 'fa-stopwatch', effects: { skillCdMods: { space: -0.05 } } },
         { name: 'Facette Pure', desc: '+4% Crit Chance', icon: 'fa-gem', effects: { crit: 0.04 } },
-        { name: 'Réfraction Majeure', desc: '+6% Lentille de Focalisation', icon: 'fa-wave-square', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Réfraction Majeure', desc: '+6% Prisme', icon: 'fa-wave-square', effects: { skillMods: { space: 0.06 } } },
         { name: 'Prisme Cristallin', desc: '+5 ATK', icon: 'fa-shield-halved', effects: { atk: 5 } },
-        { name: 'Optique Divine', desc: '-5% CD Lentille', icon: 'fa-clock', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Optique Divine', desc: '-5% CD Prisme', icon: 'fa-clock', effects: { skillCdMods: { space: -0.05 } } },
         { name: 'Cristal Focal', desc: '+5% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.05 } },
         {
           name: 'Prisme Supplémentaire',
-          desc: 'Passif : lentilles projettent 4 rayons brûlants.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
+          desc: 'Passif : les prismes projettent 4 rayons brûlants · Brûlure Temporelle via prisme.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
           icon: 'fa-gem',
           keystone: true,
           effects: { atk: 8, crit: 0.08, critDmg: 0.12, passive: 'extraPrismLens' }
@@ -824,13 +824,13 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       ]),
       branch10('chronoregulator', 'distorsion', 'spd', 'Conduction', [
         { name: 'Foulée', desc: '+1.1 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 1.1 } },
-        { name: 'Accélération', desc: '-8% CD Lentille', icon: 'fa-stopwatch', effects: { skillCdMods: { space: -0.08 } } },
+        { name: 'Accélération', desc: '-8% CD Prisme', icon: 'fa-stopwatch', effects: { skillCdMods: { space: -0.08 } } },
         { name: 'Flux', desc: '+0.8 Vitesse sprint', icon: 'fa-wind', effects: { speed: 0.8 } },
-        { name: 'Conduction Temporelle', desc: '-6% CD Lentille', icon: 'fa-hourglass-start', effects: { skillCdMods: { space: -0.06 } } },
+        { name: 'Conduction Temporelle', desc: '-6% CD Prisme', icon: 'fa-hourglass-start', effects: { skillCdMods: { space: -0.06 } } },
         { name: 'Pas de Conduction', desc: '+0.8 Vitesse sprint', icon: 'fa-shoe-prints', effects: { speed: 0.8 } },
-        { name: 'Accélération Divine', desc: '-6% CD Lentille', icon: 'fa-bolt-lightning', effects: { skillCdMods: { space: -0.06 } } },
+        { name: 'Accélération Divine', desc: '-6% CD Prisme', icon: 'fa-bolt-lightning', effects: { skillCdMods: { space: -0.06 } } },
         { name: 'Foulée Céleste', desc: '+0.8 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 0.8 } },
-        { name: 'Hâte de Lentille', desc: '-5% CD Lentille', icon: 'fa-clock', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Hâte de Prisme', desc: '-5% CD Prisme', icon: 'fa-clock', effects: { skillCdMods: { space: -0.05 } } },
         { name: 'Conduction Pure', desc: '+1.0 Vitesse sprint', icon: 'fa-bolt', effects: { speed: 1.0 } },
         {
           name: 'Conduction Fractale',

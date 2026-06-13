@@ -35,7 +35,7 @@ export const CONFIG = {
         },
         sentinel: {
             passive: { name: "Aura Solaire", desc: "Aura de soutien autour du lanceur.\nBonus offensifs aux alliés proches." },
-            space: { name: "Rayon Stellaire", desc: "Charge 1 s, puis laser en ligne.\nDégâts massifs." },
+            space: { name: "Rayon Stellaire", desc: "Incantation 1 s, puis laser en ligne.\nDégâts massifs.\nSurcharge Stellaire : charge 50 % à 250 % en 3,25 s." },
             shift: { name: "Champ de Lumière", desc: "Lance sacrée au sol.\nZone persistante : dégâts périodiques et soin du lanceur." },
             e: { name: "Égide Divine", desc: "Moulinet sacré.\nSoin important et bouclier." }
         },
@@ -59,7 +59,7 @@ export const CONFIG = {
         },
         chronoregulator: {
             passive: { name: "Surcharge Chronologique", desc: "Maintenez le clic pour canaliser le rayon.\nFracture monte jusqu'à 100 %.\n\nRelâchez entre 85–95 % : explosion de rupture.\nCompétences : −30 Fracture." },
-            space: { name: "Lentille de Focalisation", desc: "Prisme au sol.\nLe rayon se divise en cône · Fracture ×0,5 à travers la lentille." },
+            space: { name: "Prisme", desc: "Prisme au sol.\nLe rayon se divise en cône · Fracture ×0,5 à travers le prisme." },
             shift: { name: "Déphasage Moléculaire", desc: "Grenade en arc : explosion de zone.\nInstabilité chronologique 4 s.\n\nCible marquée : Fracture ÷4 au rayon." },
             e: { name: "Convergence Temporelle", desc: "Durée 6 s · +10 % vitesse.\nRayon sans Fracture ni surchauffe.\n\nAttire les cibles marquées.\nRéactive E pour l'explosion finale.\n\nRecharge : 17 s." }
         }

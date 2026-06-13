@@ -124,14 +124,14 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
     },
   },
   chronoregulator: {
-    lore: 'Paliers 1-3 : stats du rayon et de la Fracture. Keystones : lentille, rupture, conduction et déphasage.',
+    lore: 'Paliers 1-3 : stats du rayon et de la Fracture. Keystones : prisme, rupture, conduction et déphasage.',
     motto: 'Canalise. Converge. Explose.',
     branches: {
       continuum: { desc: 'ATK et rayon — keystone : prisme affiné.', icon: 'fa-wave-square', focus: 'DPS' },
       echo: { desc: 'Dégâts de rupture — keystone : explosion volontaire amplifiée.', icon: 'fa-burst', focus: 'Burst' },
       distorsion: { desc: 'Sprint et CD — keystone : coût Fracture réduit.', icon: 'fa-hourglass-half', focus: 'Mobilité' },
       paradoxe: { desc: 'Critiques et XP — keystone : déphasage renforcé.', icon: 'fa-atom', focus: 'Synergie' },
-      lentille: { desc: 'Lentilles — fin de branche : Prisme Supplémentaire.', icon: 'fa-gem', focus: 'Spécialisation' },
+      lentille: { desc: 'Prismes — fin de branche : Prisme Supplémentaire.', icon: 'fa-gem', focus: 'Spécialisation' },
     },
   },
 };

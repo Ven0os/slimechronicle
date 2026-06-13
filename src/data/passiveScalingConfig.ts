@@ -153,10 +153,10 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   stellarOvercharge: {
     paragraphs: () => [
-      'Rayon Stellaire (Espace) : maintenir Espace charge au-delà du maximum normal.',
-      'Charge maximale : 250 % des dégâts de base du Rayon Stellaire.',
-      'Relâcher Espace : tir avec la charge actuelle.',
-      'Charge complète (250 %) : rayon d\'impact +20 %.',
+      'Rayon Stellaire : charge de 50 % à 250 % de dégâts.',
+      'Charge maximale après 3,25 s.',
+      'À 250 % : +20 % Portée.',
+      'Une jauge affiche l\'amplification actuelle en temps réel.',
     ],
   },
 
@@ -373,15 +373,17 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   extraPrismLens: {
     paragraphs: () => [
-      'Lentille de Focalisation : split en 4 rayons au lieu de 3.',
-      'Rayons prismatiques : dégâts −10 % par rayon.',
-      'Rayons prismatiques : infligent une brûlure temporelle.',
+      'Prisme (Espace) :\nGénère 4 rayons au lieu de 3.',
+      'Rayons prismatiques :\nDégâts -10% par rayon.',
+      'Tirer à travers un Prisme :\nApplique Brûlure Temporelle.',
+      'Brûlure Temporelle :\n10% des dégâts infligés par seconde pendant 3 s.',
+      'Maximum 3 cumuls.',
     ],
   },
 
   continuumBurst: {
     paragraphs: () => [
-      'Lentille (Espace) : cône +15 % · dégâts du rayon +8 %.',
+      'Prisme (Espace) : cône +15 % · dégâts du rayon +8 %.',
       'Convergence Temporelle (E) : durée +0,5 s.',
       'Convergence Temporelle (E) : rayon de résonance +0,5 m.',
     ],

@@ -153,6 +153,9 @@ export const ConstellationEngine = {
       Globals.player.overheatTriggered = false;
       const p = ensurePassives();
       p.continuumMastery = 2;
+      if (typeof Globals.player.syncChronoApexState === 'function') {
+        Globals.player.syncChronoApexState();
+      }
     }
     ConvergenceEffects.applyPacifierConvergenceStats();
     ConvergenceEffects.reapplyParadoxRewards();
@@ -196,6 +199,9 @@ export const ConstellationEngine = {
       const node = getNodeById(id);
       if (node) applyNode(node, true);
     }
+
+    this.ensureKeystonePassive('stellarOvercharge', 'sentinel-surcharge-10');
+    this.ensureKeystonePassive('continuumMastery', 'chronoregulator-apex', 2);
 
     if (paradoxBackup._paradoxRewards) {
       const p = ensurePassives();
@@ -285,6 +291,13 @@ export const ConstellationEngine = {
     return (p?.[key] as number) || 0;
   },
 
+  /** Ré-enregistre un passif de keystone si le nœud est débloqué mais STATE.passives a été perdu. */
+  ensureKeystonePassive(key: string, nodeId: string, rank = 1): void {
+    if (this.getPassiveRank(key) > 0) return;
+    if (!this.isNodeUnlocked(nodeId)) return;
+    registerPassive({ passive: key, passiveRank: rank });
+  },
+
   isConvergenceUnlocked(classId?: ClassId): boolean {
     const cid = classId || this.getActiveClass();
     return this.isNodeUnlocked(`${cid}-apex`);
@@ -316,8 +329,12 @@ export const ConstellationEngine = {
     if (!this.isApexPassiveActive('bloodPact', 'pacifier')) {
       player._convergenceShotIndex = 0;
     }
-    if (player.className === 'chronoregulator' && player.fractureGauge != null) {
-      player.fractureGauge = clampFracture(player.fractureGauge);
+    if (player.className === 'chronoregulator') {
+      if (this.isApexPassiveActive('continuumMastery', 'chronoregulator') && typeof player.syncChronoApexState === 'function') {
+        player.syncChronoApexState();
+      } else if (player.fractureGauge != null) {
+        player.fractureGauge = clampFracture(player.fractureGauge);
+      }
     }
     if (!this.isApexPassiveActive('eternalThirst', 'blade')) {
       ConvergenceEffects.resetBladeThirstCrit();

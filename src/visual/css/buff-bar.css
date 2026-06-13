@@ -379,7 +379,7 @@
   background: linear-gradient(90deg, #48c9b0, #7df9ff 60%, #ffd93d);
 }
 
-/* Prismes / Lentilles — Chronorégisseur */
+/* Prismes — Chronorégisseur (clés DOM/CSS internes : chrono-lens-*) */
 .chrono-lens-stacks {
   display: flex;
   flex-direction: column;
@@ -493,4 +493,132 @@
   0% { opacity: 1; }
   50% { opacity: 0.55; }
   100% { opacity: 1; }
+}
+
+/* Rayon Stellaire — jauge d'amplification Sentinel */
+.stellar-ray-charge {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: min(320px, 72vw);
+  padding: 8px 12px 7px;
+  background: rgba(12, 10, 4, 0.82);
+  border: 1px solid rgba(241, 196, 15, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  z-index: 12;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.stellar-ray-charge-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.stellar-ray-charge-icon {
+  color: #f1c40f;
+  font-size: 12px;
+}
+
+.stellar-ray-charge-title {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: #ffeaa7;
+  font-weight: 700;
+}
+
+.stellar-ray-charge-track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stellar-ray-charge-fill {
+  height: 100%;
+  width: 20%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #d4a017, #f1c40f 55%, #fff3b0);
+  transition: width 0.05s linear;
+  box-shadow: 0 0 8px rgba(241, 196, 15, 0.35);
+}
+
+.stellar-ray-charge-footer {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stellar-ray-charge-value {
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff3b0;
+  letter-spacing: 0.5px;
+}
+
+.stellar-ray-charge-bonus {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f1c40f;
+  letter-spacing: 0.3px;
+}
+
+.stellar-ray-charge-hint {
+  font-size: 9px;
+  color: rgba(255, 234, 167, 0.65);
+  letter-spacing: 0.4px;
+}
+
+.stellar-ray-charging .stellar-ray-charge-fill {
+  transition: none;
+}
+
+.stellar-ray-enhanced {
+  border-color: rgba(255, 214, 64, 0.55);
+  box-shadow: 0 0 14px rgba(241, 196, 15, 0.22);
+}
+
+.stellar-ray-enhanced .stellar-ray-charge-fill {
+  box-shadow: 0 0 12px rgba(255, 214, 64, 0.5);
+}
+
+.stellar-ray-high {
+  border-color: rgba(255, 180, 0, 0.7);
+  box-shadow: 0 0 18px rgba(255, 170, 0, 0.35);
+}
+
+.stellar-ray-high .stellar-ray-charge-fill {
+  background: linear-gradient(90deg, #e67e22, #f1c40f 45%, #fff8dc);
+  box-shadow: 0 0 16px rgba(255, 200, 0, 0.65);
+}
+
+.stellar-ray-maximum {
+  border-color: rgba(255, 230, 100, 0.85);
+  box-shadow: 0 0 22px rgba(255, 200, 0, 0.45);
+  animation: stellar-ray-max-pulse 1.6s ease-in-out infinite;
+}
+
+.stellar-ray-maximum .stellar-ray-charge-fill {
+  background: linear-gradient(90deg, #f39c12, #ffe066 50%, #fff9e6);
+  box-shadow: 0 0 20px rgba(255, 220, 80, 0.8);
+}
+
+.stellar-ray-maximum .stellar-ray-charge-value {
+  color: #fff9e6;
+  text-shadow: 0 0 10px rgba(255, 214, 64, 0.6);
+}
+
+@keyframes stellar-ray-max-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(255, 200, 0, 0.35); }
+  50% { box-shadow: 0 0 26px rgba(255, 220, 80, 0.55); }
 }

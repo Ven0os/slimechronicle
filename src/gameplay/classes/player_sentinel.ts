@@ -9,7 +9,21 @@ import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
-import { Input } from '../../core/input';
+import {
+  calcStellarRayAmplification,
+  getStellarChargeMaxSec,
+  hasStellarOvercharge,
+  hasStellarRangeBonus,
+  STELLAR_AMP_MIN,
+  STELLAR_AMP_MAX,
+  STELLAR_AMP_MID,
+  STELLAR_NORMAL_CAST_SEC,
+  STELLAR_RANGE_BONUS_MULT,
+} from './sentinel/stellarRayCharge';
+import {
+  hideStellarRayChargeUI,
+  updateStellarRayChargeUI,
+} from './sentinel/stellarRayUi';
 
 export class Sentinel extends PlayerBase {
     constructor() {
@@ -19,7 +33,12 @@ export class Sentinel extends PlayerBase {
         this.applyClassStats();
         
         this.wingTime = 0;
-        this.isCasting = false; 
+        this.isCasting = false;
+        this.stellarCharging = false;
+        this.stellarOverchargeMode = false;
+        this.stellarChargeElapsed = 0;
+        this.stellarChargeAmp = STELLAR_AMP_MIN;
+        this.stellarChargeDir = null;
         
         this.animState = {
             rightArmOverride: false, 
@@ -600,6 +619,17 @@ export class Sentinel extends PlayerBase {
         }
         
         super.update(dt);
+
+        this.tickStellarCharge(dt);
+
+        if (this.isLocalPlayer()) {
+            updateStellarRayChargeUI({
+                amplification: this.stellarChargeAmp,
+                isCharging: this.stellarCharging && this.stellarOverchargeMode,
+                hasPassive: hasStellarOvercharge(),
+                isLocal: true,
+            });
+        }
         
         // Force isMoving to false again after super updates to prevent any keypress walk triggers while casting
         if (this.isCasting) {
@@ -678,8 +708,122 @@ export class Sentinel extends PlayerBase {
         createSkillVisual('shockwave', tipPos, 1.0, 0xffd700);
     }
 
+    beginStellarCharge() {
+        if (!hasStellarOvercharge()) return;
+        if (this.cooldowns.space > 0 || this.isCasting || this.stellarCharging || this.dead) return;
+
+        this.faceMouse();
+        const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+        dir.y = 0;
+        dir.normalize();
+
+        this.isCasting = true;
+        this.stellarCharging = true;
+        this.stellarOverchargeMode = true;
+        this.stellarChargeElapsed = 0;
+        this.stellarChargeAmp = calcStellarRayAmplification(0, true);
+        this.stellarChargeDir = dir.clone();
+        this.animState.rightArmOverride = true;
+    }
+
+    beginNormalStellarCast() {
+        if (hasStellarOvercharge()) return;
+        if (this.cooldowns.space > 0 || this.isCasting || this.stellarCharging || this.dead) return;
+
+        this.faceMouse();
+        const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+        dir.y = 0;
+        dir.normalize();
+
+        this.isCasting = true;
+        this.stellarCharging = true;
+        this.stellarOverchargeMode = false;
+        this.stellarChargeElapsed = 0;
+        this.stellarChargeDir = dir.clone();
+        this.animState.rightArmOverride = true;
+        createDamageText('CHARGE STELLAIRE...', this.position, '#ffffaa');
+    }
+
+    releaseStellarCharge() {
+        if (!hasStellarOvercharge() || !this.stellarCharging || !this.stellarOverchargeMode) return;
+
+        const amp = this.stellarChargeAmp;
+        const dir = this.stellarChargeDir || new THREE.Vector3(0, 0, 1);
+        this.resetStellarChargeState();
+        if (this.isLocalPlayer()) hideStellarRayChargeUI();
+
+        this.cooldowns.space = this.maxCooldowns.space * ConstellationEngine.getSkillCdMult('space');
+        ConstellationEngine.onSkillUsed('space');
+
+        this.fireStellarBeam(dir, amp);
+    }
+
+    finishNormalStellarCast() {
+        if (!this.stellarCharging || this.stellarOverchargeMode) return;
+
+        const dir = this.stellarChargeDir || new THREE.Vector3(0, 0, 1);
+        this.resetStellarChargeState();
+
+        this.cooldowns.space = this.maxCooldowns.space * ConstellationEngine.getSkillCdMult('space');
+        ConstellationEngine.onSkillUsed('space');
+
+        this.fireStellarBeam(dir, STELLAR_AMP_MID);
+    }
+
+    resetStellarChargeState() {
+        this.stellarCharging = false;
+        this.stellarOverchargeMode = false;
+        this.stellarChargeElapsed = 0;
+        this.stellarChargeDir = null;
+        this.stellarChargeAmp = STELLAR_AMP_MIN;
+    }
+
+    tickStellarCharge(dt) {
+        if (!this.stellarCharging) return;
+
+        const dir = this.stellarChargeDir;
+        if (dir) this.faceMouse();
+
+        if (!this.stellarOverchargeMode) {
+            this.stellarChargeElapsed += dt;
+            const progress = Math.min(1, this.stellarChargeElapsed / STELLAR_NORMAL_CAST_SEC);
+            this.runStellarChargeAnim(progress, dir);
+
+            if (this.stellarChargeElapsed >= STELLAR_NORMAL_CAST_SEC) {
+                this.finishNormalStellarCast();
+            }
+            return;
+        }
+
+        const maxSec = getStellarChargeMaxSec(true);
+        this.stellarChargeElapsed = Math.min(this.stellarChargeElapsed + dt, maxSec);
+        this.stellarChargeAmp = calcStellarRayAmplification(this.stellarChargeElapsed, true);
+        this.runStellarChargeAnim(this.stellarChargeAmp / STELLAR_AMP_MAX, dir);
+    }
+
+    runStellarChargeAnim(ratio, dir) {
+        const visualRatio = Math.min(1, ratio);
+        this.armR.rotation.x = -Math.PI / 2 - visualRatio * 0.5;
+        this.body.rotation.x = -0.3 * visualRatio;
+        this.armL.rotation.x = -1.0 * visualRatio;
+
+        if (Math.random() < visualRatio * 0.85) {
+            const tipPos = this.position.clone().add(new THREE.Vector3(0, 1.6, 0)).add((dir || new THREE.Vector3(0, 0, 1)).clone().multiplyScalar(-1.0));
+            spawnParticles(tipPos, 0xffffaa, 1);
+        }
+    }
+
     useSkill(key) {
         if(this.cooldowns[key] > 0 || this.isCasting) return;
+        if (key === 'space') {
+            if (hasStellarOvercharge()) {
+                this.beginStellarCharge();
+            } else {
+                this.beginNormalStellarCast();
+            }
+            return;
+        }
+
         this.faceMouse();
         
         // FIX: Direction universelle
@@ -689,60 +833,7 @@ export class Sentinel extends PlayerBase {
         this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
         ConstellationEngine.onSkillUsed(key);
 
-        if(key === 'space') { 
-            this.isCasting = true; 
-            createDamageText("CHARGE STELLAIRE...", this.position, '#ffffaa');
-            
-            const over = PassiveKeystoneHooks.getStellarOverchargeMods();
-            const chargeTime = over.baseChargeMs;
-            const startTime = Date.now();
-            this.animState.rightArmOverride = true;
-            this.stellarCharging = true;
-            this.stellarChargeDir = dir.clone();
-
-            const finishCharge = (ratio: number) => {
-                if (!this.stellarCharging) return;
-                this.stellarCharging = false;
-                this.isCasting = false;
-                this.fireStellarBeam(this.stellarChargeDir || dir, ratio);
-            };
-
-            const chargeAnim = () => {
-                if(!this.stellarCharging) return;
-                const elapsed = Date.now() - startTime;
-                const maxRatio = over.enabled ? over.maxChargeRatio : 1;
-                const ratio = Math.min(maxRatio, elapsed / chargeTime);
-
-                this.armR.rotation.x = -Math.PI / 2 - (ratio * 0.5); 
-                this.body.rotation.x = -0.3 * Math.min(1, ratio); 
-                this.armL.rotation.x = -1.0 * Math.min(1, ratio);
-                
-                this.body.position.y += 0.015 * Math.min(1, ratio);
-
-                if(Math.random() < Math.min(1, ratio)) {
-                    const tipPos = this.position.clone().add(new THREE.Vector3(0, 1.6, 0)).add(dir.clone().multiplyScalar(-1.0));
-                    spawnParticles(tipPos, 0xffffaa, 1);
-                }
-
-                if (!over.enabled) {
-                    if (elapsed < chargeTime) {
-                        requestAnimationFrame(chargeAnim);
-                    } else {
-                        finishCharge(1);
-                    }
-                    return;
-                }
-
-                const released = !Input.keys['Space'] && elapsed >= 200;
-                if (ratio >= maxRatio || released) {
-                    finishCharge(Math.max(0.15, ratio));
-                    return;
-                }
-                requestAnimationFrame(chargeAnim);
-            };
-            chargeAnim();
-
-        } else if (key === 'shift') { 
+        if (key === 'shift') {
             AudioSys.sfx.sentinel.field();
             this.animState.rightArmOverride = true;
             const animDur = 500;
@@ -848,11 +939,24 @@ export class Sentinel extends PlayerBase {
 
         const beamMods = ConstellationEngine.getStellarBeamKeystoneMods();
         let hitRadius = 4.0 * beamMods.sizeMult;
-        if (ConstellationEngine.getPassiveRank('stellarOvercharge') && chargeRatio >= 2.5) {
-            hitRadius *= 1.2;
+        if (hasStellarRangeBonus(chargeRatio)) {
+            hitRadius *= STELLAR_RANGE_BONUS_MULT;
         }
         const beamThickness = 0.6 * beamMods.sizeMult;
         const beamDmg = ConstellationEngine.calcStellarBeamDamage(this, chargeRatio);
+
+        if (STATE.multiplayer.active && this.isLocalPlayer()) {
+            Network.send({
+                type: 'net-action',
+                action: 'skill',
+                key: 'space',
+                class: 'sentinel',
+                id: STATE.multiplayer.id,
+                pos: this.position,
+                dir,
+                chargeRatio,
+            });
+        }
 
         const startPos = this.position.clone().add(new THREE.Vector3(0, 1.5, 0));
         const dist = startPos.distanceTo(targetPos);
@@ -894,8 +998,8 @@ export class Sentinel extends PlayerBase {
                 e.pushBack(targetPos, 5 * beamMods.sizeMult); 
             }
         });
-        if (chargeRatio > 1.05) {
-            createDamageText(`${Math.round(chargeRatio * 100)}%`, this.position, '#ffcc00');
+        if (chargeRatio > STELLAR_AMP_MIN + 0.001) {
+            createDamageText(`${(chargeRatio * 100).toFixed(2)}%`, this.position, '#ffcc00');
         }
         PassiveKeystoneHooks.onSentinelBeamFired(this);
     }
