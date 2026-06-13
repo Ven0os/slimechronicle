@@ -68,6 +68,8 @@ export type MiniBossAggregatedStats = {
   speedMult: number;
   damageMult: number;
   defenseReduction: number;
+  /** Points de Défense (réduction via formule globale). */
+  defense: number;
   critChance: number;
   critDmgMult: number;
   attackSpeedMult: number;
@@ -145,9 +147,15 @@ export const VARIANT_TIER_POOLS: Record<string, MiniBossTierId[]> = {
   corrupt_warden: ['executeur', 'abyssal', 'vampire', 'devastateur'],
 };
 
+const TIER_SEP = ' • ';
+
+export function getMiniBossTierLabels(tiers: MiniBossTierId[]): string[] {
+  return dedupeMiniBossTiers(tiers).map((id) => MINI_BOSS_TIER_DEFS[id].label);
+}
+
 export function normalizeMiniBossTiers(raw: unknown): MiniBossTierId[] {
   if (!raw) return [];
-  const list = Array.isArray(raw) ? raw : String(raw).split(/[|,;+\s]+/);
+  const list = Array.isArray(raw) ? raw : String(raw).split(/[|,;+•\u2022\s]+/);
   const out: MiniBossTierId[] = [];
   for (const item of list) {
     const key = String(item).trim().toLowerCase().replace(/é/g, 'e').replace(/è/g, 'e');
@@ -210,6 +218,7 @@ export function aggregateMiniBossTierStats(tiers: MiniBossTierId[]): MiniBossAgg
     speedMult: 1,
     damageMult: 1,
     defenseReduction: 0,
+    defense: 0,
     critChance: 0,
     critDmgMult: 1,
     attackSpeedMult: 1,
@@ -244,6 +253,7 @@ export function aggregateMiniBossTierStats(tiers: MiniBossTierId[]): MiniBossAgg
     stats.speedMult += t.speedBonus || 0;
     stats.damageMult += t.damageBonus || 0;
     stats.defenseReduction += t.defenseBonus || 0;
+    if (t.defenseBonus) stats.defense += Math.round(t.defenseBonus * 100);
     stats.critChance += t.critChance || 0;
     stats.critDmgMult += t.critDmgBonus || 0;
     stats.attackSpeedMult += t.attackSpeedBonus || 0;
@@ -274,44 +284,131 @@ export function aggregateMiniBossTierStats(tiers: MiniBossTierId[]): MiniBossAgg
   }
 
   stats.defenseReduction = Math.min(0.65, stats.defenseReduction);
+  stats.defense = Math.max(stats.defense, Math.round(stats.defenseReduction * 100));
   stats.critChance = Math.min(0.55, stats.critChance);
   return stats;
 }
 
 export function formatMiniBossTierTitles(tiers: MiniBossTierId[]): string {
-  return dedupeMiniBossTiers(tiers)
-    .map((id) => MINI_BOSS_TIER_DEFS[id].label)
-    .join(' • ');
+  return getMiniBossTierLabels(tiers).join(TIER_SEP);
+}
+
+type TierMeasureFn = (text: string, fontSize: number) => number;
+
+/** Répartit tous les labels sur 1–2 lignes sans en omettre (ellipsis en dernier recours). */
+export function layoutMiniBossTierLines(
+  labels: string[],
+  maxWidth: number,
+  maxLines = 2,
+  measure?: TierMeasureFn,
+): { lines: string[]; fontSize: number } {
+  if (labels.length === 0) return { lines: [''], fontSize: 10 };
+
+  const guessWidth: TierMeasureFn = (text, fs) => text.length * fs * 0.52;
+  const m = measure || guessWidth;
+  const minFs = 7;
+  const maxFs = 10;
+
+  for (let fs = maxFs; fs >= minFs; fs--) {
+    const joined = labels.join(TIER_SEP);
+    if (m(joined, fs) <= maxWidth) return { lines: [joined], fontSize: fs };
+
+    if (maxLines >= 2) {
+      for (let split = 1; split < labels.length; split++) {
+        const line1 = labels.slice(0, split).join(TIER_SEP);
+        const line2 = labels.slice(split).join(TIER_SEP);
+        if (m(line1, fs) <= maxWidth && m(line2, fs) <= maxWidth) {
+          return { lines: [line1, line2], fontSize: fs };
+        }
+      }
+    }
+  }
+
+  const fs = minFs;
+  const mid = Math.ceil(labels.length / 2);
+  let line1 = labels.slice(0, mid).join(TIER_SEP);
+  let line2 = labels.slice(mid).join(TIER_SEP);
+  if (m(line2, fs) > maxWidth) {
+    while (line2.length > 4 && m(`${line2}…`, fs) > maxWidth) line2 = line2.slice(0, -1);
+    line2 = `${line2.trimEnd()}…`;
+  }
+  if (m(line1, fs) > maxWidth) {
+    while (line1.length > 4 && m(`${line1}…`, fs) > maxWidth) line1 = line1.slice(0, -1);
+    line1 = `${line1.trimEnd()}…`;
+  }
+  return { lines: [line1, line2], fontSize: fs };
 }
 
 /** Lignes UI (1–2 max) pour afficher tous les tiers actifs. */
-export function formatMiniBossTierDisplay(tiers: MiniBossTierId[]): { lines: string[]; fontSize: number } {
-  const labels = dedupeMiniBossTiers(tiers).map((id) => MINI_BOSS_TIER_DEFS[id].label);
-  if (labels.length === 0) return { lines: [''], fontSize: 10 };
-
-  const fontSize = labels.length > 3 ? 8 : 10;
-  const joined = labels.join(' • ');
-
-  if (labels.length <= 3 && joined.length <= 36) {
-    return { lines: [joined], fontSize };
-  }
-
-  const mid = Math.ceil(labels.length / 2);
-  return {
-    lines: [labels.slice(0, mid).join(' • '), labels.slice(mid).join(' • ')],
-    fontSize,
-  };
+export function formatMiniBossTierDisplay(
+  tiers: MiniBossTierId[],
+  maxWidth = 210,
+  measure?: TierMeasureFn,
+): { lines: string[]; fontSize: number } {
+  return layoutMiniBossTierLines(getMiniBossTierLabels(tiers), maxWidth, 2, measure);
 }
 
+export type MiniBossTierApplySource = 'local' | 'network';
+
 export function applyMiniBossTierState(
-  enemy: { miniBossTiers?: MiniBossTierId[]; miniBossStats?: unknown; miniBossTierTitles?: string },
+  enemy: {
+    miniBossTiers?: MiniBossTierId[];
+    miniBossStats?: MiniBossAggregatedStats | null;
+    miniBossTierTitles?: string;
+    miniBossName?: string;
+    defense?: number;
+  },
   tiers: MiniBossTierId[],
+  source: MiniBossTierApplySource = 'local',
 ): MiniBossTierId[] {
-  const unique = dedupeMiniBossTiers(tiers);
-  enemy.miniBossTiers = unique;
-  enemy.miniBossStats = aggregateMiniBossTierStats(unique);
-  enemy.miniBossTierTitles = formatMiniBossTierTitles(unique);
-  return unique;
+  const incoming = dedupeMiniBossTiers(tiers);
+  const current = dedupeMiniBossTiers(enemy.miniBossTiers || []);
+
+  let final = incoming;
+  if (incoming.length === 0 && current.length > 0) {
+    final = current;
+  } else if (source === 'network' && incoming.length > 0) {
+    final = incoming;
+  } else if (incoming.length > 0) {
+    final = incoming;
+  } else {
+    final = current;
+  }
+
+  enemy.miniBossTiers = final;
+  enemy.miniBossStats = aggregateMiniBossTierStats(final);
+  enemy.miniBossTierTitles = formatMiniBossTierTitles(final);
+  enemy.defense = enemy.miniBossStats.defense;
+  return final;
+}
+
+/** Journalise le pipeline tiers (spawn → sync → UI). */
+export function logMiniBossTierPipeline(
+  stage: string,
+  enemy: {
+    isMiniBoss?: boolean;
+    miniBossName?: string;
+    miniBossId?: string;
+    miniBossTiers?: MiniBossTierId[];
+    miniBossStats?: { tierCount?: number };
+  },
+  extra?: Record<string, unknown>,
+): void {
+  if (!enemy?.isMiniBoss) return;
+  const labels = getMiniBossTierLabels(enemy.miniBossTiers || []);
+  const rendered = labels.join(TIER_SEP);
+  const applied = labels.join(', ');
+  console.log(
+    `[MiniBoss:${stage}] Spawned: ${enemy.miniBossName || enemy.miniBossId || '?'}\n` +
+      `  Tiers: [${labels.join(', ')}]\n` +
+      `  Applied modifiers: ${applied || '(aucun)'}\n` +
+      (extra?.replicated != null ? `  Replicated tiers: [${extra.replicated}]\n` : '') +
+      `  Rendered tiers: ${rendered || '(vide)'}`,
+  );
+  if (extra) {
+    const { replicated, ...rest } = extra;
+    if (Object.keys(rest).length) console.log(`  [${stage} extra]`, rest);
+  }
 }
 
 export function serializeMiniBossTiers(tiers: MiniBossTierId[]): string {

@@ -420,6 +420,7 @@ export class Mage extends PlayerBase {
                     spawnParticles(this.position.clone().add(new THREE.Vector3(0,1.5,0)), 0x00ffff, 3);
                 }, (Math.abs(i)+2)*60);
             }
+            PassiveKeystoneHooks.replicateMageSkill(this, 'space', { targetDir, skillDmg });
 
         } else if (key === 'shift') { 
             // --- CHRONOSTASE (Smash Smooth) ---
@@ -441,6 +442,7 @@ export class Mage extends PlayerBase {
                     Globals.camera.fov = originalFov;
                     Globals.camera.updateProjectionMatrix();
                     this.triggerStasisEffect();
+                    PassiveKeystoneHooks.replicateMageSkill(this, 'shift');
                     return;
                 }
 
@@ -489,6 +491,7 @@ export class Mage extends PlayerBase {
                 m.scale.multiplyScalar(1.05);
             });
             createSkillVisual('explosion', oldPos, 3, 0x3498db); 
+            PassiveKeystoneHooks.registerParadoxClone(this, oldPos);
 
             // Téléportation logique immédiate (gameplay)
             if (Globals.camera) {

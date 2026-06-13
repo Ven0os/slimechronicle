@@ -63,7 +63,11 @@ export const GameLogic = {
 
             if (Globals.player) {
                 Globals.player.hp = Globals.player.maxHp;
-                STATE.stats.atk += 2;
+                if (STATE.class === 'warrior') {
+                    STATE.stats.defense = (STATE.stats.defense ?? 85) + 2;
+                } else {
+                    STATE.stats.atk += 2;
+                }
             }
         }
 
@@ -126,9 +130,6 @@ export const GameLogic = {
         const e = new Enemy(mobType, pos);
         applyMiniBossVariant(e, resolvedId, tiers ? { tiers } : {});
         addEnemy(e);
-        console.log(
-            `[Debug] Mini-Boss: ${resolvedId} | ${(e.miniBossTiers || []).join('|') || 'sans tier'}`,
-        );
         return e;
     },
 

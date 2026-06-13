@@ -33,6 +33,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       fureur: { angleDeg: -42, spread: 1.06, tierAngleStep: 0.38, radiusBias: 0.96 },
       cri: { angleDeg: 18, spread: 0.98, tierAngleStep: 0.3, radiusBias: 1.0 },
       seisme: { angleDeg: -128, spread: 1.04, tierAngleStep: 0.34, radiusBias: 1.02 },
+      gardien: { angleDeg: 72, spread: 0.95, tierAngleStep: 0.26, radiusBias: 0.92 },
     },
   },
   mage: {
@@ -44,6 +45,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       givre: { angleDeg: 155, spread: 0.94, tierAngleStep: 0.2, radiusBias: 1.06 },
       mirage: { angleDeg: 8, spread: 1.08, tierAngleStep: 0.36, radiusBias: 0.95 },
       prisme: { angleDeg: 98, spread: 1.0, tierAngleStep: 0.28, radiusBias: 1.03 },
+      replique: { angleDeg: 42, spread: 0.96, tierAngleStep: 0.32, radiusBias: 0.9 },
     },
   },
   sentinel: {
@@ -55,6 +57,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       sanctuaire: { angleDeg: 92, spread: 1.0, tierAngleStep: 0.18, radiusBias: 1.05 },
       aile: { angleDeg: 2, spread: 1.02, tierAngleStep: 0.32, radiusBias: 0.98 },
       egide: { angleDeg: 178, spread: 1.02, tierAngleStep: 0.32, radiusBias: 0.98 },
+      surcharge: { angleDeg: -135, spread: 0.94, tierAngleStep: 0.22, radiusBias: 0.9 },
     },
   },
   blade: {
@@ -66,6 +69,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       ombre: { angleDeg: 32, spread: 1.1, tierAngleStep: 0.26, radiusBias: 0.94 },
       cyclone: { angleDeg: 122, spread: 0.96, tierAngleStep: 0.34, radiusBias: 1.02 },
       survie: { angleDeg: -148, spread: 0.98, tierAngleStep: 0.24, radiusBias: 1.06 },
+      sanguine: { angleDeg: -95, spread: 0.92, tierAngleStep: 0.28, radiusBias: 0.88 },
     },
   },
   pacifier: {
@@ -77,6 +81,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       jugement: { angleDeg: -68, spread: 1.06, tierAngleStep: 0.36, radiusBias: 1.0 },
       frénésie: { angleDeg: 12, spread: 1.08, tierAngleStep: 0.3, radiusBias: 0.96 },
       rituel: { angleDeg: 108, spread: 1.0, tierAngleStep: 0.42, radiusBias: 1.02 },
+      pistol: { angleDeg: 48, spread: 0.94, tierAngleStep: 0.28, radiusBias: 0.9 },
     },
   },
   eclipse: {
@@ -88,6 +93,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       lune: { angleDeg: 90, spread: 1.0, tierAngleStep: 0.12, radiusBias: 1.08 },
       orbite: { angleDeg: 0, spread: 1.04, tierAngleStep: 0.28, radiusBias: 0.96 },
       vide: { angleDeg: 180, spread: 1.04, tierAngleStep: 0.28, radiusBias: 0.96 },
+      devoration: { angleDeg: -135, spread: 0.92, tierAngleStep: 0.2, radiusBias: 0.88 },
     },
   },
   chronoregulator: {
@@ -99,6 +105,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
       echo: { angleDeg: -25, spread: 1.04, tierAngleStep: 0.24, radiusBias: 1.02 },
       distorsion: { angleDeg: 55, spread: 1.0, tierAngleStep: 0.34, radiusBias: 0.98 },
       paradoxe: { angleDeg: 145, spread: 0.98, tierAngleStep: 0.3, radiusBias: 1.04 },
+      lentille: { angleDeg: 95, spread: 0.94, tierAngleStep: 0.26, radiusBias: 0.9 },
     },
   },
 };

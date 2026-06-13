@@ -115,13 +115,23 @@
   padding: 12px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  border: 1px solid transparent;
-  background-clip: padding-box;
+  border: 1px solid rgba(212, 175, 55, 0.28);
   position: relative;
   isolation: isolate;
 }
 
-.apex-progress-card::before {
+.apex-progress-card.apex-locked-state {
+  border-color: rgba(212, 175, 55, 0.28);
+}
+
+.apex-progress-card.apex-ready-state,
+.apex-progress-card.apex-unlocked-state {
+  border-color: transparent;
+  background-clip: padding-box;
+}
+
+.apex-progress-card.apex-ready-state::before,
+.apex-progress-card.apex-unlocked-state::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -137,10 +147,31 @@
   mask-composite: exclude;
 }
 
+.apex-progress-card.apex-ready-state {
+  box-shadow: 0 0 16px rgba(255, 150, 200, 0.1);
+}
+
+.apex-progress-card.apex-unlocked-state {
+  box-shadow:
+    0 0 20px rgba(255, 150, 200, 0.16),
+    0 0 36px rgba(100, 200, 255, 0.08);
+  animation: apexPulse 3s ease-in-out infinite;
+}
+
+.apex-progress-card::before {
+  display: none;
+}
+
 .apex-progress-label {
   font-size: 0.7rem;
   letter-spacing: 1px;
   margin-bottom: 8px;
+  color: #e8d48a;
+  text-transform: uppercase;
+}
+
+.apex-progress-card.apex-ready-state .apex-progress-label,
+.apex-progress-card.apex-unlocked-state .apex-progress-label {
   background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #c8c8c8 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -156,14 +187,45 @@
 
 .apex-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ffffff, #e0e0e0, #cccccc);
+  background: linear-gradient(90deg, #b8942e, #ffd93d, #d4af37);
   transition: width 0.4s ease;
+}
+
+.apex-progress-card.apex-ready-state .apex-progress-fill,
+.apex-progress-card.apex-unlocked-state .apex-progress-fill {
+  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
+  background-size: 300% 100%;
+  animation: apexLabelFlow 4s linear infinite;
 }
 
 .apex-progress-text {
   font-size: 0.65rem;
   color: #888;
   margin-top: 6px;
+}
+
+.apex-progress-status {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  margin-top: 4px;
+  color: #c9a84c;
+}
+
+.apex-progress-card.apex-ready-state .apex-progress-status {
+  background: linear-gradient(90deg, #ffd93d, #6bcbff, #ff6b9d, #ffd93d);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: apexLabelFlow 3s linear infinite;
+}
+
+.apex-progress-card.apex-unlocked-state .apex-progress-status {
+  background: linear-gradient(90deg, #fff, #ffd93d, #6bcbff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .sidebar-node-hint {
@@ -639,12 +701,36 @@
   transition: box-shadow 0.4s, border-color 0.4s;
 }
 
-.center-star.apex-multicolor:not(.apex-unlocked) .apex-rainbow-ring {
+.center-star.apex-multicolor.apex-ready .apex-rainbow-ring {
+  opacity: 0.55;
+  animation-duration: 7s;
+}
+
+.center-star.apex-multicolor.apex-ready .apex-core {
+  filter: grayscale(0.15);
+  opacity: 0.92;
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 0 24px rgba(255, 150, 255, 0.25),
+    0 0 40px rgba(100, 200, 255, 0.12),
+    inset 0 0 16px rgba(255, 255, 255, 0.08);
+}
+
+.center-star.apex-multicolor.apex-ready .center-icon,
+.center-star.apex-multicolor.apex-ready .center-label {
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #ffd93d 50%, #6bcbff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: apexIconShift 4s ease infinite;
+}
+
+.center-star.apex-multicolor:not(.apex-unlocked):not(.apex-ready) .apex-rainbow-ring {
   opacity: 0.28;
   animation-duration: 10s;
 }
 
-.center-star.apex-multicolor:not(.apex-unlocked) .apex-core {
+.center-star.apex-multicolor:not(.apex-unlocked):not(.apex-ready) .apex-core {
   filter: grayscale(0.6);
   opacity: 0.75;
 }
@@ -671,12 +757,6 @@
   -webkit-text-fill-color: transparent;
 }
 
-.center-star:not(.apex-unlocked) .center-icon {
-  -webkit-text-fill-color: #666;
-  background: none;
-  animation: none;
-}
-
 .center-label {
   font-size: 0.45rem;
   letter-spacing: 3px;
@@ -688,7 +768,13 @@
   -webkit-text-fill-color: transparent;
 }
 
-.center-star:not(.apex-unlocked) .center-label {
+.center-star:not(.apex-unlocked):not(.apex-ready) .center-icon {
+  -webkit-text-fill-color: #666;
+  background: none;
+  animation: none;
+}
+
+.center-star:not(.apex-unlocked):not(.apex-ready) .center-label {
   -webkit-text-fill-color: #555;
   background: none;
 }
@@ -1125,6 +1211,41 @@
   gap: 6px;
 }
 
+.detail-section-stat-bonus {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.detail-section-stat-bonus .detail-section-title {
+  color: #c9a84c;
+  letter-spacing: 2.5px;
+  font-size: 0.62rem;
+  margin-bottom: 10px;
+}
+
+.effect-pills-animated .effect-pill {
+  animation: statPillReveal 0.45s ease backwards;
+}
+
+.effect-pills-animated .effect-pill:nth-child(1) { animation-delay: 0.04s; }
+.effect-pills-animated .effect-pill:nth-child(2) { animation-delay: 0.1s; }
+.effect-pills-animated .effect-pill:nth-child(3) { animation-delay: 0.16s; }
+.effect-pills-animated .effect-pill:nth-child(4) { animation-delay: 0.22s; }
+.effect-pills-animated .effect-pill:nth-child(5) { animation-delay: 0.28s; }
+.effect-pills-animated .effect-pill:nth-child(6) { animation-delay: 0.34s; }
+
+@keyframes statPillReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .effect-pill {
   display: inline-block;
   font-size: 0.68rem;
@@ -1134,17 +1255,30 @@
   letter-spacing: 0.3px;
 }
 
-.pill-atk { background: rgba(231, 76, 60, 0.2); color: #ff8a7a; border: 1px solid rgba(231, 76, 60, 0.35); }
-.pill-hp { background: rgba(46, 204, 113, 0.18); color: #7ddea0; border: 1px solid rgba(46, 204, 113, 0.35); }
-.pill-spd { background: rgba(52, 152, 219, 0.18); color: #7ec8f0; border: 1px solid rgba(52, 152, 219, 0.35); }
-.pill-crit { background: rgba(241, 196, 15, 0.18); color: #f5d76e; border: 1px solid rgba(241, 196, 15, 0.35); }
-.pill-cd { background: rgba(155, 89, 182, 0.18); color: #c9a0dc; border: 1px solid rgba(155, 89, 182, 0.35); }
-.pill-ls { background: rgba(192, 57, 43, 0.18); color: #e88a7a; border: 1px solid rgba(192, 57, 43, 0.35); }
-.pill-def { background: rgba(127, 140, 141, 0.2); color: #b0b8ba; border: 1px solid rgba(127, 140, 141, 0.35); }
+.pill-atk { background: rgba(var(--stat-atk-rgb), 0.2); color: var(--stat-atk-text); border: 1px solid rgba(var(--stat-atk-rgb), 0.35); }
+.pill-hp { background: rgba(var(--stat-hp-rgb), 0.18); color: var(--stat-hp-text); border: 1px solid rgba(var(--stat-hp-rgb), 0.35); }
+.pill-spd { background: rgba(var(--stat-spd-rgb), 0.18); color: var(--stat-spd-text); border: 1px solid rgba(var(--stat-spd-rgb), 0.35); }
+.pill-crit-chance,
+.pill-crit {
+  background: rgba(var(--stat-crit-chance-rgb), 0.18);
+  color: var(--stat-crit-chance-text);
+  border: 1px solid rgba(var(--stat-crit-chance-rgb), 0.42);
+  box-shadow: 0 0 8px rgba(var(--stat-crit-chance-rgb), 0.12);
+}
+
+.pill-crit-dmg {
+  background: rgba(var(--stat-crit-dmg-rgb), 0.18);
+  color: var(--stat-crit-dmg-text);
+  border: 1px solid rgba(var(--stat-crit-dmg-rgb), 0.42);
+  box-shadow: 0 0 8px rgba(var(--stat-crit-dmg-rgb), 0.12);
+}
+.pill-cd { background: rgba(var(--stat-cd-rgb), 0.18); color: var(--stat-cd-text); border: 1px solid rgba(var(--stat-cd-rgb), 0.35); }
+.pill-ls { background: rgba(var(--stat-ls-rgb), 0.18); color: var(--stat-ls-text); border: 1px solid rgba(var(--stat-ls-rgb), 0.35); }
+.pill-def { background: rgba(var(--stat-def-rgb), 0.2); color: var(--stat-def-text); border: 1px solid rgba(var(--stat-def-rgb), 0.45); box-shadow: 0 0 8px rgba(var(--stat-def-rgb), 0.12); }
 .pill-xp { background: rgba(212, 175, 55, 0.18); color: #e8d48a; border: 1px solid rgba(212, 175, 55, 0.35); }
 .pill-magic { background: rgba(142, 68, 173, 0.18); color: #c49de0; border: 1px solid rgba(142, 68, 173, 0.35); }
 .pill-passive { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); }
-.pill-as { background: rgba(230, 126, 34, 0.18); color: #f0b27a; border: 1px solid rgba(230, 126, 34, 0.35); }
+.pill-as { background: rgba(var(--stat-as-rgb), 0.18); color: var(--stat-as-text); border: 1px solid rgba(var(--stat-as-rgb), 0.35); }
 
 .detail-reward-badge {
   display: inline-block;

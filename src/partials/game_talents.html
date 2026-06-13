@@ -92,33 +92,159 @@
 
                         </div>
 
-                        <div class="grimoire-stats-list">
+                        <section class="grimoire-apex-section apex-locked-state" id="grimoire-apex-section">
 
-                            <div class="grimoire-stat-row constellation-progress-line">
+                            <div class="grimoire-apex-head">
 
-                                <div class="stat-label"><i class="fas fa-circle-nodes" style="color:#d4af37"></i> Progression</div>
+                                <i class="fas fa-crown grimoire-apex-icon"></i>
 
-                                <div class="stat-val" id="info-constellation-progress">0 / 16</div>
+                                <span class="grimoire-apex-title">Apex Progress</span>
 
                             </div>
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-heart" style="color:#e74c3c"></i> Santé</div><div class="stat-val" id="info-hp">100</div></div>
+                            <div class="grimoire-apex-bar">
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-gavel" style="color:#f1c40f"></i> Attaque</div><div class="stat-val" id="info-atk">10</div></div>
+                                <div class="grimoire-apex-fill" id="grimoire-apex-fill"></div>
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-person-running" style="color:#3498db"></i> Sprint</div><div class="stat-val" id="info-spd">15</div></div>
+                            </div>
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-gauge-high" style="color:#e67e22"></i> Vitesse d'attaque</div><div class="stat-val" id="info-attack-spd">100%</div></div>
+                            <div class="grimoire-apex-meta">
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-skull-crossbones" style="color:#9b59b6"></i> Critique</div><div class="stat-val"><span id="info-crit">5</span>% / <span id="info-crit-dmg">200</span>%</div></div>
+                                <span class="grimoire-apex-count" id="grimoire-apex-count">0 / 20 Nœuds</span>
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-stopwatch" style="color:#9b59b6"></i> Recharge</div><div class="stat-val" id="info-cdr">100%</div></div>
+                                <span class="grimoire-apex-status-wrap">
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-vial" style="color:#c0392b"></i> Vol de vie</div><div class="stat-val" id="info-lifesteal">0%</div></div>
+                                    <span class="grimoire-apex-status-label">Statut</span>
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-plus-circle" style="color:#2ecc71"></i> Régén.</div><div class="stat-val" id="info-regen">0/s</div></div>
+                                    <span class="grimoire-apex-status-val" id="grimoire-apex-status">Verrouillé</span>
 
-                            <div class="grimoire-stat-row"><div class="stat-label"><i class="fas fa-graduation-cap" style="color:#f1c40f"></i> XP</div><div class="stat-val" id="info-xp">100%</div></div>
+                                </span>
+
+                            </div>
+
+                        </section>
+
+                        <div class="grimoire-stats-list">
+
+                            <div class="grimoire-stat-row" data-stat="hp">
+
+                                <div class="stat-label"><i class="fas fa-heart"></i> HP</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-hp" id="info-hp">100</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="defense" title="Réduit les dégâts reçus (courbe log, max. 50 %).">
+
+                                <div class="stat-label"><i class="fas fa-shield-halved"></i> DEF</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-def" id="info-defense">10</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="dr" title="Réduction de dégâts dérivée de la DEF.">
+
+                                <div class="stat-label"><i class="fas fa-shield"></i> DR</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-dr" id="info-damage-reduction">0%</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="atk">
+
+                                <div class="stat-label"><i class="fas fa-gavel"></i> ATK</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-atk" id="info-atk">10</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="speed">
+
+                                <div class="stat-label"><i class="fas fa-person-running"></i> Sprint</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-spd" id="info-spd">15</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="attack-speed">
+
+                                <div class="stat-label"><i class="fas fa-gauge-high"></i> Attack Speed</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-as" id="info-attack-spd">100%</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="crit-chance">
+
+                                <div class="stat-label"><i class="fas fa-crosshairs"></i> Crit Chance</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-crit-chance"><span id="info-crit">5</span>%</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="crit-damage">
+
+                                <div class="stat-label"><i class="fas fa-burst"></i> Crit Damage</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-crit-dmg"><span id="info-crit-dmg">200</span>%</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="cdr">
+
+                                <div class="stat-label"><i class="fas fa-stopwatch"></i> Cooldown Reduction</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-cd" id="info-cdr">100%</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="lifesteal">
+
+                                <div class="stat-label"><i class="fas fa-vial"></i> Life Steal</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-ls" id="info-lifesteal">0%</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="regen">
+
+                                <div class="stat-label"><i class="fas fa-plus-circle"></i> Regen</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-regen" id="info-regen">0/s</div>
+
+                            </div>
+
+                            <div class="grimoire-stat-row" data-stat="xp">
+
+                                <div class="stat-label"><i class="fas fa-graduation-cap"></i> XP</div>
+
+                                <div class="stat-leader" aria-hidden="true"></div>
+
+                                <div class="stat-val stat-val-xp" id="info-xp">100%</div>
+
+                            </div>
 
                         </div>
 
@@ -148,6 +274,8 @@
 
                                 </div>
 
+                                <p class="grimoire-skill-desc formula-desc" id="desc-skill-primary"></p>
+
                                 <div class="grimoire-skill-detail" id="detail-skill-primary"></div>
 
                             </div>
@@ -162,9 +290,9 @@
 
                                 </div>
 
-                                <div class="grimoire-skill-detail" id="detail-skill-1"></div>
-
                                 <p class="grimoire-skill-desc formula-desc" id="desc-skill-1"></p>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-1"></div>
 
                             </div>
 
@@ -178,9 +306,9 @@
 
                                 </div>
 
-                                <div class="grimoire-skill-detail" id="detail-skill-2"></div>
-
                                 <p class="grimoire-skill-desc formula-desc" id="desc-skill-2"></p>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-2"></div>
 
                             </div>
 
@@ -194,9 +322,9 @@
 
                                 </div>
 
-                                <div class="grimoire-skill-detail" id="detail-skill-3"></div>
-
                                 <p class="grimoire-skill-desc formula-desc" id="desc-skill-3"></p>
+
+                                <div class="grimoire-skill-detail" id="detail-skill-3"></div>
 
                             </div>
 

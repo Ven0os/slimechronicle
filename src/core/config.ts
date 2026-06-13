@@ -22,7 +22,7 @@ export const CONFIG = {
     },
     tooltips: {
         warrior: {
-            passive: { name: "Peau de Fer", desc: "−12 % dégâts reçus.\n\nChaque blocage en Parade charge une explosion." },
+            passive: { name: "Peau de Fer", desc: "−12 % dégâts reçus en plus de la Défense.\n\nVos sorts et attaques scalent sur la Défense.\n\nChaque blocage en Parade charge une explosion." },
             space: { name: "Frappe Sismique", desc: "Bond au sol.\nDégâts de zone et repousse les ennemis." },
             shift: { name: "Cri de Guerre", desc: "Soin personnel.\nRepousse les ennemis proches." },
             e: { name: "Parade", desc: "Posture défensive.\nBloque 75 % des dégâts pendant 3 s." }
@@ -95,7 +95,7 @@ export const STATE = {
         hp: 100, 
         maxHp: 100, 
         atk: 10, 
-        def: 0, 
+        defense: 10,
         speed: 15.0, 
         crit: 0.05, 
         critDmg: 1.5,

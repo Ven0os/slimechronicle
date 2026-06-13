@@ -11,6 +11,8 @@ import { setupMiniBossUi } from './mini_boss_ui';
 import {
   applyMiniBossTierState,
   dedupeMiniBossTiers,
+  getMiniBossTierLabels,
+  logMiniBossTierPipeline,
   normalizeMiniBossTiers,
   rollMiniBossTiers,
   type MiniBossTierId,
@@ -34,8 +36,20 @@ export type MiniBossApplyOpts = {
   tiers?: MiniBossTierId[] | string;
 };
 
+function hasExplicitTiers(tiers: MiniBossTierId[] | string | undefined | null): boolean {
+  if (tiers == null || tiers === '') return false;
+  if (Array.isArray(tiers)) return tiers.length > 0;
+  return String(tiers).trim().length > 0;
+}
+
 function resolveTiers(miniId: string, opts: MiniBossApplyOpts): MiniBossTierId[] {
-  if (opts.tiers) return dedupeMiniBossTiers(normalizeMiniBossTiers(opts.tiers));
+  if (hasExplicitTiers(opts.tiers)) {
+    return dedupeMiniBossTiers(normalizeMiniBossTiers(opts.tiers));
+  }
+  if (opts.fromNetwork) {
+    console.warn(`[MiniBoss] Réseau sans tiers explicites pour ${miniId} — aucun re-roll local.`);
+    return [];
+  }
   return rollMiniBossTiers(miniId);
 }
 
@@ -67,6 +81,8 @@ export function applyMiniBossVariant(enemy, miniId: string, opts: MiniBossApplyO
   enemy.miniBossId = miniId;
   enemy.miniBossName = style.label;
 
+  const tierSource = opts.fromNetwork ? 'network' : 'local';
+
   if (opts.fromNetwork && opts.maxHp != null) {
     enemy.maxHp = opts.maxHp;
     enemy.hp = Math.min(enemy.hp ?? opts.maxHp, opts.maxHp);
@@ -76,7 +92,7 @@ export function applyMiniBossVariant(enemy, miniId: string, opts: MiniBossApplyO
       enemy.barrierHp = enemy.overshieldHp;
       enemy.maxBarrierHp = opts.maxOvershieldHp;
     }
-    applyMiniBossTierState(enemy, tiers);
+    applyMiniBossTierState(enemy, tiers, tierSource);
   } else {
     applyTierStatsToEnemy(enemy, tiers, style);
   }
@@ -99,6 +115,12 @@ export function applyMiniBossVariant(enemy, miniId: string, opts: MiniBossApplyO
     name: style.label,
     tiers: enemy.miniBossTiers,
     accentHex: style.emissive,
+  });
+
+  logMiniBossTierPipeline(opts.fromNetwork ? 'replicated' : 'spawn', enemy, {
+    replicated: opts.fromNetwork ? getMiniBossTierLabels(tiers).join(', ') : undefined,
+    tierIds: enemy.miniBossTiers,
+    tierCount: enemy.miniBossStats?.tierCount,
   });
 }
 

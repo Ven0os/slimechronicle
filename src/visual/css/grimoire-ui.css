@@ -1,4 +1,4 @@
-/* --- Grimoire (onglet Infos) --- */
+/* --- Grimoire (onglet Infos) — fiche personnage ARPG compacte --- */
 #view-info {
   overflow: hidden;
   background:
@@ -19,34 +19,37 @@
 }
 
 .grimoire-scroll {
-  max-width: 1140px;
+  max-width: min(1280px, 96vw);
   height: 100%;
   margin: 0 auto;
-  padding: 20px 28px 24px;
+  padding: clamp(12px, 1.6vw, 20px) clamp(16px, 2vw, 28px) clamp(14px, 1.8vw, 22px);
   box-sizing: border-box;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .grimoire-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 28px;
-  padding-bottom: 18px;
+  gap: 12px;
+  margin-bottom: clamp(12px, 1.5vw, 18px);
+  padding-bottom: clamp(10px, 1.2vw, 14px);
   border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  flex-shrink: 0;
 }
 
 .grimoire-header > i {
-  font-size: 1.8rem;
+  font-size: clamp(1.3rem, 1.8vw, 1.6rem);
   color: #d4af37;
-  filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.35));
+  filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.35));
 }
 
 .grimoire-title {
   margin: 0;
   font-family: 'Cinzel', serif;
-  font-size: 1.25rem;
-  letter-spacing: 3px;
+  font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+  letter-spacing: 2px;
   text-transform: uppercase;
   background: linear-gradient(90deg, #fff3c4, #ffd93d, #d4af37);
   -webkit-background-clip: text;
@@ -55,36 +58,42 @@
 }
 
 .grimoire-subtitle {
-  margin: 4px 0 0;
-  font-size: 0.72rem;
+  margin: 2px 0 0;
+  font-size: 0.62rem;
   color: #7a7a8a;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
 }
 
 .grimoire-panels {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.15fr);
+  gap: clamp(14px, 1.8vw, 22px);
   padding: 0;
   margin: 0;
   max-width: none;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
 #view-info .grimoire-panel.info-card {
   backdrop-filter: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .grimoire-panel {
   position: relative;
-  padding: 22px 22px 18px;
+  padding: clamp(14px, 1.6vw, 18px) clamp(14px, 1.6vw, 18px) clamp(12px, 1.4vw, 16px);
   border-radius: 10px;
   background: linear-gradient(160deg, rgba(22, 20, 14, 0.95) 0%, rgba(10, 10, 16, 0.98) 100%);
   border: 1px solid rgba(212, 175, 55, 0.22);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 236, 160, 0.06);
-  overflow: hidden;
 }
 
 .grimoire-panel::before {
@@ -112,23 +121,24 @@
 .grimoire-panel-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 14px;
+  gap: 10px;
+  margin-bottom: clamp(10px, 1.2vw, 14px);
+  padding-bottom: clamp(8px, 1vw, 10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
 .grimoire-panel-icon {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 7px;
   background: linear-gradient(145deg, rgba(255, 217, 61, 0.15), rgba(0, 0, 0, 0.4));
   border: 1px solid rgba(212, 175, 55, 0.35);
   color: #ffd93d;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
 }
 
 .grimoire-panel .info-title {
@@ -136,144 +146,431 @@
   padding: 0;
   border: none;
   text-align: left;
-  font-size: 0.82rem;
-  letter-spacing: 2.5px;
+  font-size: 0.72rem;
+  letter-spacing: 2px;
   color: #e8d48a;
 }
 
+/* --- Apex progression panel --- */
+.grimoire-apex-section {
+  position: relative;
+  margin-bottom: clamp(10px, 1.2vw, 14px);
+  padding: clamp(10px, 1.2vw, 12px);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  flex-shrink: 0;
+  isolation: isolate;
+}
+
+.grimoire-apex-section.apex-locked-state {
+  border-color: rgba(212, 175, 55, 0.28);
+}
+
+.grimoire-apex-section.apex-ready-state,
+.grimoire-apex-section.apex-unlocked-state {
+  border-color: transparent;
+  background-clip: padding-box;
+}
+
+.grimoire-apex-section.apex-ready-state::before,
+.grimoire-apex-section.apex-unlocked-state::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 8px;
+  padding: 1px;
+  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
+  background-size: 400% 100%;
+  animation: grimoireApexFlow 5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.grimoire-apex-section.apex-ready-state {
+  box-shadow: 0 0 18px rgba(255, 150, 200, 0.12);
+}
+
+.grimoire-apex-section.apex-unlocked-state {
+  box-shadow:
+    0 0 22px rgba(255, 150, 200, 0.18),
+    0 0 40px rgba(100, 200, 255, 0.08);
+  animation: grimoireApexGlow 3s ease-in-out infinite;
+}
+
+.grimoire-apex-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.grimoire-apex-icon {
+  font-size: 0.85rem;
+  color: #d4af37;
+  transition: filter 0.4s, color 0.4s;
+}
+
+.grimoire-apex-section.apex-ready-state .grimoire-apex-icon,
+.grimoire-apex-section.apex-unlocked-state .grimoire-apex-icon {
+  background: linear-gradient(135deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 6px rgba(255, 180, 220, 0.45));
+  animation: grimoireApexIconPulse 2.5s ease-in-out infinite;
+}
+
+.grimoire-apex-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #e8d48a;
+}
+
+.grimoire-apex-section.apex-ready-state .grimoire-apex-title,
+.grimoire-apex-section.apex-unlocked-state .grimoire-apex-title {
+  background: linear-gradient(90deg, #fff, #ffd93d, #6bcbff, #fff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: grimoireApexFlow 4s linear infinite;
+}
+
+.grimoire-apex-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.grimoire-apex-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.45s ease;
+  background: linear-gradient(90deg, #b8942e, #ffd93d, #d4af37);
+}
+
+.grimoire-apex-section.apex-ready-state .grimoire-apex-fill,
+.grimoire-apex-section.apex-unlocked-state .grimoire-apex-fill {
+  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
+  background-size: 300% 100%;
+  animation: grimoireApexFlow 4s linear infinite;
+}
+
+.grimoire-apex-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+
+.grimoire-apex-count {
+  font-size: 0.62rem;
+  color: #888;
+  letter-spacing: 0.3px;
+}
+
+.grimoire-apex-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grimoire-apex-status-label {
+  font-size: 0.58rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.grimoire-apex-status-val {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #888;
+}
+
+.grimoire-apex-section.apex-locked-state .grimoire-apex-status-val {
+  color: #c9a84c;
+}
+
+.grimoire-apex-section.apex-ready-state .grimoire-apex-status-val {
+  background: linear-gradient(90deg, #ffd93d, #6bcbff, #ff6b9d, #ffd93d);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: grimoireApexFlow 3s linear infinite;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.grimoire-apex-section.apex-unlocked-state .grimoire-apex-status-val {
+  background: linear-gradient(90deg, #fff, #ffd93d, #6bcbff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+@keyframes grimoireApexFlow {
+  to { background-position: 200% 0; }
+}
+
+@keyframes grimoireApexGlow {
+  0%, 100% { box-shadow: 0 0 18px rgba(255, 150, 200, 0.14), 0 0 32px rgba(100, 200, 255, 0.06); }
+  50% { box-shadow: 0 0 26px rgba(255, 150, 200, 0.22), 0 0 48px rgba(100, 200, 255, 0.12); }
+}
+
+@keyframes grimoireApexIconPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 180, 220, 0.35)); }
+  50% { filter: drop-shadow(0 0 10px rgba(150, 220, 255, 0.55)); }
+}
+
+/* --- Compact stat rows --- */
 .grimoire-stats-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.25) transparent;
+}
+
+.grimoire-stats-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.grimoire-stats-list::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.25);
+  border-radius: 2px;
 }
 
 .grimoire-stat-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  transition: border-color 0.2s, background 0.2s;
+  gap: 6px;
+  padding: 5px 8px;
+  min-height: 26px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .grimoire-stat-row:hover {
-  border-color: rgba(212, 175, 55, 0.2);
-  background: rgba(0, 0, 0, 0.38);
-}
-
-.grimoire-stat-row.constellation-progress-line {
-  margin-bottom: 6px;
-  padding-bottom: 12px;
-  border-color: rgba(212, 175, 55, 0.18);
-  background: linear-gradient(90deg, rgba(212, 175, 55, 0.08), rgba(0, 0, 0, 0.25));
+  border-color: rgba(212, 175, 55, 0.15);
+  background: rgba(0, 0, 0, 0.32);
 }
 
 .grimoire-stat-row .stat-label {
-  font-size: 0.82rem;
-  color: #a8a8b8;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #7a7a88;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .grimoire-stat-row .stat-label i {
-  width: 18px;
-  font-size: 0.85rem;
+  width: 14px;
+  font-size: 0.72rem;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.grimoire-stat-row[data-stat="hp"] .stat-label i { color: #e74c3c; }
+.grimoire-stat-row[data-stat="defense"] .stat-label i { color: var(--stat-def-text); }
+.grimoire-stat-row[data-stat="dr"] .stat-label i { color: #9b59b6; }
+.grimoire-stat-row[data-stat="atk"] .stat-label i { color: #f1c40f; }
+.grimoire-stat-row[data-stat="speed"] .stat-label i { color: var(--stat-spd-text); }
+.grimoire-stat-row[data-stat="attack-speed"] .stat-label i { color: var(--stat-as-text); }
+.grimoire-stat-row[data-stat="crit-chance"] .stat-label i { color: var(--stat-crit-chance-text); }
+.grimoire-stat-row[data-stat="crit-damage"] .stat-label i { color: var(--stat-crit-dmg-text); }
+.grimoire-stat-row[data-stat="cdr"] .stat-label i { color: var(--stat-cd-text); }
+.grimoire-stat-row[data-stat="lifesteal"] .stat-label i { color: var(--stat-ls-text); }
+.grimoire-stat-row[data-stat="regen"] .stat-label i { color: #2ecc71; }
+.grimoire-stat-row[data-stat="xp"] .stat-label i { color: #f1c40f; }
+
+.stat-leader {
+  flex: 1;
+  min-width: 6px;
+  height: 0;
+  align-self: center;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.1);
 }
 
 .grimoire-stat-row .stat-val {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #f2f2f5;
-  text-shadow: none;
-}
-
-.grimoire-apex-label {
-  display: inline-block;
-  background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #cccccc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: #ffffff;
-  -webkit-text-fill-color: transparent;
+  font-size: 0.82rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
 }
 
-.grimoire-apex-ok {
-  color: #6bcb77;
-  text-shadow: 0 0 8px rgba(107, 203, 119, 0.4);
+/* Stat value colors — labels stay neutral */
+.grimoire-stat-row .stat-val-hp,
+.grimoire-stat-row[data-stat="hp"] .stat-val {
+  color: #ff6b6b;
+  text-shadow: 0 0 6px rgba(231, 76, 60, 0.3);
 }
 
-.grimoire-apex-pending {
-  color: #666;
+.grimoire-stat-row .stat-val-def,
+.grimoire-stat-row[data-stat="defense"] .stat-val {
+  color: var(--stat-def-text);
+  text-shadow: 0 0 6px rgba(var(--stat-def-rgb), 0.3);
+}
+
+.grimoire-stat-row .stat-val-dr,
+.grimoire-stat-row[data-stat="dr"] .stat-val {
+  color: var(--stat-cd-text);
+  text-shadow: 0 0 6px rgba(var(--stat-cd-rgb), 0.25);
+}
+
+.grimoire-stat-row .stat-val-atk,
+.grimoire-stat-row[data-stat="atk"] .stat-val {
+  color: #ffd93d;
+  text-shadow: 0 0 6px rgba(241, 196, 15, 0.35);
+}
+
+.grimoire-stat-row .stat-val-spd,
+.grimoire-stat-row[data-stat="speed"] .stat-val {
+  color: var(--stat-spd-text);
+  text-shadow: 0 0 6px rgba(var(--stat-spd-rgb), 0.25);
+}
+
+.grimoire-stat-row .stat-val-as,
+.grimoire-stat-row[data-stat="attack-speed"] .stat-val {
+  color: var(--stat-as-text);
+  text-shadow: 0 0 6px rgba(var(--stat-as-rgb), 0.25);
+}
+
+.grimoire-stat-row .stat-val-crit-chance,
+.grimoire-stat-row[data-stat="crit-chance"] .stat-val {
+  color: var(--stat-crit-chance-text);
+  text-shadow: 0 0 6px rgba(var(--stat-crit-chance-rgb), 0.35);
+}
+
+.grimoire-stat-row .stat-val-crit-dmg,
+.grimoire-stat-row[data-stat="crit-damage"] .stat-val {
+  color: var(--stat-crit-dmg-text);
+  text-shadow: 0 0 6px rgba(var(--stat-crit-dmg-rgb), 0.35);
+}
+
+.grimoire-stat-row .stat-val-cd,
+.grimoire-stat-row[data-stat="cdr"] .stat-val {
+  color: var(--stat-cd-text);
+  text-shadow: 0 0 6px rgba(var(--stat-cd-rgb), 0.25);
+}
+
+.grimoire-stat-row .stat-val-ls,
+.grimoire-stat-row[data-stat="lifesteal"] .stat-val {
+  color: var(--stat-ls-text);
+  text-shadow: 0 0 6px rgba(var(--stat-ls-rgb), 0.25);
+}
+
+.grimoire-stat-row .stat-val-regen,
+.grimoire-stat-row[data-stat="regen"] .stat-val {
+  color: #2ecc71;
+  text-shadow: 0 0 6px rgba(46, 204, 113, 0.3);
+}
+
+.grimoire-stat-row .stat-val-xp,
+.grimoire-stat-row[data-stat="xp"] .stat-val {
+  color: #f1c40f;
+  text-shadow: 0 0 6px rgba(241, 196, 15, 0.3);
+}
+
+/* --- Compact skill cards --- */
+.grimoire-panel-combat .grimoire-skills-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.25) transparent;
 }
 
 .grimoire-skills-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .grimoire-skill-card {
-  padding: 14px 14px 12px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  padding: 8px 10px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 3px solid rgba(212, 175, 55, 0.35);
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  border-left: 2px solid rgba(212, 175, 55, 0.35);
+  transition: border-color 0.2s, box-shadow 0.2s;
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .grimoire-skill-card:hover {
   border-left-color: #ffd93d;
-  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.1);
-  transform: translateX(2px);
-}
-
-.grimoire-skill-card:not(.expanded)::after {
-  content: 'Cliquez pour voir les ratios';
-  display: block;
-  font-size: 0.6rem;
-  color: #555;
-  margin-top: 4px;
-  font-style: italic;
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.08);
 }
 
 .grimoire-skill-card.expanded {
   border-left-color: #48c9b0;
-  box-shadow: 0 4px 24px rgba(72, 201, 176, 0.15);
-  background: rgba(8, 12, 18, 0.55);
-}
-
-.grimoire-skill-card.expanded::after {
-  display: none;
+  box-shadow: 0 2px 16px rgba(72, 201, 176, 0.12);
+  background: rgba(8, 12, 18, 0.5);
+  padding-bottom: 10px;
 }
 
 .grimoire-skill-detail {
   display: none;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .grimoire-skill-card.expanded .grimoire-skill-detail {
   display: block;
 }
 
+.grimoire-skill-card:not(.expanded) .grimoire-skill-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.grimoire-skill-card.expanded .grimoire-skill-desc {
+  display: none;
+}
+
 .grimoire-ratio-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 5px;
+  margin-bottom: 6px;
 }
 
 .grimoire-ratio-chip {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  letter-spacing: 0.3px;
+  padding: 3px 7px;
+  border-radius: 3px;
   border: 1px solid transparent;
 }
 
@@ -283,10 +580,17 @@
   border-color: rgba(255, 217, 61, 0.35);
 }
 
-.grimoire-ratio-chip.chip-def {
-  color: #5dade2;
-  background: rgba(93, 173, 226, 0.1);
-  border-color: rgba(93, 173, 226, 0.35);
+.grimoire-ratio-chip.chip-def,
+.grimoire-ratio-chip.chip-defense {
+  color: var(--stat-def-text);
+  background: rgba(var(--stat-def-rgb), 0.14);
+  border-color: rgba(var(--stat-def-rgb), 0.42);
+}
+
+.grimoire-ratio-chip.chip-mitigation {
+  color: #E660F7;
+  background: rgba(230, 96, 247, 0.1);
+  border-color: rgba(230, 96, 247, 0.35);
 }
 
 .grimoire-ratio-chip.chip-maxHp {
@@ -314,21 +618,21 @@
 }
 
 .grimoire-passive-chips {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .grimoire-passive-desc {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: #aaa;
-  line-height: 1.45;
+  line-height: 1.4;
   white-space: pre-line;
 }
 
 .grimoire-skill-hint {
-  font-size: 0.62rem;
-  color: #666;
-  margin-top: 6px;
+  font-size: 0.58rem;
+  color: #555;
+  margin-top: 4px;
   font-style: italic;
 }
 
@@ -336,47 +640,64 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
 }
 
 .grimoire-skill-name {
   font-family: 'Cinzel', serif;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: #eee;
   text-transform: uppercase;
 }
 
 .grimoire-key {
   font-family: 'Lato', sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: #c9a84c;
   background: rgba(212, 175, 55, 0.1);
   border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 4px;
-  padding: 3px 8px;
+  border-radius: 3px;
+  padding: 2px 6px;
   text-transform: uppercase;
 }
 
 .grimoire-skill-desc {
   margin: 0;
-  font-size: 0.74rem;
-  line-height: 1.55;
-  color: #8a8a9a;
-  letter-spacing: 0.3px;
+  font-size: 0.65rem;
+  line-height: 1.4;
+  color: #7a7a8a;
+  letter-spacing: 0.2px;
   white-space: pre-line;
 }
 
-@media (max-width: 900px) {
+/* --- Responsive --- */
+@media (max-width: 1100px) {
   .grimoire-panels {
     grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 
   .grimoire-scroll {
-    padding: 20px 16px 32px;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .grimoire-scroll {
+    padding: 14px 12px 20px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .grimoire-scroll {
+    max-width: 1400px;
+  }
+
+  .grimoire-panels {
+    grid-template-columns: minmax(320px, 0.95fr) minmax(380px, 1.05fr);
   }
 }

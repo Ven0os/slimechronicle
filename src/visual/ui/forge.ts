@@ -256,50 +256,7 @@ export const ForgeSystem = {
     },
     
     doEnchant: function() {
-        if(!ForgeUI.enchantTarget) {
-            if(window.UI) window.UI.toast("Il manque le prisme cible.");
-            return;
-        }
-        if(ForgeUI.enchantSacrifices.some(s => s === null)) {
-            if(window.UI) window.UI.toast("Il manque des sacrifices (5 requis).");
-            return;
-        }
-
-        const sacUids = ForgeUI.enchantSacrifices.map(s => s.uid);
-        STATE.collectedFragments = STATE.collectedFragments.filter(f => !sacUids.includes(f.uid));
-
-        const target = STATE.collectedFragments.find(f => f.uid === ForgeUI.enchantTarget.uid);
-        if(target) {
-            target.enchantLevel = (target.enchantLevel || 0) + 1;
-            target.enchanted = true;
-            
-            // CORRECTIF BUG #2 : Regex améliorée pour nettoyer les anciens "x4"
-            let baseName = target.name.replace(/★|x\d+\s*/g, '').trim(); 
-            
-            let stars = "★".repeat(target.enchantLevel);
-            if(target.enchantLevel > 3) stars = `★x${target.enchantLevel}`;
-            
-            target.name = `${stars} ${baseName}`;
-            
-            if (!target.baseStatText) target.baseStatText = target.statText.split('<br>')[0];
-            target.statText = `${target.baseStatText} <br><span style='color:#e74c3c; font-weight:bold;'>✦ ENCHANTÉ (Niv.${target.enchantLevel})</span>`;
-            
-            // --- RECALCUL GLOBAL (Sécurisé par try/catch) ---
-            try {
-                if(UICompendium.recalculateStats) UICompendium.recalculateStats();
-            } catch(e) {
-                console.error("Erreur recalcul stats:", e);
-            }
-
-            //supression des enchantSacrifices dans le HUD
-            if(HUDEnchant && HUDEnchant.updateLoop) HUDEnchant.updateLoop(0);
-        }
-
-        // CORRECTIF BUG #1 : Ces lignes s'exécuteront maintenant correctement
-        ForgeUI.enchantTarget = null;
-        ForgeUI.enchantSacrifices = [null, null, null, null, null];
-        ForgeUI.update();
-
-        if(window.UI) window.UI.toast(`Enchantement Réussi ! Niveau ${target.enchantLevel} atteint.`);
+        if(window.UI) window.UI.toast("Les enchantements passifs ont été retirés.");
+        return;
     }
 };

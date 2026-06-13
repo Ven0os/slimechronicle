@@ -33,59 +33,44 @@ const pct = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`;
 export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   ironWall: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       '−8 % dégâts reçus (cumul DEF et Peau de Fer).',
-
-      'Parade : durée 3,5 s.',
-
-      'Blocage : soin 1 % PV max.',
-
-      'Fin de Parade avec blocage : soin 3 % PV max.',
-
+      'Parade : durée +3,5 s.',
+      'Blocage : soigne 1 % HP max.',
+      'Fin de Parade avec blocage : soigne 3 % HP max.',
     ],
-
   },
 
   titanBlood: {
-
-    mechanics: (rank) => [
-
-      `Convertit ${rank * 2} % PV max en DEF runique.`,
-
+    paragraphs: (rank) => [
+      `Convertit ${rank * 2} % HP max en DEF bonus permanente.`,
       'Augmente les dégâts de l\'attaque, du Cri, de la Parade et de la Frappe Sismique.',
-
       'Fin de Parade : +10 % vitesse de sprint pendant 3 s.',
-
     ],
+  },
 
+  guardianWarCry: {
+    paragraphs: () => [
+      'Cri de Guerre : soins réduits de 35 %.',
+      'Alliés à portée (12 m) : +10 % de votre DEF pendant 6 s.',
+      'Le cri de guerre affecte les alliés en multijoueur dans la zone.',
+    ],
   },
 
   parryRefund: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Fin de Parade : −10 % recharge max (Espace, Shift, E).',
-
       'Fin de Parade : 0,4 s d\'intangibilité.',
-
+      'Chaque fin de Parade réduit le temps d\'attente de vos trois compétences.',
     ],
-
   },
 
   parryCharge: {
-
-    mechanics: (rank) => [
-
-      `Parade : ${25 * rank} % des dégâts bloqués stockés.`,
-
+    paragraphs: (rank) => [
+      `Parade : ${25 * rank} % des dégâts bloqués stockés en charge.`,
       'Fin de Parade : Frappe Sismique gratuite.',
-
       'Charge ajoutée aux dégâts du séisme · rayon 12 m.',
-
     ],
-
   },
 
   runicColossus: {
@@ -113,13 +98,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   arcaneOverload: {
-
-    mechanics: (rank) => [
-
+    paragraphs: (rank) => [
       `Après un sort : les deux autres compétences −${rank >= 2 ? '1,2' : '0,6'} s de recharge.`,
-
+      'Enchaîner Espace, Shift et E accélère votre rotation magique.',
+      'Ne réduit pas la recharge du sort que vous venez de lancer.',
     ],
-
   },
 
   paradoxOverload: {
@@ -128,7 +111,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
       'Tous les 5 éliminations : bonus de stat permanent.',
 
-      'Stat aléatoire parmi ATK, PV max, vitesse, critique, DEF…\n+0,01 % à +0,09 % par gain.',
+      'Stat aléatoire parmi ATK, HP, vitesse, Crit Chance, DEF…\n+0,01 % à +0,09 % par gain.',
 
       'Cumul persistant sur la partie.',
 
@@ -137,152 +120,131 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   deepStasis: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Chronostase (Shift) : ralentissement des ennemis porté à 85 % (au lieu de 70 %).',
-
-      'Durée de stase inchangée, zone légèrement élargie (+1 m).',
-
+      'Zone de stase légèrement élargie (+1 m).',
+      'Les ennemis gelés subissent vos sorts avec un retard accru.',
     ],
-
   },
 
   blinkMastery: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Transfert (E) : rayon d\'explosion +30 %, dégâts +20 %.',
-
       'Éliminer un ennemi avec l\'explosion remet Transfert à 50 % de recharge.',
-
+      'L\'explosion à l\'arrivée touche une zone plus large.',
     ],
+  },
 
+  paradoxReplicated: {
+    paragraphs: () => [
+      'Transfert (E) laisse un clone actif pendant 8 s (maximum 2 clones).',
+      'Les clones reproduisent Barrage Arcanique et Chronostase à 25 % d\'efficacité.',
+      'Compétence reproduite : −10 % de recharge sur le sort d\'origine.\nPas de récursion sur Transfert.',
+    ],
   },
 
   cloneExtend: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Barrage Arcanique (Espace) : +1 projectile central en rafale.',
-
       'Écartement latéral des tirs doublé pour couvrir une zone plus large.',
-
+      'La rafale couvre un arc plus large devant vous.',
     ],
+  },
 
+  stellarOvercharge: {
+    paragraphs: () => [
+      'Rayon Stellaire (Espace) : maintenir Espace charge au-delà du maximum normal.',
+      'Charge maximale : 250 % des dégâts de base du Rayon Stellaire.',
+      'Relâcher Espace : tir avec la charge actuelle.',
+      'Charge complète (250 %) : rayon d\'impact +20 %.',
+    ],
   },
 
   solarBeamHaste: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Rayon Stellaire : taille du faisceau +10 %.',
-
-      'Rayon Stellaire : +5 % PV max en dégâts au coup.',
-
+      'Rayon Stellaire : +5 % HP max en dégâts au coup.',
       'Zone d\'impact et recul augmentés.',
-
     ],
-
   },
 
   healAmp: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Soins reçus : +15 %.',
-
-      'Champ de Lumière : rayon +2 m.',
-
-      'Champ de Lumière : durée +2 s.',
-
+      'Champ de Lumière : rayon +2 m · durée +2 s.',
       'Champ de Lumière : soin personnel +15 % par tick.',
-
     ],
-
   },
 
   beamHaste: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Après Rayon Stellaire complet : +30 % vitesse de sprint.',
-
-      'Durée : 2 s.',
-
+      'Durée du burst : 2 s.',
+      'Permet de repositionner rapidement après un tir chargé.',
     ],
-
   },
 
   overhealShield: {
-
-    mechanics: () => [
-
-      '50 % des soins excédentaires (au-dessus des PV max) deviennent un bouclier d\'absorption.',
-
-      'Le bouclier est consommé avant les PV ; maximum = 25 % de vos PV max.',
-
+    paragraphs: () => [
+      '50 % des soins excédentaires (au-dessus du HP max) deviennent un bouclier d\'absorption.',
+      'Le bouclier est consommé avant les HP.',
+      'Capacité maximale du bouclier : 25 % de votre HP max.',
     ],
-
   },
 
   solarInspiration: {
 
     paragraphs: () => [
 
-      'Aura 14 m : alliés +15 % ATK et +1 % PV max/s.\nVous : +30 % ATK.',
+      'Aura 14 m : alliés +15 % ATK et +1 % HP/s.\nVous : +30 % ATK.',
 
       'Champ de Lumière devient Puits Solaire.\nEnnemis : −35 % vitesse · +25 % dégâts subis.',
 
-      'Ancré dans le puits : +35 % dégâts infligés.\n+12 % dégâts reçus · soin 2 % PV/s.',
+      'Ancré dans le puits : +35 % dégâts infligés.\n+12 % dégâts reçus · soin 2 % HP/s.',
 
     ],
 
+  },
+
+  bloodFrenzy: {
+    paragraphs: () => [
+      'Sous 50 % HP : Frénésie offensive pendant 6 s.',
+      'Frénésie : +10 % HP max en dégâts par attaque · vitesse d\'attaque +25 %.',
+      'Critical hits en Frénésie : prolonge la durée de 0,5 s (maximum 10 s).',
+    ],
   },
 
   hemorrhage: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Chaque critique applique Saignée : 20 % de vos dégâts du coup en DoT sur 3 s.',
-
       'Empilable jusqu\'à 3 fois sur la même cible.',
-
+      'Les stacks de Saignée prolongent la fenêtre de burst.',
     ],
-
   },
 
   dashReset: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Ombre Véloce (Shift) : 0,4 s d\'intangibilité à l\'arrivée du dash.',
-
       'Éliminer un ennemi dans les 3 s après le dash remet Shift à 40 % de recharge.',
-
+      'Permet d\'enchaîner les assassinats en mobilité.',
     ],
-
   },
 
   cyclonePull: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Toupie Létale (Espace) : aspiration continue vers le centre pendant la rotation.',
-
-      'Durée +1 s · chaque ennemi aspiré subit un tick de 35 % ATK toutes les 0,5 s.',
-
+      'Durée +1 s.',
+      'Chaque ennemi aspiré subit un tick de 35 % ATK toutes les 0,5 s.',
     ],
-
   },
 
   eternalThirst: {
 
     paragraphs: () => [
 
-      'Par % de PV manquant : +0,3 % critique et +0,3 % dégâts critiques.',
+      'Par % de HP manquant : +0,3 % Crit Chance et +0,3 % Crit Damage.',
 
-      'À 0 PV : jusqu\'à +30 % crit et +30 % dégâts crit.',
+      'À 0 HP : jusqu\'à +30 % Crit Chance et +30 % Crit Damage.',
 
     ],
 
@@ -294,7 +256,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
       'Premier coup fatal évité.',
 
-      'Survie à 1 PV.\nIntangibilité pendant 2 s.',
+      'Survie à 1 HP.\nIntangibilité pendant 2 s.',
 
       'Recharge : 90 s.',
 
@@ -303,62 +265,51 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   shieldOverflow: {
-
-    mechanics: () => [
-
-      'Capacité du Bouclier de Sang : +25 % PV max.',
-
+    paragraphs: () => [
+      'Capacité du Bouclier de Sang : +25 % HP max.',
       'Soins excédentaires sous bouclier : 35 % convertis en charge de bouclier supplémentaire.',
-
+      'Le bouclier peut dépasser sa capacité de base via l\'overflow.',
     ],
-
   },
 
   executioner: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Cibles marquées (Verdict Sanguin) : +35 % dégâts subis.',
-
       'Durée de la marque : 6 s.',
-
+      'Les compétences suivantes frappent les condamnés bien plus fort.',
     ],
-
   },
 
   frenzyAdrenaline: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'En Frénésie (E), tuer un ennemi remet Frénésie à 0 s de recharge.',
-
       'Une fois par activation de Frénésie maximum.',
-
+      'Récompense l\'agression soutenue en zone.',
     ],
+  },
 
+  acceleratedTransfusion: {
+    paragraphs: () => [
+      'Blood Pistol (Frénésie) : vitesse d\'attaque +40 %.',
+      'Auto-transfusion : dégâts subis −30 %.',
+      'Projectiles : dégâts −15 % · vitesse du projectile +25 %.',
+    ],
   },
 
   vampJumpAmp: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Saut Vampirique (Espace) : zone d\'impact 5 m → 6,75 m (+35 %).',
-
-      'Dégâts d\'atterrissage +25 % ; étourdissement 2 s → 2,5 s.',
-
-      'Soin par ennemi touché : 65 % ATK (au lieu de 50 %) ; cumule avec le +3 % vol de vie du nœud.',
-
+      'Dégâts d\'atterrissage +25 % · étourdissement 2 s → 2,5 s.',
+      'Soin par ennemi touché : 65 % ATK (au lieu de 50 %).',
     ],
-
     summary: () => 'Saut plus large, plus lent, plus de soin à l\'impact.',
-
   },
 
   bloodPact: {
 
     paragraphs: () => [
 
-      '+45 % dégâts critiques.',
+      '+45 % Crit Damage.',
 
       'Chaque 3e projectile : Méga-Critique.\nMultiplicateur crit × 1,5.',
 
@@ -366,47 +317,44 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   },
 
+  devouringSun: {
+    paragraphs: () => [
+      'Attaques de lance (Soleil) : portée +30 %.',
+      'Brûlure Solaire : dégâts +40 % · durée +2 s (3 ticks).',
+      'Chaque tick de brûlure applique la vulnérabilité cataclysmique.',
+    ],
+  },
+
   solarFlare: {
-    mechanics: () => [
-      'Fulgurance Solaire (Espace) : Dash en infligeant des dégâts aux ennemis traversés.',
+    paragraphs: () => [
+      'Fulgurance Solaire (Espace) : dash en infligeant des dégâts aux ennemis traversés.',
       'Brûlure sur 3 ticks à 42 % des dégâts du coup (au lieu d\'1 tick à 30 %).',
+      'Chaque ennemi traversé reçoit la brûlure complète.',
     ],
   },
 
   lunarSpike: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Pic de Lune (Shift) : rayon du burst +25 %, ralentissement +15 %.',
-
       'Dégâts du pic +12 %.',
-
+      'Le ralentissement lunaire facilite les enchaînements Soleil/Lune.',
     ],
-
   },
 
   orbitalWeave: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Alterner Soleil puis Lune (ou l\'inverse) : +4 % ATK par stack (max 4, +16 %).',
-
-      'Chaque compétence opposée à la précédente compte ; se réinitialise après 8 s sans sort.',
-
+      'Chaque compétence opposée à la précédente compte.',
+      'Les stacks se réinitialisent après 8 s sans sort.',
     ],
-
   },
 
   voidPull: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Cataclysme (E) : aspiration des ennemis vers le centre à l\'explosion.',
-
       'Dégâts de Cataclysme +20 % lorsque le passif est actif.',
-
+      'Regroupe les cibles avant le burst gravitationnel.',
     ],
-
   },
 
   celestialConvergence: {
@@ -423,54 +371,44 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   },
 
-  continuumBurst: {
-
-    mechanics: () => [
-
-      'Lentille (Espace) : cône +15 %.',
-
-      'Lentille (Espace) : dégâts du rayon +8 %.',
-
-      'Convergence Temporelle (E) : durée +0,5 s.',
-
-      'Convergence Temporelle (E) : rayon de résonance +0,5 m.',
-
+  extraPrismLens: {
+    paragraphs: () => [
+      'Lentille de Focalisation : split en 4 rayons au lieu de 3.',
+      'Rayons prismatiques : dégâts −15 % par rayon.',
+      'Rayons prismatiques : infligent une brûlure temporelle.',
     ],
+  },
 
+  continuumBurst: {
+    paragraphs: () => [
+      'Lentille (Espace) : cône +15 % · dégâts du rayon +8 %.',
+      'Convergence Temporelle (E) : durée +0,5 s.',
+      'Convergence Temporelle (E) : rayon de résonance +0,5 m.',
+    ],
   },
 
   ruptureSurge: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Explosion volontaire de Fracture (85–95 %) : +35 % dégâts.',
-
       'Rayon de l\'explosion : dégâts +8 %.',
-
+      'Déclencher volontairement la rupture devient bien plus rentable.',
     ],
-
   },
 
   anachronismeAmp: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Coût Fracture des compétences : 25 (au lieu de 30).',
-
+      'Libère de la Fracture pour enchaîner plus de sorts.',
+      'S\'applique à toutes les compétences consommant de la Fracture.',
     ],
-
   },
 
   freezeFieldAmp: {
-
-    mechanics: () => [
-
+    paragraphs: () => [
       'Déphasage (Shift) : portée +2 m, durée du champ +1 s.',
-
       'Instabilité appliquée aux ennemis : +2 s.',
-
+      'Le champ de distorsion couvre une zone plus large et plus longtemps.',
     ],
-
   },
 
   continuumMastery: {
@@ -481,7 +419,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
       'Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.\nChaque prisme −20 % dégâts · duplication de rayons.',
 
-      'Rayon via prisme : +100 % critique.\n−25 % dégâts critiques.',
+      'Rayon via prisme : +100 % Crit Chance.\n−25 % Crit Damage.',
 
       'Fracture max : 150 % (au lieu de 100 %).\n+0,33 % dégâts infligés par point de Fracture (jusqu\'à +49,5 % à 150 %).',
 

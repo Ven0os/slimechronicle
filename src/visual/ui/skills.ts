@@ -3,7 +3,8 @@ import { STATE, CONFIG } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { AudioSys } from '@/core/ressources';
 import { getConstellationForClass, type ClassId } from '@/data/constellations';
-import { formatSkillScalingHtml, getSkillLabel, getWarriorDefPower, type SkillKey } from '@/data/classStatsConfig';
+import { formatDestinySkillDetailHtml, formatSkillScalingHtml, getSkillLabel, type SkillKey } from '@/data/classStatsConfig';
+import { getPlayerDefense, formatDefenseReductionPct } from '@/gameplay/combat/defense';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { ConstellationUI } from '@/ui/constellationUI';
 
@@ -118,8 +119,12 @@ export const NewSkillUI = {
   },
 
   buildSkillDetailHtml: function (classId: ClassId, skillKey: SkillKey) {
+    if (skillKey === 'space' || skillKey === 'shift' || skillKey === 'e') {
+      return formatDestinySkillDetailHtml(classId, skillKey);
+    }
     const chips = formatSkillScalingHtml(classId, skillKey);
-    return `<div class="grimoire-ratio-chips">${chips}</div><div class="grimoire-skill-hint">Cliquez pour replier</div>`;
+    const chipsBlock = chips ? `<div class="grimoire-ratio-chips">${chips}</div>` : '';
+    return `${chipsBlock}<div class="grimoire-skill-hint">Cliquer pour replier</div>`;
   },
 
   updateInfoTab: function () {
@@ -130,14 +135,16 @@ export const NewSkillUI = {
     };
 
     set('info-hp', Math.floor(stats.maxHp));
+    const totalDef = getPlayerDefense();
+    const defPct = formatDefenseReductionPct(totalDef);
+    set('info-defense', Math.floor(totalDef));
+    set('info-damage-reduction', `${defPct}%`);
+
     const cls = STATE.class || 'warrior';
-    const atkRowLabel = document.querySelector('#view-info #info-atk')?.closest('.grimoire-stat-row')?.querySelector('.stat-label');
     if (cls === 'warrior') {
-      set('info-atk', Math.floor(getWarriorDefPower()));
-      if (atkRowLabel) atkRowLabel.innerHTML = '<i class="fas fa-shield-halved" style="color:#5dade2"></i> Défense runique';
+      set('info-atk', '0');
     } else {
       set('info-atk', Math.floor(stats.atk + (stats.titanBonus || 0)));
-      if (atkRowLabel) atkRowLabel.innerHTML = '<i class="fas fa-gavel" style="color:#f1c40f"></i> Attaque';
     }
     set('info-spd', stats.speed.toFixed(1));
     const atkSpdMod = stats.attackSpeedMod || 1;
@@ -150,21 +157,49 @@ export const NewSkillUI = {
     set('info-xp', Math.floor((stats.xpMod || 1) * 100) + '%');
 
     const classId = cls as ClassId;
-    const unlocked = ConstellationEngine.getUnlockedCountForClass();
-    const data = getConstellationForClass(classId);
-    const apexOk = ConstellationEngine.isNodeUnlocked(data.apex.id);
-    const progressEl = document.getElementById('info-constellation-progress');
-    if (progressEl) {
-      progressEl.innerHTML = `${unlocked} / 16 · <span class="grimoire-apex-label">Apex</span> <span class="${apexOk ? 'grimoire-apex-ok' : 'grimoire-apex-pending'}">${apexOk ? '✓' : '○'}</span>`;
+    const unlocked = ConstellationEngine.getUnlockedNonApexCount(classId);
+    const total = ConstellationEngine.getNonApexNodeTotal(classId);
+    const apexState = ConstellationEngine.getApexProgressState(classId);
+    const pct = total > 0 ? Math.min(100, (unlocked / total) * 100) : 0;
+
+    const apexSection = document.getElementById('grimoire-apex-section');
+    if (apexSection) {
+      apexSection.classList.remove('apex-locked-state', 'apex-ready-state', 'apex-unlocked-state');
+      apexSection.classList.add(
+        apexState === 'unlocked' ? 'apex-unlocked-state'
+          : apexState === 'ready' ? 'apex-ready-state'
+            : 'apex-locked-state',
+      );
+    }
+
+    const apexFill = document.getElementById('grimoire-apex-fill');
+    if (apexFill) apexFill.style.width = `${pct}%`;
+
+    const apexCount = document.getElementById('grimoire-apex-count');
+    if (apexCount) {
+      const keystones = ConstellationEngine.getUnlockedKeystoneCount(classId);
+      const keystonesTotal = ConstellationEngine.getKeystoneTotal(classId);
+      apexCount.textContent = `${unlocked} / ${total} Nœuds · ${keystones} / ${keystonesTotal} Passifs`;
+    }
+
+    const apexStatus = document.getElementById('grimoire-apex-status');
+    if (apexStatus) {
+      if (apexState === 'unlocked') apexStatus.textContent = 'Débloqué';
+      else if (apexState === 'ready') apexStatus.textContent = 'APEX READY';
+      else apexStatus.textContent = 'Verrouillé';
     }
 
     const tooltips = CONFIG.tooltips[cls];
     const primaryLabel = getSkillLabel(classId, 'primary');
     const primaryNameEl = document.getElementById('name-skill-primary');
     const primaryKeyEl = document.getElementById('key-skill-primary');
+    const primaryDescEl = document.getElementById('desc-skill-primary');
     if (primaryNameEl) primaryNameEl.innerText = primaryLabel;
     if (primaryKeyEl) {
       primaryKeyEl.innerText = cls === 'chronoregulator' ? 'CLIC' : 'LMB';
+    }
+    if (primaryDescEl && tooltips?.primary) {
+      primaryDescEl.innerText = tooltips.primary.desc || tooltips.primary.name || '';
     }
 
     const detailPrimary = document.getElementById('detail-skill-primary');
