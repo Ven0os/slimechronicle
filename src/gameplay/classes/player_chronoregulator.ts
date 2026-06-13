@@ -13,9 +13,10 @@ import { dedupeBeamRays, getBeamHitInfo, resolveBeamRoutes, rayHitsLens } from '
 import {
   clampFracture,
   createFractureDecayState,
+  getFractureOverheatAt,
   getMaxFracture,
   isFractureDecaying,
-  isFractureInRuptureWindow,
+  isInOverloadReleaseWindow,
   isOverloadImminenceActive,
   resetFractureDecayState,
   tickFractureDecay,
@@ -903,7 +904,15 @@ export class Chronoregulator extends PlayerBase {
   }
 
   getFractureOverheatAt() {
-    return getMaxFracture();
+    return getFractureOverheatAt();
+  }
+
+  isChronoSilenced() {
+    return this.fractureSilence > 0;
+  }
+
+  isInOverloadReleaseWindow() {
+    return isInOverloadReleaseWindow(this.fractureGauge);
   }
 
   getAscendantMax() {
@@ -962,10 +971,6 @@ export class Chronoregulator extends PlayerBase {
     return 1;
   }
 
-  isInRuptureWindow() {
-    return isFractureInRuptureWindow(this.fractureGauge);
-  }
-
   isOverloadImminenceActive() {
     return isOverloadImminenceActive(this.fractureGauge);
   }
@@ -990,28 +995,30 @@ export class Chronoregulator extends PlayerBase {
     );
   }
 
-  triggerOverloadImminenceProc() {
-    if (!this.isOverloadImminenceActive() || this._overloadImminenceGrenadeProcced) return;
-    this._overloadImminenceGrenadeProcced = true;
+  triggerOverloadImminenceRelease() {
+    if (!this.isInOverloadReleaseWindow()) return;
 
     const pos = this.position.clone();
     const { radius, dmgMult } = CHRONO_FRACTURE.overloadImminenceProc;
-    const scale = this.fractureGauge / 100;
-    const blastDmg = STATE.stats.atk * dmgMult * scale;
+    const surge = STATE.passives?.ruptureSurge ? 1.35 : 1;
+    const scale = this.fractureGauge / this.getFractureOverheatAt();
+    const blastDmg = STATE.stats.atk * dmgMult * scale * surge;
 
-    createSkillVisual('nova', pos, radius, 0xff8844, null);
-    spawnParticles(pos, 0xff8844, 18);
-    createDamageText('SURCHARGE!', pos, '#ff8844');
+    createSkillVisual('nova', pos, radius, 0xffd93d, null);
+    spawnParticles(pos, 0xffd93d, 18);
+    createDamageText('DÉSURCHARGE!', pos, '#ffd93d');
 
     if (Globals.enemies) {
       for (const e of Globals.enemies) {
         if (e.dead) continue;
         if (e.position.distanceTo(pos) <= radius + (e.radius || 0.5)) {
-          this.dealMagicDamage(e, blastDmg, { skill: true, skillKey: 'shift' });
+          this.dealMagicDamage(e, blastDmg, { skill: true, skillKey: 'primary' });
         }
       }
     }
 
+    const reduction = getMaxFracture() * CHRONO_FRACTURE.overloadReleaseReductionPct;
+    this.fractureGauge = clampFracture(this.fractureGauge - reduction);
     this.resetFractureActivity();
   }
 
@@ -1401,42 +1408,25 @@ export class Chronoregulator extends PlayerBase {
 
   addFracture(dt, origin, dir) {
     if (!this.isBeaming || this.overheatTriggered || this.isConverging) return;
-    const fractureCap = this.getFractureCap();
     const overheatAt = this.getFractureOverheatAt();
-    if (this.fractureGauge >= fractureCap) return;
+    if (this.fractureGauge >= overheatAt) {
+      this.triggerOverheat();
+      return;
+    }
 
     let rate = this.getFractureFillRate();
     if (this.getActiveLens(origin, dir)) rate *= 0.5;
     if (this.hasActiveInstabilityMark()) {
       rate /= CHRONO_SKILLS.dephasing.fractureDivisor;
     }
-    this.fractureGauge = Math.min(fractureCap, this.fractureGauge + rate * dt);
 
-    // Apex : surchauffe à 150 seulement ; sans Apex : à 100
-    if (this.fractureGauge >= overheatAt) this.triggerOverheat();
-  }
-
-  triggerVoluntaryRupture() {
-    const pos = this.position.clone();
-    const { radius, dmgMult } = CHRONO_SKILLS.ruptureBurst;
-    const surge = STATE.passives?.ruptureSurge ? 1.35 : 1;
-    const dmg = STATE.stats.atk * dmgMult * surge * (this.fractureGauge / 100);
-
-    createSkillVisual('nova', pos, radius, 0xffd93d, null);
-    spawnParticles(pos, CHRONO_COLOR(), 18);
-    createDamageText('RUPTURE', pos, '#ffd93d');
-
-    if (Globals.enemies) {
-      for (const e of Globals.enemies) {
-        if (e.dead) continue;
-        if (e.position.distanceTo(pos) <= radius) {
-          this.dealMagicDamage(e, dmg, { skill: true, skillKey: 'rupture' });
-        }
-      }
+    const next = this.fractureGauge + rate * dt;
+    if (next >= overheatAt) {
+      this.fractureGauge = overheatAt;
+      this.triggerOverheat();
+    } else {
+      this.fractureGauge = next;
     }
-
-    this.fractureGauge = Math.max(0, this.fractureGauge - 45);
-    this.fractureSilence = 0.25;
   }
 
   triggerOverheat() {
@@ -1511,8 +1501,8 @@ export class Chronoregulator extends PlayerBase {
   stopDistortionBeam(fromOverheat = false) {
     if (!this.isBeaming && this.beamVisuals.length === 0) return;
 
-    if (!fromOverheat && !this.isConverging && this.isBeaming && this.isInRuptureWindow()) {
-      this.triggerVoluntaryRupture();
+    if (!fromOverheat && !this.isConverging && this.isBeaming && this.isInOverloadReleaseWindow()) {
+      this.triggerOverloadImminenceRelease();
     }
 
     this.isBeaming = false;
@@ -1658,17 +1648,18 @@ export class Chronoregulator extends PlayerBase {
       return;
     }
 
+    if (this.isChronoSilenced()) {
+      createDamageText('SILENCE', this.position.clone().add({ x: 0, y: 1.2, z: 0 }), '#888888');
+      return;
+    }
+
     if (this.cooldowns[key] > 0) return;
 
     this.faceMouse();
     this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
 
     if (key === 'shift') {
-      this._overloadImminenceGrenadeProcced = false;
       this.skillMolecularDephasing();
-      if (this.isOverloadImminenceActive()) {
-        this.triggerOverloadImminenceProc();
-      }
       this.spendFractureForSkill();
       this.resetFractureActivity();
       return;

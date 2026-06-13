@@ -7,6 +7,7 @@ import { getPlayerDefense } from '@/gameplay/combat/defense';
 import { CHRONO_FRACTURE, CHRONO_SKILLS } from '@/gameplay/classes/chrono/constants';
 import {
   getFractureDamageMult as computeFractureDamageMult,
+  getFractureOverheatAt,
   getMaxFracture as resolveMaxFracture,
   isChronoFractureApexActive,
 } from '@/gameplay/classes/chrono/fractureHelpers';
@@ -168,7 +169,7 @@ export const ConvergenceEffects = {
   },
 
   getFractureOverheatThreshold(): number {
-    return resolveMaxFracture();
+    return getFractureOverheatAt();
   },
 
   getFractureDamageMult(fractureGauge: number): number {

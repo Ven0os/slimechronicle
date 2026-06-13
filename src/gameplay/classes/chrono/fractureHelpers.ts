@@ -18,9 +18,14 @@ export function getMaxFracture(): number {
   return isChronoFractureApexActive() ? CHRONO_FRACTURE.apexMax : CHRONO_FRACTURE.max;
 }
 
-/** Seuil de surchauffe (= plafond effectif). */
-export function getFractureOverheatAt(): number {
-  return getMaxFracture();
+/** Seuil de surchauffe (= plafond Fracture actuel : 100 ou 150 avec Apex). */
+export function getFractureOverheatAt(max = getMaxFracture()): number {
+  return max;
+}
+
+/** Seuil Surcharge imminente : plafond − 5 (95 à 100 cap, 145 à 150 cap). */
+export function getOverloadImminenceThreshold(max = getMaxFracture()): number {
+  return max - CHRONO_FRACTURE.overloadWarningBeforeMax;
 }
 
 export function clampFracture(gauge: number): number {
@@ -38,14 +43,18 @@ export function getFractureDisplayValue(gauge: number, max = getMaxFracture()): 
   return Math.floor(Math.min(max, Math.max(0, gauge)));
 }
 
-/** Fenêtre de rupture volontaire : 85–95 Fracture absolus (indépendant du plafond Apex). */
-export function isFractureInRuptureWindow(gauge: number): boolean {
-  return gauge >= CHRONO_FRACTURE.ruptureMin && gauge <= CHRONO_FRACTURE.ruptureMax;
+/** Surcharge imminente : [max−5, max[ (ex. 95–99 à 100 cap, 145–149 à 150 cap). */
+export function isOverloadImminenceActive(gauge: number, max = getMaxFracture()): boolean {
+  return gauge >= getOverloadImminenceThreshold(max) && gauge < getFractureOverheatAt(max);
 }
 
-/** Surchauffe imminente — seuil d'avertissement et proc grenade Déphasage. */
-export function isOverloadImminenceActive(gauge: number): boolean {
-  return gauge >= CHRONO_FRACTURE.overloadImminenceMin;
+/** Fenêtre de relâchement correct (identique à Surcharge imminente). */
+export function isInOverloadReleaseWindow(gauge: number, max = getMaxFracture()): boolean {
+  return isOverloadImminenceActive(gauge, max);
+}
+
+export function isFractureAtOverheat(gauge: number, max = getMaxFracture()): boolean {
+  return gauge >= getFractureOverheatAt(max);
 }
 
 export type FractureDecayState = {
@@ -61,7 +70,7 @@ export function resetFractureDecayState(state: FractureDecayState): void {
   state.inactivityTime = 0;
 }
 
-/** Vitesse de décroissance en points/s (9,32 % du plafond actuel). */
+/** Vitesse de décroissance en points/s (4 % du plafond actuel). */
 export function getFractureDecayPerSecond(max = getMaxFracture()): number {
   return max * CHRONO_FRACTURE.decayPerSecondPct;
 }
@@ -77,8 +86,8 @@ export function isFractureDecaying(
 }
 
 /**
- * Décroissance Fracture fluide : 1 s d'inactivité, puis −9,32 % du plafond / s.
- * Équivalent à ≈ −4,66 % toutes les 0,5 s, appliqué frame par frame via dt.
+ * Décroissance Fracture fluide : 1 s d'inactivité, puis −4 % du plafond / s.
+ * Équivalent à −2 % toutes les 0,5 s, appliqué frame par frame via dt.
  */
 export function tickFractureDecay(
   gauge: number,
