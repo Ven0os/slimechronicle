@@ -25,8 +25,8 @@ export const CHRONO_FRACTURE = {
   overloadImminenceMin: 70,
   /** Inactivité avant début de décroissance (s). */
   decayDelay: 1,
-  /** Vitesse de décroissance continue : 4 % du plafond par seconde (= 2 % / 0,5 s). */
-  decayPerSecondPct: 0.04,
+  /** Vitesse de décroissance continue : 9,32 % du plafond par seconde (×2,33 vs 4 %). */
+  decayPerSecondPct: 0.0932,
   /** Explosion immédiate si grenade lancée sous Surchauffe imminente. */
   overloadImminenceProc: { radius: 4.2, dmgMult: 2.1 },
 } as const;
