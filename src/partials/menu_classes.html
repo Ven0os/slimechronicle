@@ -4,6 +4,9 @@
         <header class="destiny-hero">
             <div class="destiny-hero-inner">
                 <div class="destiny-brand">
+                    <button id="btn-game-options" class="destiny-options-btn" type="button" onclick="UI.goToOptions()" title="Options de la partie" style="display: none;">
+                        <i class="fas fa-cog"></i>
+                    </button>
                     <div class="destiny-icon-wrap" aria-hidden="true">
                         <i class="fas fa-compass"></i>
                     </div>
@@ -315,9 +318,6 @@
                 <div style="display: flex; gap: 10px; width: 100%;">
                     <button id="btn-start-game" class="btn-main" type="button" onclick="GameLauncher.launchHost()" style="flex: 1; margin: 0;">Lancer l'expédition</button>
                     <button id="btn-ready-game" class="btn-main" type="button" onclick="GameLauncher.clientReady()" style="flex: 1; margin: 0;">Prêt à combattre</button>
-                    <button id="btn-game-options" class="btn-secondary" type="button" onclick="UI.goToOptions()" title="Options de la partie" style="display: none; width: 50px; flex-shrink: 0; padding: 0; align-items: center; justify-content: center; height: 46px; margin: 0;">
-                        <i class="fas fa-cog"></i>
-                    </button>
                 </div>
                 <button class="btn-secondary" type="button" onclick="UI.backToLanding()">Retour</button>
             </div>

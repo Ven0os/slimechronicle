@@ -651,13 +651,14 @@ export const UICompendium = {
         this.allFragmentsList = options;
 
         const weightedOptions = [];
+        const luckPrism = (STATE.gameOptions && STATE.gameOptions.luckMultPrismatic !== undefined) ? STATE.gameOptions.luckMultPrismatic : 1.0;
         options.forEach(opt => {
             let weight = 1;
             if (opt.rarity === 'common') weight = 1000;
-            if (opt.rarity === 'rare') weight = 200;
-            if (opt.rarity === 'epic') weight = 100;
-            if (opt.rarity === 'legendary') weight = 50;
-            if (opt.rarity === 'mythic') weight = 10;
+            if (opt.rarity === 'rare') weight = Math.round(200 * luckPrism);
+            if (opt.rarity === 'epic') weight = Math.round(100 * luckPrism * luckPrism);
+            if (opt.rarity === 'legendary') weight = Math.round(50 * luckPrism * luckPrism * luckPrism);
+            if (opt.rarity === 'mythic') weight = Math.round(10 * luckPrism * luckPrism * luckPrism * luckPrism);
             opt.weight = weight;
             for (let i = 0; i < weight; i++) weightedOptions.push(opt);
         });

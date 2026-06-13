@@ -82,15 +82,30 @@ export const STATE = {
         'slime_lord': 0
     },
     ngLevel: 0, // Global (Legacy)
-    gameOptions: {
-        enemyHpMult: 1.0,
-        enemyDmgMult: 1.0,
-        enemySpawnRate: 1.0,
-        xpMult: 1.0,
-        playerHpMult: 1.0,
-        playerDmgMult: 1.0,
-        startLevel: 1
-    },
+    gameOptions: (() => {
+        const defaultOpts = {
+            enemyHpMult: 1.0,
+            enemyDmgMult: 1.0,
+            enemySpawnRate: 1.0,
+            xpMult: 1.0,
+            playerHpMult: 1.0,
+            playerDmgMult: 1.0,
+            startLevel: 1,
+            isEventsActive: true,
+            maxMobDisplay: 30,
+            luckMultPrismatic: 1.0,
+            luckMultMiniBoss: 1.0
+        };
+        try {
+            const saved = localStorage.getItem('slime_game_options');
+            if (saved) {
+                return { ...defaultOpts, ...JSON.parse(saved) };
+            }
+        } catch (e) {
+            console.error("Failed to load game options from localStorage", e);
+        }
+        return defaultOpts;
+    })(),
     timeScale: 1.0,
     isPaused: false,
     mouseDown: false,

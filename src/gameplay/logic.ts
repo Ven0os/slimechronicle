@@ -384,8 +384,10 @@ export const GameLogic = {
             }
         ];
 
-        // 25% chance of spawning a mini-boss pack if player level is at least 2
-        const isMiniBossVariant = Math.random() < 0.25 && STATE.level >= 2;
+        // 25% chance of spawning a mini-boss pack if player level is at least 2 (scaled by luck)
+        const luckMini = (STATE.gameOptions && STATE.gameOptions.luckMultMiniBoss !== undefined) ? STATE.gameOptions.luckMultMiniBoss : 1.0;
+        const miniBossChance = 0.25 * luckMini;
+        const isMiniBossVariant = Math.random() < miniBossChance && STATE.level >= 2;
         let variantIndex;
         if (isMiniBossVariant) {
             // Choose from variants index 7 to 14

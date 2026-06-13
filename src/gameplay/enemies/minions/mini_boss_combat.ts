@@ -4,6 +4,7 @@
 import { applyDefenseReduction, getEnemyDefense } from '@/gameplay/combat/defense';
 import { triggerMiniBossShieldFlash } from './mini_boss_ui';
 import type { MiniBossAggregatedStats } from './mini_boss_tiers';
+import { createDamageText } from '@/visual/effects';
 
 export * from './mini_boss_combat_core';
 

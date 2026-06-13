@@ -103,7 +103,8 @@ export const WorldEvents = {
 
         if (this.interactables.length > 0) return;
 
-        if (Math.random() < 0.00035) {
+        const isEventsActive = (STATE.gameOptions && STATE.gameOptions.isEventsActive !== undefined) ? STATE.gameOptions.isEventsActive : true;
+        if (isEventsActive && Math.random() < 0.00035) {
             this._spawnRandomEvent();
         }
     },

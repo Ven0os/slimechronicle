@@ -47,69 +47,195 @@
 </div>
 
 <!-- ÉCRAN CONFIGURATION OPTIONS -->
-<div id="screen-options" class="menu-screen">
-    <h1 class="menu-title">OPTIONS DE JEU</h1>
-    <div class="status-panel" style="max-height: 80vh; overflow-y: auto; text-align: left; padding: 25px; width: 450px; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px; border: 1px solid var(--menu-gold); background: rgba(0, 0, 0, 0.9); border-radius: 8px;">
-        <h3 style="color:var(--menu-gold); text-align: center; margin-top: 0; font-family: 'Cinzel'; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 10px;">AJUSTEMENT DES PARAMÈTRES</h3>
+<div id="screen-options" class="menu-screen options-screen">
+    <div class="options-container">
+        <header class="options-title-wrap">
+            <h1>OPTIONS DE JEU</h1>
+        </header>
+
+        <!-- Presets Section -->
+        <div class="presets-section">
+            <span class="presets-title">Difficulté de l'Expédition</span>
+            <div class="difficulty-presets">
+                <button class="btn-preset" id="preset-exploration" onclick="UI.applyPreset('exploration')">
+                    <span class="preset-tier">TIER I</span>
+                    <span class="preset-name">Recrue</span>
+                </button>
+                <button class="btn-preset" id="preset-survivant" onclick="UI.applyPreset('survivant')">
+                    <span class="preset-tier">TIER II</span>
+                    <span class="preset-name">Survivant</span>
+                </button>
+                <button class="btn-preset" id="preset-champion" onclick="UI.applyPreset('champion')">
+                    <span class="preset-tier">TIER III</span>
+                    <span class="preset-name">Champion</span>
+                </button>
+                <button class="btn-preset" id="preset-cauchemar" onclick="UI.applyPreset('cauchemar')">
+                    <span class="preset-tier">TIER IV</span>
+                    <span class="preset-name">Cauchemar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Onglets / Catégories -->
+        <div class="options-tabs">
+            <button class="tab-btn active" onclick="UI.switchOptionsTab('enemies', this)">
+                <i class="fas fa-ghost"></i> Ennemis
+            </button>
+            <button class="tab-btn" onclick="UI.switchOptionsTab('player', this)">
+                <i class="fas fa-shield-halved"></i> Joueur
+            </button>
+            <button class="tab-btn" onclick="UI.switchOptionsTab('loot', this)">
+                <i class="fas fa-gem"></i> Destin
+            </button>
+        </div>
         
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">PV des Ennemis</label>
-                <span id="opt-val-hp" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
-            </div>
-            <input type="range" id="opt-hp" min="0.5" max="10.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-hp').innerText = parseFloat(this.value).toFixed(1) + 'x'">
-        </div>
+        <main class="options-scroll-area">
+            <!-- TAB ENEMIES -->
+            <div id="tab-content-enemies" class="tab-content active">
+                <!-- PV des Ennemis -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-heart-crack icon-hp"></i>
+                            <label for="opt-hp">PV des Ennemis</label>
+                        </div>
+                        <span id="opt-val-hp" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-hp" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-hp').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Dégâts des Ennemis</label>
-                <span id="opt-val-dmg" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
-            </div>
-            <input type="range" id="opt-dmg" min="0.5" max="10.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-dmg').innerText = parseFloat(this.value).toFixed(1) + 'x'">
-        </div>
+                <!-- Dégâts des Ennemis -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-burst icon-dmg"></i>
+                            <label for="opt-dmg">Dégâts des Ennemis</label>
+                        </div>
+                        <span id="opt-val-dmg" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-dmg" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-dmg').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Vitesse de Réapparition (Spawns)</label>
-                <span id="opt-val-spawn" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
-            </div>
-            <input type="range" id="opt-spawn" min="0.2" max="5.0" step="0.2" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-spawn').innerText = parseFloat(this.value).toFixed(1) + 'x'">
-        </div>
+                <!-- Spawns -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-skull-crossbones icon-spawn"></i>
+                            <label for="opt-spawn">Vitesse de Réapparition</label>
+                        </div>
+                        <span id="opt-val-spawn" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-spawn" class="option-slider" min="0.2" max="5.0" step="0.2" value="1.0" oninput="document.getElementById('opt-val-spawn').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Gain d'Expérience (XP)</label>
-                <span id="opt-val-xp" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+                <!-- Limite de Monstres -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-ghost icon-maxmobs"></i>
+                            <label for="opt-maxmobs">Limite de Monstres</label>
+                        </div>
+                        <span id="opt-val-maxmobs" class="option-value-badge">30</span>
+                    </div>
+                    <input type="range" id="opt-maxmobs" class="option-slider" min="5" max="100" step="5" value="30" oninput="document.getElementById('opt-val-maxmobs').innerText = parseInt(this.value); UI.onSliderChange()">
+                </div>
             </div>
-            <input type="range" id="opt-xp" min="0.5" max="10.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-xp').innerText = parseFloat(this.value).toFixed(1) + 'x'">
-        </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px; border-top: 1px dashed rgba(212,175,55,0.2); padding-top: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">PV Maximum du Joueur</label>
-                <span id="opt-val-php" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            <!-- TAB PLAYER -->
+            <div id="tab-content-player" class="tab-content">
+                <!-- PV Maximum du Joueur -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-heart icon-php"></i>
+                            <label for="opt-php">PV Max du Joueur</label>
+                        </div>
+                        <span id="opt-val-php" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-php" class="option-slider" min="0.5" max="5.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-php').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
+
+                <!-- Dégâts du Joueur -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-wand-magic-sparkles icon-pdmg"></i>
+                            <label for="opt-pdmg">Dégâts du Joueur</label>
+                        </div>
+                        <span id="opt-val-pdmg" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-pdmg" class="option-slider" min="0.5" max="5.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-pdmg').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
+
+                <!-- Niveau de départ -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-arrow-up-right-dots icon-lvl"></i>
+                            <label for="opt-lvl">Niveau de départ</label>
+                        </div>
+                        <span id="opt-val-lvl" class="option-value-badge">1</span>
+                    </div>
+                    <input type="range" id="opt-lvl" class="option-slider" min="1" max="50" step="1" value="1" oninput="document.getElementById('opt-val-lvl').innerText = parseInt(this.value); UI.onSliderChange()">
+                </div>
+
+                <!-- XP -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-star icon-xp"></i>
+                            <label for="opt-xp">Gain d'Expérience (XP)</label>
+                        </div>
+                        <span id="opt-val-xp" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-xp" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-xp').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
             </div>
-            <input type="range" id="opt-php" min="0.5" max="5.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-php').innerText = parseFloat(this.value).toFixed(1) + 'x'">
-        </div>
 
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Dégâts du Joueur</label>
-                <span id="opt-val-pdmg" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            <!-- TAB LOOT -->
+            <div id="tab-content-loot" class="tab-content">
+                <!-- Chance Prismatiques -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-gem icon-luck-prism"></i>
+                            <label for="opt-luck-prism">Chance Prismatiques</label>
+                        </div>
+                        <span id="opt-val-luck-prism" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-luck-prism" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-luck-prism').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
+
+                <!-- Chance Mini-Boss -->
+                <div class="option-row-card">
+                    <div class="option-header">
+                        <div class="option-label-wrap">
+                            <i class="fas fa-crown icon-luck-mini"></i>
+                            <label for="opt-luck-mini">Chance Mini-Boss</label>
+                        </div>
+                        <span id="opt-val-luck-mini" class="option-value-badge">1.0</span>
+                    </div>
+                    <input type="range" id="opt-luck-mini" class="option-slider" min="0.0" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-luck-mini').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                </div>
+
+                <!-- Activer les Événements Aléatoires -->
+                <div class="option-row-card">
+                    <div class="option-switch-wrap">
+                        <div class="option-switch-label">
+                            <i class="fas fa-bolt icon-events"></i>
+                            <label for="opt-events">Événements Aléatoires</label>
+                        </div>
+                        <label class="custom-switch">
+                            <input type="checkbox" id="opt-events" onchange="UI.onSliderChange()">
+                            <span class="slider-switch"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
-            <input type="range" id="opt-pdmg" min="0.5" max="5.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-pdmg').innerText = parseFloat(this.value).toFixed(1) + 'x'">
-        </div>
+        </main>
 
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Niveau de départ</label>
-                <span id="opt-val-lvl" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1</span>
-            </div>
-            <input type="range" id="opt-lvl" min="1" max="50" step="1" value="1" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-lvl').innerText = parseInt(this.value)">
-        </div>
-
-        <div style="display: flex; justify-content: center; margin-top: 10px;">
-            <button class="btn-main" style="width: 100%;" onclick="UI.saveOptionsAndReturn()">CONFIRMER & RETOUR</button>
-        </div>
+        <footer style="margin-top: auto;">
+            <button class="btn-main" style="width: 100%; margin: 0;" onclick="UI.saveOptionsAndReturn()">CONFIRMER & RETOUR</button>
+        </footer>
     </div>
 </div>
