@@ -45,3 +45,71 @@
         <div id="join-status" style="margin-top:10px; color: var(--danger);"></div>
     </div>
 </div>
+
+<!-- ÉCRAN CONFIGURATION OPTIONS -->
+<div id="screen-options" class="menu-screen">
+    <h1 class="menu-title">OPTIONS DE JEU</h1>
+    <div class="status-panel" style="max-height: 80vh; overflow-y: auto; text-align: left; padding: 25px; width: 450px; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px; border: 1px solid var(--menu-gold); background: rgba(0, 0, 0, 0.9); border-radius: 8px;">
+        <h3 style="color:var(--menu-gold); text-align: center; margin-top: 0; font-family: 'Cinzel'; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 10px;">AJUSTEMENT DES PARAMÈTRES</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">PV des Ennemis</label>
+                <span id="opt-val-hp" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            </div>
+            <input type="range" id="opt-hp" min="0.5" max="10.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-hp').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Dégâts des Ennemis</label>
+                <span id="opt-val-dmg" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            </div>
+            <input type="range" id="opt-dmg" min="0.5" max="10.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-dmg').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Vitesse de Réapparition (Spawns)</label>
+                <span id="opt-val-spawn" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            </div>
+            <input type="range" id="opt-spawn" min="0.2" max="5.0" step="0.2" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-spawn').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Gain d'Expérience (XP)</label>
+                <span id="opt-val-xp" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            </div>
+            <input type="range" id="opt-xp" min="0.5" max="10.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-xp').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px; border-top: 1px dashed rgba(212,175,55,0.2); padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">PV Maximum du Joueur</label>
+                <span id="opt-val-php" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            </div>
+            <input type="range" id="opt-php" min="0.5" max="5.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-php').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Dégâts du Joueur</label>
+                <span id="opt-val-pdmg" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1.0</span>
+            </div>
+            <input type="range" id="opt-pdmg" min="0.5" max="5.0" step="0.5" value="1.0" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-pdmg').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color:#e0e0e0; font-weight: bold; font-size: 13px;">Niveau de départ</label>
+                <span id="opt-val-lvl" style="color:var(--menu-gold); font-family: monospace; font-weight: bold; font-size: 14px;">1</span>
+            </div>
+            <input type="range" id="opt-lvl" min="1" max="50" step="1" value="1" style="width: 100%; cursor: pointer;" oninput="document.getElementById('opt-val-lvl').innerText = parseInt(this.value)">
+        </div>
+
+        <div style="display: flex; justify-content: center; margin-top: 10px;">
+            <button class="btn-main" style="width: 100%;" onclick="UI.saveOptionsAndReturn()">CONFIRMER & RETOUR</button>
+        </div>
+    </div>
+</div>

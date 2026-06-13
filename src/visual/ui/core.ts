@@ -3,8 +3,8 @@ import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 
 export const UICore = {
-    // AJOUT DE 'forge' DANS LA LISTE DES ÉCRANS
-    screens: ['landing', 'mode', 'host', 'join', 'class', 'compendium', 'forge'], 
+    // AJOUT DE 'forge' ET 'options' DANS LA LISTE DES ÉCRANS
+    screens: ['landing', 'mode', 'host', 'join', 'class', 'compendium', 'forge', 'options'], 
     
     show: function(id) {
         // Cache tous les écrans
@@ -28,6 +28,21 @@ export const UICore = {
         // Hooks de mise à jour automatique
         if (id === 'compendium' && this.updateCompendium) this.updateCompendium(); 
         if (id === 'forge' && window.ForgeUI) window.ForgeUI.update();
+        if (id === 'options' && STATE.gameOptions) {
+            const setVal = (elId, valId, val) => {
+                const el = document.getElementById(elId);
+                const vel = document.getElementById(valId);
+                if (el) el.value = val;
+                if (vel) vel.innerText = val;
+            };
+            setVal('opt-hp', 'opt-val-hp', STATE.gameOptions.enemyHpMult);
+            setVal('opt-dmg', 'opt-val-dmg', STATE.gameOptions.enemyDmgMult);
+            setVal('opt-spawn', 'opt-val-spawn', STATE.gameOptions.enemySpawnRate);
+            setVal('opt-xp', 'opt-val-xp', STATE.gameOptions.xpMult);
+            setVal('opt-php', 'opt-val-php', STATE.gameOptions.playerHpMult);
+            setVal('opt-pdmg', 'opt-val-pdmg', STATE.gameOptions.playerDmgMult);
+            setVal('opt-lvl', 'opt-val-lvl', STATE.gameOptions.startLevel);
+        }
     },
 
     toast: function(msg) {
@@ -43,7 +58,30 @@ export const UICore = {
     goToLobbyHost: () => { if(window.UI) { window.UI.show('host'); if(window.Network) window.Network.initHost(); } },
     goToLobbyJoin: () => { if(window.UI) window.UI.show('join'); },
     goToCompendium: () => { if(window.UI) window.UI.show('compendium'); }, 
+    goToOptions: () => { if(window.UI) window.UI.show('options'); },
     backToLanding: () => { if(window.UI) window.UI.show('landing'); },
+    
+    saveOptionsAndReturn: function() {
+        if (!STATE.gameOptions) STATE.gameOptions = {};
+        
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            return el ? parseFloat(el.value) : 1.0;
+        };
+        
+        STATE.gameOptions.enemyHpMult = getVal('opt-hp');
+        STATE.gameOptions.enemyDmgMult = getVal('opt-dmg');
+        STATE.gameOptions.enemySpawnRate = getVal('opt-spawn');
+        STATE.gameOptions.xpMult = getVal('opt-xp');
+        STATE.gameOptions.playerHpMult = getVal('opt-php');
+        STATE.gameOptions.playerDmgMult = getVal('opt-pdmg');
+        
+        const lvlEl = document.getElementById('opt-lvl');
+        STATE.gameOptions.startLevel = lvlEl ? parseInt(lvlEl.value) : 1;
+        
+        this.toast("Options sauvegardées !");
+        this.show('class');
+    },
     
     updateHUD: function() {
         const p = Globals.player;
@@ -109,20 +147,24 @@ export const UICore = {
         if (window.SkillTree?.render) window.SkillTree.render();
         // AudioSys access via global or import needed if used here, removed for modularity simplicity or pass as dependency
         
-        // Gestion des boutons Start/Ready
+        // Gestion des boutons Start/Ready et Options
         const btnStart = document.getElementById('btn-start-game');
         const btnReady = document.getElementById('btn-ready-game');
+        const btnOptions = document.getElementById('btn-game-options');
         
         if (STATE.multiplayer.active) {
             if (STATE.multiplayer.isHost) {
                  if(btnStart) { btnStart.style.display = 'block'; btnStart.style.opacity = 1; btnStart.style.cursor = 'pointer'; btnStart.disabled = false; }
                  if(btnReady) btnReady.style.display = 'none';
+                 if(btnOptions) btnOptions.style.display = 'flex';
             } else {
                  if(btnReady) { btnReady.style.display = 'block'; btnReady.style.opacity = 1; btnReady.style.cursor = 'pointer'; btnReady.disabled = false; }
                  if(btnStart) btnStart.style.display = 'none';
+                 if(btnOptions) btnOptions.style.display = 'none';
             }
         } else {
              if(btnStart) { btnStart.style.display = 'block'; btnStart.style.opacity = 1; btnStart.style.cursor = 'pointer'; btnStart.disabled = false; }
+             if(btnOptions) btnOptions.style.display = 'flex';
         }
     }
 };

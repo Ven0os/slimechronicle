@@ -131,6 +131,10 @@ export function spawnRunePuzzle(manager, pos) {
         }
     };
 
+    puzzle.userData.cleanup = () => {
+        EventUtils.disposeGroup(puzzle);
+    };
+
     Globals.scene.add(puzzle);
     manager.interactables.push(puzzle);
     UI.toast("Des Runes Anciennes s'allument...");

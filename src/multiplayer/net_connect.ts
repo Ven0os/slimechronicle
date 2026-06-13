@@ -65,6 +65,9 @@ export const NetConnect = {
         conn.on('data', (data) => {
              handleNetworkMessage(data); 
              if(data.type === 'game-start-signal') {
+                 if (data.gameOptions) {
+                     STATE.gameOptions = data.gameOptions;
+                 }
                  // SYNC MAP
                  if (data.mapData) {
                      console.log("Reçu données de map, reconstruction...");

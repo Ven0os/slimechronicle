@@ -445,6 +445,17 @@ export const ElementalPillarsLogic = {
             }
         };
 
+        group.userData.cleanup = () => {
+            if (tooltip && tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+            if (window._pillarsMouseListenerRef) {
+                window.removeEventListener('mousedown', window._pillarsMouseListenerRef);
+                window._pillarsMouseListenerRef = null;
+            }
+            EventUtils.disposeGroup(group);
+        };
+
         Globals.scene.add(group);
         manager.interactables.push(group);
         if(isHost) UI.toast("Les Gardiens sont liés...");

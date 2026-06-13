@@ -215,7 +215,8 @@ export const GameLogic = {
 
     gainXp: function(amount) {
         const mult = STATE.stats.xpMod || 1.0;
-        STATE.xp += amount * mult;
+        const xpMult = (STATE.gameOptions && STATE.gameOptions.xpMult !== undefined) ? STATE.gameOptions.xpMult : 1.0;
+        STATE.xp += amount * mult * xpMult;
 
         let leveled = false;
         while (STATE.xp >= STATE.xpToNext) {
@@ -625,6 +626,40 @@ export const GameLogic = {
         AudioSys.playBgm('explore'); 
 
         STATE.leftSafeZone = false;
+
+        // --- APPLIQUER LES CONFIGURATIONS DE JEU SUR LE JOUEUR ---
+        const hpMult = (STATE.gameOptions && STATE.gameOptions.playerHpMult !== undefined) ? STATE.gameOptions.playerHpMult : 1.0;
+        STATE.stats.maxHp = Math.round(100 * hpMult);
+        STATE.stats.hp = STATE.stats.maxHp;
+
+        const startLvl = (STATE.gameOptions && STATE.gameOptions.startLevel !== undefined) ? STATE.gameOptions.startLevel : 1;
+        STATE.level = startLvl;
+        STATE.xp = 0;
+        
+        // Calculer l'XP requis pour le niveau
+        const baseMobXp = 35 * (1 + STATE.level * 0.1);
+        const killsNeeded = 3 + Math.min(5, STATE.level * 0.25);
+        STATE.xpToNext = Math.floor(baseMobXp * killsNeeded);
+        
+        // Donner les points de compétences
+        STATE.skillPoints = STATE.level - 1;
+        STATE.unlockedNodes = [];
+        STATE.fragments = [];
+        STATE.enemiesKilled = 0;
+        STATE.bossSpawned = false;
+        STATE.isBossFight = false;
+
+        // Augmenter l'attaque/défense de départ selon le niveau de départ
+        STATE.stats.atk = 10;
+        STATE.stats.defense = 10;
+        for (let l = 1; l < STATE.level; l++) {
+            if (STATE.class === 'warrior') {
+                STATE.stats.defense += 2;
+            } else {
+                STATE.stats.atk += 2;
+            }
+        }
+
         const p = new Player(STATE.class);
         setPlayer(p);
         p.position.set(90, 0, 90);
@@ -729,7 +764,9 @@ GameActions.gainXp = GameLogic.gainXp.bind(GameLogic);
 
 export const GameLauncher = {
     launchHost: function () {
-        if (STATE.multiplayer.active && STATE.multiplayer.isHost) Network.send({ type: 'game-start-signal' });
+        if (STATE.multiplayer.active && STATE.multiplayer.isHost) {
+            Network.send({ type: 'game-start-signal', gameOptions: STATE.gameOptions });
+        }
         GameLogic.startGameLogic();
     },
     clientReady: function () {

@@ -208,7 +208,8 @@ function animate(): void {
     if (STATE.multiplayer.isHost) {
       Network.sendWorldState();
       enemySpawnTimer += dt * STATE.timeScale;
-      if (!STATE.bossSpawned && Globals.enemies.length < 15 && enemySpawnTimer > 9.0) {
+      const rate = STATE.gameOptions?.enemySpawnRate ?? 1.0;
+      if (!STATE.bossSpawned && Globals.enemies.length < 15 && enemySpawnTimer > (9.0 / rate)) {
         if (Globals.player && !isInSafeZone(Globals.player.position) && !isNoMobZone(Globals.player.position)) {
           GameLogic.spawnEnemy();
           enemySpawnTimer = 0;
@@ -217,7 +218,8 @@ function animate(): void {
     }
   } else if (!STATE.multiplayer.active && Globals.player && !Globals.player.dead) {
     enemySpawnTimer += dt * STATE.timeScale;
-    if (enemySpawnTimer > 9.0 && Globals.enemies.length < 30) {
+    const rate = STATE.gameOptions?.enemySpawnRate ?? 1.0;
+    if (enemySpawnTimer > (9.0 / rate) && Globals.enemies.length < 30) {
       if (!isInSafeZone(Globals.player.position) && !isNoMobZone(Globals.player.position)) {
         GameLogic.spawnEnemy();
       }

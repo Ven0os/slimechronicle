@@ -286,6 +286,10 @@ export const CrystalDefenseLogic = {
 
         defGroup.userData.setHP = (val) => { hp = val; };
 
+        defGroup.userData.cleanup = () => {
+            EventUtils.disposeGroup(defGroup);
+        };
+
         Globals.scene.add(defGroup);
         manager.interactables.push(defGroup);
         if(isHost) UI.toast("Alerte : Attaque sur le Noyau !");

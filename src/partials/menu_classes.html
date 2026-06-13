@@ -1,4 +1,4 @@
-﻿<!-- SÉLECTION DE CLASSE -->
+<!-- SÉLECTION DE CLASSE -->
 <div id="screen-class" class="menu-screen">
     <div class="destiny-page">
         <header class="destiny-hero">
@@ -312,8 +312,13 @@
 
         <footer class="destiny-footer">
             <div class="btn-group">
-                <button id="btn-start-game" class="btn-main" type="button" onclick="GameLauncher.launchHost()">Lancer l'expédition</button>
-                <button id="btn-ready-game" class="btn-main" type="button" onclick="GameLauncher.clientReady()">Prêt à combattre</button>
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <button id="btn-start-game" class="btn-main" type="button" onclick="GameLauncher.launchHost()" style="flex: 1; margin: 0;">Lancer l'expédition</button>
+                    <button id="btn-ready-game" class="btn-main" type="button" onclick="GameLauncher.clientReady()" style="flex: 1; margin: 0;">Prêt à combattre</button>
+                    <button id="btn-game-options" class="btn-secondary" type="button" onclick="UI.goToOptions()" title="Options de la partie" style="display: none; width: 50px; flex-shrink: 0; padding: 0; align-items: center; justify-content: center; height: 46px; margin: 0;">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
                 <button class="btn-secondary" type="button" onclick="UI.backToLanding()">Retour</button>
             </div>
         </footer>

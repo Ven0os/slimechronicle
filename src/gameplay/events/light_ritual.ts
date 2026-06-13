@@ -486,6 +486,20 @@ export const LightRitualLogic = {
             }
         };
 
+        group.userData.cleanup = () => {
+            if (GameActions.setAmbiance) {
+                GameActions.setAmbiance('normal');
+            }
+            if (lanterns) {
+                lanterns.forEach(l => {
+                    if (l.userData && l.userData.tooltip && l.userData.tooltip.parentNode) {
+                        l.userData.tooltip.parentNode.removeChild(l.userData.tooltip);
+                    }
+                });
+            }
+            EventUtils.disposeGroup(group);
+        };
+
         Globals.scene.add(group);
         manager.interactables.push(group);
         if(isHost) UI.toast("Une présence sombre approche...");

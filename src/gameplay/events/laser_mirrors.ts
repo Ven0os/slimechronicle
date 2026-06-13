@@ -625,6 +625,17 @@ export const LaserMirrorsLogic = {
             }
         };
 
+        group.userData.cleanup = () => {
+            if (tooltip && tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+            if (window._laserMouseListenerRef) {
+                window.removeEventListener('mousedown', window._laserMouseListenerRef);
+                window._laserMouseListenerRef = null;
+            }
+            EventUtils.disposeGroup(group);
+        };
+
         Globals.scene.add(group);
         manager.interactables.push(group);
         if(isHost) UI.toast("Système de Réflexion Activé !");

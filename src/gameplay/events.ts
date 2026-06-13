@@ -47,6 +47,13 @@ export const WorldEvents = {
     },
 
     removeEvent: function(obj, label) {
+        if (obj && obj.userData && typeof obj.userData.cleanup === 'function') {
+            try {
+                obj.userData.cleanup();
+            } catch(e) {
+                console.error("Error cleaning up event:", e);
+            }
+        }
         Globals.scene.remove(obj);
         if (label) label.remove();
         this.interactables = this.interactables.filter(i => i !== obj);

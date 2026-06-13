@@ -651,6 +651,27 @@ export const GliderRunLogic = {
             playerRef = null;
         };
 
+        group.userData.cleanup = () => {
+            if (isGliding || isLaunching || isLanding || isFinishing || playerRef) {
+                if (typeof GliderRunLogic.finish === 'function') {
+                    try { GliderRunLogic.finish(false); } catch(e) {}
+                }
+            }
+            if (tooltip && tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+            if (hud && hud.parentNode) {
+                hud.parentNode.removeChild(hud);
+            }
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('keyup', onKeyUp);
+            if (rings) {
+                rings.forEach(r => Globals.scene.remove(r));
+                rings = [];
+            }
+            EventUtils.disposeGroup(group);
+        };
+
         Globals.scene.add(group);
         manager.interactables.push(group);
         if(isHost) UI.toast("Tour de Guet repérée !");

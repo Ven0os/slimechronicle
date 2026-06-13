@@ -29,7 +29,8 @@ export class BaseEnemy extends THREE.Group {
         this.type = type;
         this.netId = id || ('net_enemy_' + (enemyIdCounter++) + '_' + Math.random());
         
-        this.hp = 60 + (STATE.level * 12);
+        const hpMult = (STATE.gameOptions && STATE.gameOptions.enemyHpMult !== undefined) ? STATE.gameOptions.enemyHpMult : 1.0;
+        this.hp = Math.round((60 + (STATE.level * 12)) * hpMult);
         this.maxHp = this.hp;
         this.barrierHp = 0;
         this.maxBarrierHp = 0;

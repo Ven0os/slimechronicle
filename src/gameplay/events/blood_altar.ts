@@ -102,6 +102,10 @@ export function spawnBloodAltar(manager, pos, netId = null) {
         UI.toast("Le pacte est scellé.");
     };
 
+    altarGroup.userData.cleanup = () => {
+        EventUtils.disposeGroup(altarGroup);
+    };
+
     Globals.scene.add(altarGroup);
     manager.interactables.push(altarGroup);
     if(isHost) UI.toast("Un Autel de Sang émerge !");

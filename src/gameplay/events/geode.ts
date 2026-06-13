@@ -95,6 +95,10 @@ export const GeodeLogic = {
             GeodeLogic.handleGeodeHit(manager, geode, core, label, eventId);
         };
 
+        geode.userData.cleanup = () => {
+            EventUtils.disposeGroup(geode);
+        };
+
         Globals.scene.add(geode);
         manager.interactables.push(geode);
         if(isHost) UI.toast("Une Géode Instable est apparue !");

@@ -5,6 +5,27 @@ import { Network } from '@/multiplayer/network';
 import { isValidEventPos } from '../world/worldZones';
 
 export const EventUtils = {
+    // Libération propre des ressources Three.js pour éviter les fuites mémoire
+    disposeGroup: function(group) {
+        if (!group) return;
+        group.traverse((child) => {
+            if (child.isMesh || child.isLine || child.isPoints) {
+                if (child.geometry) {
+                    try { child.geometry.dispose(); } catch(e) {}
+                }
+                if (child.material) {
+                    try {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach((mat) => mat.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    } catch(e) {}
+                }
+            }
+        });
+    },
+
     // Génère un ID unique pour le réseau
     generateNetId: function() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);

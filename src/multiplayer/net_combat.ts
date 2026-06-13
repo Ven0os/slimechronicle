@@ -90,6 +90,9 @@ export function damagePlayersInBeam(origin, dir, length, amount, dotThreshold = 
  */
 export function damagePlayer(player, amount, opts = {}) {
     if (!player || player.dead || amount <= 0) return;
+    const dmgMult = (STATE.gameOptions && STATE.gameOptions.enemyDmgMult !== undefined) ? STATE.gameOptions.enemyDmgMult : 1.0;
+    amount *= dmgMult;
+
     if (isVisualOnlyMode()) return;
     if (!isServerAuthority()) return;
 

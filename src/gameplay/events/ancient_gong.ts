@@ -91,6 +91,10 @@ export const AncientGongLogic = {
             }
         };
 
+        group.userData.cleanup = () => {
+            EventUtils.disposeGroup(group);
+        };
+
         Globals.scene.add(group);
         manager.interactables.push(group);
         if(isHost) UI.toast("Un Gong Ancestral résonne...");

@@ -93,6 +93,8 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
 
     let scaled = baseDmg;
+    const playerDmgMult = (STATE.gameOptions && STATE.gameOptions.playerDmgMult !== undefined) ? STATE.gameOptions.playerDmgMult : 1.0;
+    scaled *= playerDmgMult;
 
 
 
