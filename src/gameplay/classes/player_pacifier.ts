@@ -12,6 +12,7 @@ import { UI } from '../../visual/ui';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
 import { NetClassState } from '../../multiplayer/net_class_state';
+import { getGroundLevelAt } from '../world/worldZones';
 
 export class Pacifier extends PlayerBase {
     // ... (Début inchangé) ...
@@ -400,7 +401,7 @@ export class Pacifier extends PlayerBase {
             const dx = targetPos.x - 90;
             const dz = targetPos.z - 90;
             const targetDist = Math.hypot(dx, dz);
-            targetPos.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : 0.0;
+            targetPos.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : getGroundLevelAt(targetPos);
             
             const startPos = this.position.clone();
             createSkillVisual('explosion', this.position, 1, 0x000000); 

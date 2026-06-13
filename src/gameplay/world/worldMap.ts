@@ -9,22 +9,187 @@ import { SafeZoneHub } from '@/visual/ui/safeZoneHub';
 export function createThemedWorldMap(): void {
   const y = 0.04;
 
-  // Zone Boss
-  const bossPatch = new THREE.Mesh(
-    new THREE.CircleGeometry(BOSS_ZONE.radius, 40),
-    new THREE.MeshBasicMaterial({ color: BOSS_ZONE.ground, transparent: true, opacity: 0.35, side: THREE.DoubleSide }),
-  );
-  bossPatch.rotation.x = -Math.PI / 2;
-  bossPatch.position.set(BOSS_ZONE.cx, y, BOSS_ZONE.cz);
-  Globals.scene.add(bossPatch);
+  // Sandstone and sand materials
+  const sandStoneMat = new THREE.MeshStandardMaterial({
+    color: 0xc4a47a, // Desert sandstone gold-brown
+    roughness: 0.95,
+    metalness: 0.1,
+    flatShading: true
+  });
+  const sandMat = new THREE.MeshStandardMaterial({
+    color: 0xdfc593, // Sandy yellow
+    roughness: 1.0,
+    metalness: 0.0
+  });
 
-  const bossRing = new THREE.Mesh(
-    new THREE.RingGeometry(BOSS_ZONE.radius - 0.6, BOSS_ZONE.radius, 48),
-    new THREE.MeshBasicMaterial({ color: 0xe74c3c, transparent: true, opacity: 0.6, side: THREE.DoubleSide }),
-  );
-  bossRing.rotation.x = -Math.PI / 2;
-  bossRing.position.set(BOSS_ZONE.cx, y + 0.02, BOSS_ZONE.cz);
-  Globals.scene.add(bossRing);
+  if (!Globals.obstacles) Globals.obstacles = [];
+
+  // --- RUINED WALLS AND PILLARS BLOCKING ACCESS ---
+  // Entrance faces northeast (angle = Math.PI / 4) towards the island center
+  const entryAngle = Math.PI / 4;
+  const numWallSteps = 24;
+  for (let i = 0; i < numWallSteps; i++) {
+    const angle = (i / numWallSteps) * Math.PI * 2;
+    let diff = Math.abs(angle - entryAngle);
+    if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+    const px = Math.cos(angle) * BOSS_ZONE.radius;
+    const pz = Math.sin(angle) * BOSS_ZONE.radius;
+
+    if (diff < 0.45) {
+      // Entrance opening (17 units wide gateway).
+      // Place gateway pillars to frame the entrance
+      if (Math.abs(diff - 0.4) < 0.05) {
+        const gatePillar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 3.2, 6), sandStoneMat);
+        gatePillar.position.set(BOSS_ZONE.cx + px, 1.6, BOSS_ZONE.cz + pz);
+        gatePillar.rotation.y = angle;
+        Globals.scene.add(gatePillar);
+
+        // Gateway column glow indicator (replaces original red crystal indicator)
+        const gMat = new THREE.MeshStandardMaterial({
+          color: 0xff3333,
+          emissive: 0xff0000,
+          emissiveIntensity: 1.5,
+          roughness: 0.2
+        });
+        const gCrystal = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 5), gMat);
+        gCrystal.position.set(BOSS_ZONE.cx + px, 3.2 + 0.3, BOSS_ZONE.cz + pz);
+        Globals.scene.add(gCrystal);
+        
+        Globals.obstacles.push({
+          position: new THREE.Vector3(BOSS_ZONE.cx + px, 0, BOSS_ZONE.cz + pz),
+          radius: 1.0,
+          isPersistent: true
+        });
+      }
+      continue;
+    }
+
+    // Outer wall or pillar segment blocking access
+    const segmentGroup = new THREE.Group();
+    segmentGroup.position.set(BOSS_ZONE.cx + px, 0, BOSS_ZONE.cz + pz);
+
+    // Physics obstacle to block the player/monsters
+    Globals.obstacles.push({
+      position: new THREE.Vector3(BOSS_ZONE.cx + px, 0, BOSS_ZONE.cz + pz),
+      radius: 1.6,
+      isPersistent: true
+    });
+
+    const rand = Math.random();
+    if (rand < 0.5) {
+      // Sandbox ruined wall segment
+      const wallHeight = 1.8 + Math.random() * 2.2;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(4.5, wallHeight, 1.2), sandStoneMat);
+      wall.position.y = wallHeight / 2;
+      wall.rotation.y = angle + Math.PI / 2;
+      wall.rotation.z = (Math.random() - 0.5) * 0.15; // Ruined tilt
+      segmentGroup.add(wall);
+
+      // Sand drift pile climbing the base
+      const sandPile = new THREE.Mesh(new THREE.ConeGeometry(2.2, 0.8, 8), sandMat);
+      sandPile.position.set(0, 0.4, 0);
+      sandPile.scale.set(1.5, 1.0, 1.0);
+      sandPile.rotation.y = angle + Math.PI / 2;
+      segmentGroup.add(sandPile);
+    } else if (rand < 0.85) {
+      // Ruined sandstone column
+      const colHeight = 2.0 + Math.random() * 3.0;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, colHeight, 6), sandStoneMat);
+      col.position.y = colHeight / 2;
+      col.rotation.x = (Math.random() - 0.5) * 0.2;
+      col.rotation.z = (Math.random() - 0.5) * 0.2;
+      segmentGroup.add(col);
+
+      // Sand heap
+      const sandPile = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.7, 8), sandMat);
+      sandPile.position.set(0, 0.35, 0);
+      segmentGroup.add(sandPile);
+    } else {
+      // Collapsed blocks pile
+      const blockCount = 2 + Math.floor(Math.random() * 3);
+      for (let b = 0; b < blockCount; b++) {
+        const block = new THREE.Mesh(new THREE.BoxGeometry(1.0 + Math.random(), 0.8, 1.0), sandStoneMat);
+        block.position.set(
+          (Math.random() - 0.5) * 1.5,
+          0.4,
+          (Math.random() - 0.5) * 1.5
+        );
+        block.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        segmentGroup.add(block);
+      }
+      // Cover with a large sand pile
+      const sandPile = new THREE.Mesh(new THREE.ConeGeometry(2.4, 0.6, 8), sandMat);
+      sandPile.position.set(0, 0.3, 0);
+      segmentGroup.add(sandPile);
+    }
+
+    Globals.scene.add(segmentGroup);
+  }
+
+  // --- RUINED SAND-COVERED THRONE ---
+  // Positioned at the back (southwest side: angle = 5 * PI / 4)
+  const tx = Math.cos(5 * Math.PI / 4) * (BOSS_ZONE.radius - 3.5);
+  const tz = Math.sin(5 * Math.PI / 4) * (BOSS_ZONE.radius - 3.5);
+
+  const throneGroup = new THREE.Group();
+  throneGroup.position.set(BOSS_ZONE.cx + tx, 0, BOSS_ZONE.cz + tz);
+  throneGroup.rotation.y = 5 * Math.PI / 4 + Math.PI - Math.PI / 2; // Face entrance, rotated 90 degrees right
+  throneGroup.scale.set(1.5, 1.5, 1.5); // 50% larger size
+
+  // Throne Base platform
+  const baseBox = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.5, 4.0), sandStoneMat);
+  baseBox.position.y = 0.25;
+  throneGroup.add(baseBox);
+
+  // Seat
+  const seatBox = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.8, 2.6), sandStoneMat);
+  seatBox.position.set(0, 0.9, 0.2);
+  throneGroup.add(seatBox);
+
+  // Ruined backrest with cracked top
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.2, 2.6), sandStoneMat);
+  backrest.position.set(-1.1, 2.2, 0.2);
+  backrest.rotation.z = -0.06;
+  backrest.rotation.y = 0.05;
+  throneGroup.add(backrest);
+
+  // Left armrest (intact)
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.5), sandStoneMat);
+  armL.position.set(0.2, 1.4, 1.25);
+  throneGroup.add(armL);
+
+  // Right armrest (broken and fallen)
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.5), sandStoneMat);
+  armR.position.set(0.6, 0.45, -1.35); // Tipped over next to base
+  armR.rotation.set(0.4, 0.2, -0.6);
+  throneGroup.add(armR);
+
+  // Sand drifts covering the throne (desert flavor integration)
+  const throneSand1 = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.45, 8), sandMat);
+  throneSand1.position.set(0.2, 1.4, 0.2); // Sand pile on seat
+  throneGroup.add(throneSand1);
+
+  const throneSand2 = new THREE.Mesh(new THREE.ConeGeometry(2.2, 0.6, 8), sandMat);
+  throneSand2.position.set(1.2, 0.4, 1.0); // Sand climbing base
+  throneGroup.add(throneSand2);
+
+  const throneSand3 = new THREE.Mesh(new THREE.ConeGeometry(1.8, 0.5, 8), sandMat);
+  throneSand3.position.set(-0.8, 0.4, -1.0);
+  throneGroup.add(throneSand3);
+
+  Globals.scene.add(throneGroup);
+
+  // Add physical obstacle for the throne
+  Globals.obstacles.push({
+    position: new THREE.Vector3(BOSS_ZONE.cx + tx, 0, BOSS_ZONE.cz + tz),
+    radius: 3.6, // Enlarger radius to match 1.5 scale
+    isPersistent: true
+  });
 
   // --- SPAWN PLATFORM 3D CLIFF (FALAISE) ---
   const caveGroup = new THREE.Group();
@@ -73,12 +238,6 @@ export function createThemedWorldMap(): void {
     rockMesh.rotation.set(Math.random() * 0.4, angle, Math.random() * 0.4);
     caveGroup.add(rockMesh);
 
-    // Ajouter une collision physique active pour la roche du spawn
-    Globals.obstacles.push({
-      position: new THREE.Vector3(90 + rx, 0, 90 + rz),
-      radius: s * 0.75,
-      isPersistent: true
-    });
   }
 
   // --- DÉCORATIONS DU SPAWN (LIVELY SANCTUARY) ---

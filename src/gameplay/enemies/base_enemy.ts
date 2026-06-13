@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import { Globals, removeEnemy, GameActions } from '../../core/globals';
-import { pushOutOfSafeZone, BOSS_ZONE, pushOutOfCircle } from '../world/worldZones';
+import { pushOutOfSafeZone, BOSS_ZONE, pushOutOfCircle, getGroundLevelAt, getPlayableRadiusAt } from '../world/worldZones';
 import { STATE, CONFIG } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual } from '../../visual/effects';
@@ -65,7 +65,7 @@ export class BaseEnemy extends THREE.Group {
         this.activeTelegraphs = [];
         
         this.position.copy(position);
-        this.position.y = 0;
+        this.position.y = getGroundLevelAt(this.position);
         this.mesh = null;
         this.flashTimeout = null;
         this.displayHp = this.hp;
@@ -153,7 +153,7 @@ export class BaseEnemy extends THREE.Group {
                 this.airVelocityY = 0;
             }
         }
-        this.position.y = this.airY;
+        this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
 
         // Smooth knockback updates
         this.knockback = this.knockback || new THREE.Vector3();
@@ -339,7 +339,7 @@ export class BaseEnemy extends THREE.Group {
         }
         
         // Ensure position Y is updated
-        this.position.y = this.airY;
+        this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
     }
 
     updateAnim(dt) {
@@ -349,10 +349,48 @@ export class BaseEnemy extends THREE.Group {
     }
 
     resolveCollisions() {
-        const mapSize = 98;
-        this.position.x = Math.max(-mapSize, Math.min(mapSize, this.position.x));
-        this.position.z = Math.max(-mapSize, Math.min(mapSize, this.position.z));
-        this.position.y = this.airY || 0;
+        const dist = Math.hypot(this.position.x, this.position.z);
+        const maxR = getPlayableRadiusAt(this.position.x, this.position.z);
+        
+        // Si l'ennemi est en dehors de la zone de l'île principale
+        if (dist > maxR) {
+            const distToSpawn = Math.hypot(this.position.x - 90, this.position.z - 90);
+            const distToBoss = Math.hypot(this.position.x - BOSS_ZONE.cx, this.position.z - BOSS_ZONE.cz);
+            
+            // Et qu'il est en dehors de la zone du spawn (rayon 30) ET de la zone du boss (rayon 30)
+            if (distToSpawn > 30 && distToBoss > 30) {
+                // On pousse l'ennemi vers la zone autorisée la plus proche (spawn, boss ou île)
+                const spawnDx = this.position.x - 90;
+                const spawnDz = this.position.z - 90;
+                const spawnClampX = 90 + (spawnDx / distToSpawn) * 30;
+                const spawnClampZ = 90 + (spawnDz / distToSpawn) * 30;
+                
+                const bossDx = this.position.x - BOSS_ZONE.cx;
+                const bossDz = this.position.z - BOSS_ZONE.cz;
+                const bossClampX = BOSS_ZONE.cx + (bossDx / distToBoss) * 30;
+                const bossClampZ = BOSS_ZONE.cz + (bossDz / distToBoss) * 30;
+                
+                const islandClampX = (this.position.x / dist) * maxR;
+                const islandClampZ = (this.position.z / dist) * maxR;
+                
+                const distToSpawnClamp = Math.hypot(this.position.x - spawnClampX, this.position.z - spawnClampZ);
+                const distToBossClamp = Math.hypot(this.position.x - bossClampX, this.position.z - bossClampZ);
+                const distToIslandClamp = Math.hypot(this.position.x - islandClampX, this.position.z - islandClampZ);
+                
+                const minDist = Math.min(distToSpawnClamp, distToBossClamp, distToIslandClamp);
+                if (minDist === distToSpawnClamp) {
+                    this.position.x = spawnClampX;
+                    this.position.z = spawnClampZ;
+                } else if (minDist === distToBossClamp) {
+                    this.position.x = bossClampX;
+                    this.position.z = bossClampZ;
+                } else {
+                    this.position.x = islandClampX;
+                    this.position.z = islandClampZ;
+                }
+            }
+        }
+        this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
 
         if (Globals.enemies) {
             for (const other of Globals.enemies) {
@@ -367,7 +405,7 @@ export class BaseEnemy extends THREE.Group {
                 }
             }
         }
-        this.position.y = this.airY || 0;
+        this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
     }
 
     pushBack(forceOrPos, strength) {

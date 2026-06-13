@@ -9,7 +9,7 @@ import { Enemy } from './enemy';
 import { createDamageText } from '../visual/effects';
 import { createAltars } from './environment';
 import { ConstellationEngine } from '@/systems/constellationEngine';
-import { pickMobSpawnType, randomWildSpawnPos, BOSS_ZONE } from './world/worldZones';
+import { pickMobSpawnType, randomWildSpawnPos, BOSS_ZONE, getRegionAt, getGroundLevelAt } from './world/worldZones';
 
 const MINI_BOSS_SPAWN_CHANCE = 0.03;
 
@@ -26,7 +26,7 @@ export function spawnRogueTent(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Canvas Cover (Cone)
     const coverGeo = new THREE.ConeGeometry(1.6, 2.0, 5);
@@ -253,7 +253,7 @@ export function spawnArcanePortal(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Runic Base (Dark stone cylinder)
     const baseGeo = new THREE.CylinderGeometry(1.3, 1.4, 0.15, 8);
@@ -364,7 +364,7 @@ export function spawnSpikedBarricade(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3c, roughness: 0.9 });
     const spikeMat = new THREE.MeshStandardMaterial({ color: 0x423429, roughness: 0.8 });
@@ -444,7 +444,7 @@ export function spawnCorruptedObelisk(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Corruption Pool (Flat ring)
     const poolGeo = new THREE.RingGeometry(0.01, 1.8, 16);
@@ -541,7 +541,7 @@ export function spawnTreasureOutpost(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // 1. Treasure Chest
     const chestGroup = new THREE.Group();
@@ -645,7 +645,7 @@ export function spawnShamanRitualCircle(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Central cauldron
     const cauldronGroup = new THREE.Group();
@@ -762,7 +762,7 @@ export function spawnCursedCrypt(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Stone Slab Base
     const baseGeo = new THREE.BoxGeometry(2.0, 0.15, 1.4);
@@ -855,7 +855,7 @@ export function spawnDruidShrine(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Mossy Stone Slab
     const baseGeo = new THREE.CylinderGeometry(1.5, 1.6, 0.2, 8);
@@ -944,7 +944,7 @@ export function spawnVolcanicForge(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Dark Basalt base slab
     const baseGeo = new THREE.CylinderGeometry(1.4, 1.5, 0.2, 8);
@@ -1051,7 +1051,7 @@ export function spawnFrozenSpire(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Snowy/Ice Base Slab
     const baseGeo = new THREE.CylinderGeometry(1.3, 1.4, 0.15, 8);
@@ -1131,7 +1131,7 @@ export function spawnAncientRuins(pos, isPreview = false) {
     if (!isPreview && !Globals.scene) return null;
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0;
+    group.position.y = getGroundLevelAt(pos);
 
     // Weathered Sand/Stone Base
     const baseGeo = new THREE.CylinderGeometry(1.4, 1.5, 0.15, 8);
@@ -1588,6 +1588,29 @@ export const GameLogic = {
             attempts++;
 
             // Distance to player check
+            const biome = getRegionAt(candidate.x, candidate.z);
+            let allowed = false;
+            const bType = variant.buildingType;
+            if (bType === 'frozen') {
+                allowed = (biome === 'cold');
+            } else if (bType === 'forge') {
+                allowed = (biome === 'desert' || biome === 'mountain');
+            } else if (bType === 'crypt' || bType === 'obelisk' || bType === 'ritual') {
+                allowed = (biome === 'mountain' || biome === 'cold');
+            } else {
+                allowed = (biome === 'temperate');
+            }
+
+            if (!allowed && attempts < 40) {
+                continue;
+            }
+
+            // Eviter de spawn trop près du boss zone (distance < 55) pour ne pas perturber le combat de boss
+            const distToBoss = Math.hypot(candidate.x - BOSS_ZONE.cx, candidate.z - BOSS_ZONE.cz);
+            if (distToBoss < 55) {
+                continue;
+            }
+
             if (Globals.player) {
                 if (candidate.distanceTo(Globals.player.position) < minDistanceToPlayer) {
                     continue;
@@ -1768,7 +1791,6 @@ export const GameLogic = {
         setTimeout(() => {
             if (Globals.player) {
                 Globals.player.respawn();
-                Globals.player.position.set(0, 0, 0);
                 STATE.leftSafeZone = false;
             }
 

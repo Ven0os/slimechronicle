@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Globals } from '../core/globals';
 import { STATE } from '../core/config';
+import { getGroundLevelAt } from '../gameplay/world/worldZones';
 
 let floatingTexts = [];
 
@@ -124,7 +125,7 @@ export function spawnParticles(pos, color, count, sizeMult = 1.0) {
 export function createTelegraph(pos, shape, size, duration, color, onComplete, rotationY = 0, isRemote = false) {
     const group = new THREE.Group();
     group.position.copy(pos);
-    group.position.y = 0.05; // Slightly above ground
+    group.position.y = getGroundLevelAt(pos) + 0.05; // Slightly above dynamic ground level
     
     // Set the group's rotation. Since rotationY is Math.atan2(dir.x, dir.z),
     // rotating around Y aligns the local Z axis with the target direction.

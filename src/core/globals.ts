@@ -18,6 +18,7 @@ export const Globals = {
     dirLight: null,
     obstacles: [],
     safeHubMarker: null,
+    water: null,
 };
 
 // Actions du jeu exposées pour éviter les dépendances circulaires

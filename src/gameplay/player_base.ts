@@ -10,7 +10,7 @@ import { NetSkills } from '../multiplayer/net_skills';
 import { isServerAuthority } from '../multiplayer/net_combat';
 import { dealDamageToEnemy } from './combat/damage_helpers';
 import { ConstellationEngine } from '@/systems/constellationEngine';
-import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt } from './world/worldZones';
+import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt, getPlayableRadiusAt, BOSS_ZONE } from './world/worldZones';
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
 import { BuffBar } from '@/ui/buffBar'; 
 
@@ -504,11 +504,49 @@ export class PlayerBase extends THREE.Group {
             }
         }
 
-        const mapSize = 98; 
-        if (this.position.x < -mapSize) this.position.x = -mapSize;
-        if (this.position.x > mapSize) this.position.x = mapSize;
-        if (this.position.z < -mapSize) this.position.z = -mapSize;
-        if (this.position.z > mapSize) this.position.z = mapSize;
+        if (STATE.leftSafeZone) {
+            const dist = Math.hypot(this.position.x, this.position.z);
+            const maxR = getPlayableRadiusAt(this.position.x, this.position.z);
+            
+            // Si le joueur est en dehors de la zone de l'île principale
+            if (dist > maxR) {
+                const distToSpawn = Math.hypot(this.position.x - 90, this.position.z - 90);
+                const distToBoss = Math.hypot(this.position.x - BOSS_ZONE.cx, this.position.z - BOSS_ZONE.cz);
+                
+                // Et qu'il est en dehors de la zone du spawn (rayon 30) ET de la zone du boss (rayon 30)
+                if (distToSpawn > 30 && distToBoss > 30) {
+                    // On pousse le joueur vers la zone autorisée la plus proche (spawn, boss ou île)
+                    const spawnDx = this.position.x - 90;
+                    const spawnDz = this.position.z - 90;
+                    const spawnClampX = 90 + (spawnDx / distToSpawn) * 30;
+                    const spawnClampZ = 90 + (spawnDz / distToSpawn) * 30;
+                    
+                    const bossDx = this.position.x - BOSS_ZONE.cx;
+                    const bossDz = this.position.z - BOSS_ZONE.cz;
+                    const bossClampX = BOSS_ZONE.cx + (bossDx / distToBoss) * 30;
+                    const bossClampZ = BOSS_ZONE.cz + (bossDz / distToBoss) * 30;
+                    
+                    const islandClampX = (this.position.x / dist) * maxR;
+                    const islandClampZ = (this.position.z / dist) * maxR;
+                    
+                    const distToSpawnClamp = Math.hypot(this.position.x - spawnClampX, this.position.z - spawnClampZ);
+                    const distToBossClamp = Math.hypot(this.position.x - bossClampX, this.position.z - bossClampZ);
+                    const distToIslandClamp = Math.hypot(this.position.x - islandClampX, this.position.z - islandClampZ);
+                    
+                    const minDist = Math.min(distToSpawnClamp, distToBossClamp, distToIslandClamp);
+                    if (minDist === distToSpawnClamp) {
+                        this.position.x = spawnClampX;
+                        this.position.z = spawnClampZ;
+                    } else if (minDist === distToBossClamp) {
+                        this.position.x = bossClampX;
+                        this.position.z = bossClampZ;
+                    } else {
+                        this.position.x = islandClampX;
+                        this.position.z = islandClampZ;
+                    }
+                }
+            }
+        }
 
         if (Globals.obstacles) {
             for (const obs of Globals.obstacles) {

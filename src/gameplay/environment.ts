@@ -10,7 +10,7 @@ import { createRuinsModel } from './environment/ruinsModel';
 import { createCliffModel } from './environment/cliffModel';
 
 import * as THREE from 'three';
-import { BOSS_ZONE } from './world/worldZones';
+import { BOSS_ZONE, getRegionAt, getGroundLevelAt } from './world/worldZones';
 
 const animatedObjects = []; 
 
@@ -70,54 +70,6 @@ export function createBoundaries() {
     const w4 = new THREE.Mesh(wallGeo, wallMat); w4.rotation.y = Math.PI/2; w4.position.set(-100, wallHeight/2, 0); Globals.scene.add(w4);
 
     if (!Globals.obstacles) Globals.obstacles = [];
-
-    // 2. FALAISE VISUELLE
-    const cliffColor = currentSeasonPalette.cliff;
-
-    const placeCliff = (x, z, rotationY) => {
-        // Ne pas faire spawner de falaises près de la plateforme de spawn (coin en haut à droite)
-        if (x > 70 && z > 70) return;
-
-        const s = 6 + Math.random() * 2;
-        const cliff = createCliffModel(s, cliffColor);
-        
-        // Positionnement visuel
-        cliff.position.set(x, s * 0.5, z);
-        cliff.rotation.y = rotationY + (Math.random() - 0.5) * 0.5;
-        cliff.rotation.z = (Math.random() - 0.5) * 0.2;
-
-        Globals.scene.add(cliff);
-        
-        // --- COLLISION COMPOSITE (MUR) ---
-        // Le modèle cliff est large (Scale X ~ 2.5 * s).
-        // Au lieu d'un gros rond au milieu qui bloque trop loin ou laisse passer les bords,
-        // on place 3 cercles alignés pour faire un "mur".
-        
-        const width = s * 2.5; // Largeur approximative du modèle
-        const r = s * 0.6;     // Rayon de chaque sous-obstacle
-
-        // Cercle Central
-        addCompositeObstacle(x, z, cliff.rotation.y, 0, 0, r);
-        // Cercle Gauche
-        addCompositeObstacle(x, z, cliff.rotation.y, -width * 0.3, 0, r);
-        // Cercle Droit
-        addCompositeObstacle(x, z, cliff.rotation.y, width * 0.3, 0, r);
-    };
-
-    const range = 100;
-    const step = 12; // Assez serré pour que les modèles se chevauchent visuellement
-
-    // Placement sur les 4 côtés
-    for (let x = -range; x <= range; x += step) placeCliff(x, -range, 0); 
-    for (let x = -range; x <= range; x += step) placeCliff(x, range, Math.PI); 
-    for (let z = -range; z <= range; z += step) placeCliff(-range, z, -Math.PI/2); 
-    for (let z = -range; z <= range; z += step) placeCliff(range, z, Math.PI/2); 
-
-    // Coins Hermétiques
-    placeCliff(-range, -range, -Math.PI/4);
-    placeCliff(range, -range, Math.PI/4);
-    placeCliff(-range, range, -Math.PI*0.75);
-    placeCliff(range, range, Math.PI*0.75);
 }
 
 export function createAltars() {
@@ -216,27 +168,64 @@ export function createDecorations(importedData = null) {
 
     const spawnObject = (type, x, z, s, ry, subtype = null, color = null) => {
         let object3D;
+        const region = getRegionAt(x, z);
         
         // --- LOGIQUE SPAWN & COLLISION SPÉCIFIQUE ---
 
         if (type === 'tree') {
-            const treeType = subtype || (Math.random() > 0.7 ? (Math.random() > 0.5 ? 'oak' : 'dead') : 'pine');
-            const foliageCol = color || currentSeasonPalette.leaves[Math.floor(Math.random() * currentSeasonPalette.leaves.length)];
+            let treeType = subtype;
+            if (!treeType) {
+                if (region === 'cold') {
+                    treeType = 'pine';
+                } else if (region === 'desert') {
+                    treeType = 'dead';
+                } else if (region === 'mountain') {
+                    treeType = Math.random() > 0.4 ? 'dead' : 'pine';
+                } else { // temperate
+                    treeType = Math.random() > 0.7 ? (Math.random() > 0.5 ? 'oak' : 'dead') : 'pine';
+                }
+            }
+            
+            let foliageCol = color;
+            if (!foliageCol) {
+                if (region === 'cold') {
+                    foliageCol = Math.random() > 0.3 ? 0xffffff : 0xd6fafc; // Snowy white or icy blue
+                } else if (region === 'mountain') {
+                    foliageCol = 0x243242; // Dark slate grey-blue
+                } else if (region === 'desert') {
+                    foliageCol = 0x5D4037; // Dead dry branches
+                } else { // temperate
+                    foliageCol = currentSeasonPalette.leaves[Math.floor(Math.random() * currentSeasonPalette.leaves.length)];
+                }
+            }
             
             object3D = createTreeModel(s, treeType, foliageCol);
-            object3D.position.set(x, 0, z);
+            const groundY = getGroundLevelAt({ x, z });
+            object3D.position.set(x, groundY, z);
             object3D.rotation.y = ry;
             
             // Collision tronc simple
-            addCompositeObstacle(x, z, ry, 0, 0, 0.5 * s); // Rayon réduit pour coller au tronc
+            addCompositeObstacle(x, z, ry, 0, 0, 0.5 * s); 
             
             if(!subtype) subtype = treeType; 
             if(!color) color = foliageCol; 
         } 
         else if (type === 'rock') {
-            const rockCol = color || currentSeasonPalette.rock[Math.floor(Math.random() * currentSeasonPalette.rock.length)];
+            let rockCol = color;
+            if (!rockCol) {
+                if (region === 'cold') {
+                    rockCol = 0xb8cbd6; // Snowy/icy rock
+                } else if (region === 'mountain') {
+                    rockCol = 0x303841; // Dark basalt/granite rock
+                } else if (region === 'desert') {
+                    rockCol = 0xd38b5d; // Red sandstone
+                } else { // temperate
+                    rockCol = currentSeasonPalette.rock[Math.floor(Math.random() * currentSeasonPalette.rock.length)];
+                }
+            }
             object3D = createRockModel(s, rockCol);
-            object3D.position.set(x, s * 0.2, z);
+            const groundY = getGroundLevelAt({ x, z });
+            object3D.position.set(x, groundY + s * 0.2, z);
             object3D.rotation.set(ry, ry, ry);
             
             // Collision Rocher
@@ -245,9 +234,21 @@ export function createDecorations(importedData = null) {
             if(!color) color = rockCol;
         }
         else if (type === 'bush') {
-            const bushCol = color || currentSeasonPalette.leaves[Math.floor(Math.random() * currentSeasonPalette.leaves.length)];
+            let bushCol = color;
+            if (!bushCol) {
+                if (region === 'cold') {
+                    bushCol = 0xd5eef2; // Frosted bush
+                } else if (region === 'mountain') {
+                    bushCol = 0x2f3a46; // Dark rocky bush
+                } else if (region === 'desert') {
+                    bushCol = 0xccb27a; // Tumbleweed/dry shrub yellow
+                } else { // temperate
+                    bushCol = currentSeasonPalette.leaves[Math.floor(Math.random() * currentSeasonPalette.leaves.length)];
+                }
+            }
             object3D = createBushModel(s, bushCol);
-            object3D.position.set(x, 0, z);
+            const groundY = getGroundLevelAt({ x, z });
+            object3D.position.set(x, groundY, z);
             object3D.rotation.y = ry;
             // PAS DE COLLISION POUR LES BUISSONS (On marche dedans)
             
@@ -256,18 +257,15 @@ export function createDecorations(importedData = null) {
         else if (type === 'ruins') {
             const ruinsType = subtype || (Math.random() > 0.5 ? 'arch' : 'pillar');
             object3D = createRuinsModel(s, ruinsType);
-            object3D.position.set(x, 0, z);
+            const groundY = getGroundLevelAt({ x, z });
+            object3D.position.set(x, groundY, z);
             object3D.rotation.y = ry;
             
             // COLLISION COMPLEXE POUR LES RUINES
             if (ruinsType === 'arch') {
-                // L'arche a deux piliers espacés
-                // P1 env à -1*s, P2 env à +1*s
                 addCompositeObstacle(x, z, ry, -1.0 * s, 0, 0.6 * s);
                 addCompositeObstacle(x, z, ry,  1.0 * s, 0, 0.6 * s);
-                // Le centre est libre !
             } else {
-                // Pilier simple
                 addCompositeObstacle(x, z, ry, 0, 0, 0.8 * s);
             }
 
@@ -286,54 +284,86 @@ export function createDecorations(importedData = null) {
 
     if (isHost) {
         // --- GÉNÉRATION PROCÉDURALE ---
+        const isValidDecoPos = (x, z) => {
+            // Éviter la zone de spawn (rayon 25 autour de (90, 90))
+            const distToSpawn = Math.hypot(x - 90, z - 90);
+            if (distToSpawn < 25) return false;
+            
+            // Éviter la zone du boss (rayon 32 autour de BOSS_ZONE)
+            const distToBoss = Math.hypot(x - BOSS_ZONE.cx, z - BOSS_ZONE.cz);
+            if (distToBoss < 32) return false;
+            
+            // Éviter la mer (Y < -1.0)
+            const gl = getGroundLevelAt({ x, z });
+            if (gl < -1.0) return false;
+            
+            return true;
+        };
         
         // 1. Ruines
         for(let i=0; i<15; i++) {
             const x = (Math.random() - 0.5) * 160;
             const z = (Math.random() - 0.5) * 160;
-            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
-            if(x*x + z*z < 900) continue; 
+            if (!isValidDecoPos(x, z)) continue;
+            if (x*x + z*z < 900) continue; 
             const type = 'ruins'; 
             const s = 2 + Math.random();
             const ry = Math.random() * Math.PI * 2;
             const info = spawnObject(type, x, z, s, ry);
-            mapData.push({ type, x, z, s, ry, subtype: info.subtype });
+            if (info) mapData.push({ type, x, z, s, ry, subtype: info.subtype });
         }
 
         // 2. Arbres
         for(let i=0; i<60; i++) {
             const x = (Math.random() - 0.5) * 180;
             const z = (Math.random() - 0.5) * 180;
-            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
-            if(x*x + z*z < 600) continue; 
+            if (!isValidDecoPos(x, z)) continue;
+            if (x*x + z*z < 600) continue; 
+
+            // Moins d'arbres dans le désert
+            const region = getRegionAt(x, z);
+            if (region === 'desert' && Math.random() > 0.35) continue;
+
             const s = 1.0 + Math.random() * 1.0; 
             const ry = Math.random() * Math.PI * 2;
             const info = spawnObject('tree', x, z, s, ry);
-            mapData.push({ type: 'tree', x, z, s, ry, subtype: info.subtype, color: info.color });
+            if (info) mapData.push({ type: 'tree', x, z, s, ry, subtype: info.subtype, color: info.color });
         }
 
         // 3. Rochers
         for(let i=0; i<20; i++) {
             const x = (Math.random() - 0.5) * 170;
             const z = (Math.random() - 0.5) * 170;
-            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
-            if(x*x + z*z < 400) continue;
-            const s = 1 + Math.random() * 2; 
+            if (!isValidDecoPos(x, z)) continue;
+            if (x*x + z*z < 400) continue;
+
+            const region = getRegionAt(x, z);
+            // Rochers beaucoup plus grands dans la région montagneuse
+            let s = 1 + Math.random() * 2; 
+            if (region === 'mountain') {
+                s = 2.5 + Math.random() * 3.5;
+            }
+
             const ry = Math.random() * Math.PI;
             const info = spawnObject('rock', x, z, s, ry);
-            mapData.push({ type: 'rock', x, z, s, ry, color: info.color });
+            if (info) mapData.push({ type: 'rock', x, z, s, ry, color: info.color });
         }
 
         // 4. Buissons
         for(let i=0; i<80; i++) {
             const x = (Math.random() - 0.5) * 180;
             const z = (Math.random() - 0.5) * 180;
-            if (x > 70 && z > 70) continue; // Éviter la zone de spawn
-            if(x*x + z*z < 300) continue;
+            if (!isValidDecoPos(x, z)) continue;
+            if (x*x + z*z < 300) continue;
+
+            // Moins de buissons dans le désert et la zone froide
+            const region = getRegionAt(x, z);
+            if ((region === 'desert' || region === 'cold') && Math.random() > 0.4) continue;
+
             const s = 0.8 + Math.random();
             const ry = Math.random() * Math.PI * 2;
             const info = spawnObject('bush', x, z, s, ry);
-            mapData.push({ type: 'bush', x, z, s, ry, color: info.color });
+            if (info) mapData.push({ type: 'bush', x, z, s, ry, color: info.color });
         }
         Globals.mapData = mapData;
     } else {

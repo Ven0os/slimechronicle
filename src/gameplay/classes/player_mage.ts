@@ -9,6 +9,7 @@ import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
+import { getGroundLevelAt } from '../world/worldZones';
 
 export class Mage extends PlayerBase {
     constructor() {
@@ -508,7 +509,7 @@ export class Mage extends PlayerBase {
                 const dx = this.position.x - 90;
                 const dz = this.position.z - 90;
                 const targetDist = Math.hypot(dx, dz);
-                this.position.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : 0.0;
+                this.position.y = (targetDist < 12 && !STATE.leftSafeZone) ? 4.0 : getGroundLevelAt(this.position);
             }
 
             // Animation sur le mesh (Scale 0 -> 1)

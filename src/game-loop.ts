@@ -230,6 +230,9 @@ function animate(): void {
   }
 
   if (Globals.player) Globals.player.update(dt);
+  if (Globals.water) {
+    Globals.water.position.y = -1.8 + Math.sin(now * 0.001) * 0.05;
+  }
   GameLogic.checkBossVictory();
   GameLogic.updateActiveCamps(dt);
   updateTelegraphs(dt);
