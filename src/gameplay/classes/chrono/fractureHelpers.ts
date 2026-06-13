@@ -61,7 +61,7 @@ export function resetFractureDecayState(state: FractureDecayState): void {
   state.inactivityTime = 0;
 }
 
-/** Vitesse de décroissance en points/s (4 % du plafond actuel). */
+/** Vitesse de décroissance en points/s (9,32 % du plafond actuel). */
 export function getFractureDecayPerSecond(max = getMaxFracture()): number {
   return max * CHRONO_FRACTURE.decayPerSecondPct;
 }
@@ -77,8 +77,8 @@ export function isFractureDecaying(
 }
 
 /**
- * Décroissance Fracture fluide : 1 s d'inactivité, puis −4 % du plafond / s.
- * Équivalent à −2 % toutes les 0,5 s, appliqué frame par frame via dt.
+ * Décroissance Fracture fluide : 1 s d'inactivité, puis −9,32 % du plafond / s.
+ * Équivalent à ≈ −4,66 % toutes les 0,5 s, appliqué frame par frame via dt.
  */
 export function tickFractureDecay(
   gauge: number,
