@@ -66,18 +66,16 @@ export class Corrupted extends BaseEnemy {
 
 
 
-        this.isSpawning = true;
+        if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
+            this.isSpawning = true;
+            this.spawnTimer = 0;
+            if (this.mesh) this.mesh.scale.set(0, 0, 0);
 
-        this.spawnTimer = 0;
-
-        if (this.mesh) this.mesh.scale.set(0, 0, 0);
-
-
-
-        if (this.config.spawn?.sound && AudioSys.play) {
-
-            AudioSys.play(this.config.spawn.sound, 0.7);
-
+            if (this.config.spawn?.sound && AudioSys.play) {
+                AudioSys.play(this.config.spawn.sound, 0.7);
+            }
+        } else {
+            this.isSpawning = false;
         }
 
     }
@@ -142,7 +140,7 @@ export class Corrupted extends BaseEnemy {
 
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
 
-            if (!this.isAttacking && target) {
+            if (!this.isAttacking && !this.isChanneling && target) {
 
                 let moveDir = this.ai.update(dt, target);
                 moveDir = this.ai.applyMiniBossPursuit(moveDir);

@@ -27,10 +27,14 @@ export class Sentinel extends BaseEnemy {
         this.skills = new SentinelSkills(this);
 
         // --- ANIMATION D'APPARITION (Météore) ---
-        this.isSpawning = true;
-        this.spawnTimer = 0;
-        this.targetY = this.position.y;
-        this.position.y += 25; 
+        if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
+            this.isSpawning = true;
+            this.spawnTimer = 0;
+            this.targetY = this.position.y;
+            this.position.y += 25; 
+        } else {
+            this.isSpawning = false;
+        }
     }
 
     update(dt) {
@@ -61,7 +65,7 @@ export class Sentinel extends BaseEnemy {
         this.model.updateAnim(dt);
 
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
-            if (this.isAttacking) { } 
+            if (this.isAttacking || this.isChanneling) { } 
             else if (target) {
                 let moveDir = this.ai.update(dt, target);
                 moveDir = this.ai.applyMiniBossPursuit(moveDir);

@@ -38,7 +38,7 @@ export class RoyalGuard extends BaseEnemy {
         
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
             const target = this.getClosestTarget();
-            if (this.isAttacking) {
+            if (this.isAttacking || this.isChanneling) {
             } else if (target) {
                 let moveDir = this.ai.update(dt, target);
                 moveDir = this.ai.avoidance(moveDir);

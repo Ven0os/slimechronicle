@@ -5,7 +5,7 @@ import { STATE } from '@/core/config';
 import { AudioSys } from '@/core/ressources';
 import { createDamageText, spawnParticles, createTelegraph, createSkillVisual } from '@/visual/effects';
 import { Network } from '@/multiplayer/network';
-import { damagePlayer } from '@/multiplayer/net_combat';
+import { damagePlayer, getAllLivingPlayers } from '@/multiplayer/net_combat';
 import { Projectile } from '../../../entities';
 
 export class RogueSkills {
@@ -19,6 +19,7 @@ export class RogueSkills {
         
         if (dist < 2.2) this.attackStab(target);
         else if (dist > 7.0 && dist < 11.0 && Math.random() < 0.12) this.attackShadowStep(target);
+        else if (dist > 4.0 && dist < 8.0 && Math.random() < 0.16) this.attackToxicSmokeBomb(target);
         else if (dist > 5.0 && Math.random() < 0.05) this.attackFanOfKnives(target);
     }
 
@@ -75,17 +76,92 @@ export class RogueSkills {
                     emissiveIntensity: 3.0
                 });
                 
-                Globals.projectiles.push(new Projectile(
+                const proj = new Projectile(
                     daggerGeo, daggerMat, this.enemy.position.clone().add(new THREE.Vector3(0,1,0)), 
                     spreadDir, cfg.speed, cfg.damage, 'enemy', 0x39ff14, true 
-                ));
-                const proj = Globals.projectiles[Globals.projectiles.length - 1];
+                );
+
+                // Add premium kunai guard and ring to the thrown knife
+                const kunaiRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.04, 0.01, 3, 8),
+                    new THREE.MeshStandardMaterial({ color: 0xcca43b, metalness: 0.9, roughness: 0.2 })
+                );
+                kunaiRing.position.z = -0.25;
+                proj.mesh.add(kunaiRing);
+
+                const kunaiGuard = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.08, 0.015, 0.015),
+                    new THREE.MeshStandardMaterial({ color: 0xcca43b, metalness: 0.9, roughness: 0.2 })
+                );
+                kunaiGuard.position.z = -0.05;
+                proj.mesh.add(kunaiGuard);
+
                 proj.sourceEnemy = this.enemy;
                 proj.isRanged = true;
+                Globals.projectiles.push(proj);
             }
             setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 300);
         }, cfg.windup * 1000); 
         this.enemy.attackCooldown = cfg.cooldown; 
+    }
+
+    attackToxicSmokeBomb(target) {
+        this.enemy.isAttacking = true;
+        this.enemy.animState = 'windup_throw';
+        const cfg = {
+            damage: 6, // dot tick damage
+            radius: 4.5,
+            duration: 4.0,
+            cooldown: 6.0,
+            sound: 'warlock_curse'
+        };
+
+        const targetPos = target.position.clone();
+        targetPos.y = 0;
+
+        setTimeout(() => {
+            if (this.enemy.dead) return;
+            this.enemy.animState = 'strike_throw';
+
+            this.spawnTelegraphNetwork(targetPos, 'circle', cfg.radius, 0.7, 0x39ff14, () => {
+                createSkillVisual('explosion', targetPos, cfg.radius * 0.8, 0x39ff14);
+                createSkillVisual('poison_cloud', targetPos, cfg.radius, 0x39ff14);
+                
+                if (AudioSys.play) AudioSys.play(cfg.sound, 0.5);
+
+                let ticks = 0;
+                const maxTicks = 8;
+                const intervalId = setInterval(() => {
+                    if (this.enemy.dead) {
+                        clearInterval(intervalId);
+                        return;
+                    }
+                    
+                    const players = getAllLivingPlayers ? getAllLivingPlayers() : (Globals.player ? [Globals.player] : []);
+                    players.forEach(p => {
+                        if (p && !p.dead) {
+                            const dist = p.position.distanceTo(targetPos);
+                            if (dist < cfg.radius) {
+                                this.enemy.dealPlayerDamage(p, cfg.damage, { isAbility: true });
+                                createDamageText("POISON", p.position, '#39ff14');
+                            }
+                        }
+                    });
+
+                    ticks++;
+                    if (ticks >= maxTicks) {
+                        clearInterval(intervalId);
+                    }
+                }, 500);
+            });
+
+            setTimeout(() => {
+                this.enemy.isAttacking = false;
+                this.enemy.animState = 'idle';
+            }, 200);
+        }, 300);
+
+        this.enemy.attackCooldown = cfg.cooldown;
     }
 
     attackShadowStep(target) {
