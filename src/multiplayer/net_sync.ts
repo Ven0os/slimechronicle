@@ -141,6 +141,7 @@ export const NetSync = {
                     isBeaming: Globals.player.isBeaming ? 1 : 0,
                     aimX: parseFloat(aim.x.toFixed(3)),
                     aimZ: parseFloat(aim.z.toFixed(3)),
+                    extraPrismLens: (STATE.passives?.extraPrismLens as number) ? 1 : 0,
                 };
             }
             Network.send({

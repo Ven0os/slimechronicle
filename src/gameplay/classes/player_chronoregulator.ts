@@ -12,8 +12,13 @@ import { CHRONO_ASCENDANT, CHRONO_BEAM, CHRONO_FRACTURE, CHRONO_SKILLS } from '.
 import { dedupeBeamRays, getBeamHitInfo, resolveBeamRoutes, rayHitsLens } from './chrono/beamHelpers';
 import {
   clampFracture,
+  createFractureDecayState,
   getMaxFracture,
+  isFractureDecaying,
   isFractureInRuptureWindow,
+  isOverloadImminenceActive,
+  resetFractureDecayState,
+  tickFractureDecay,
 } from './chrono/fractureHelpers';
 import { updateChronoFractureUI } from './chrono/fractureUi';
 import { pulseChronoLensUI, updateChronoLensUI } from './chrono/lensUi';
@@ -32,6 +37,7 @@ export class Chronoregulator extends PlayerBase {
 
     this.fractureGauge = 0;
     this.fractureSilence = 0;
+    this.fractureDecayState = createFractureDecayState();
     this.overheatTriggered = false;
     this.isBeaming = false;
     this.beamVisuals = [];
@@ -960,6 +966,55 @@ export class Chronoregulator extends PlayerBase {
     return isFractureInRuptureWindow(this.fractureGauge);
   }
 
+  isOverloadImminenceActive() {
+    return isOverloadImminenceActive(this.fractureGauge);
+  }
+
+  isFractureAttacking() {
+    return this.isBeaming || this.isConverging;
+  }
+
+  resetFractureActivity() {
+    if (!this.fractureDecayState) this.fractureDecayState = createFractureDecayState();
+    resetFractureDecayState(this.fractureDecayState);
+  }
+
+  tickFractureDecay(dt) {
+    if (!this.isLocalPlayer() || this.dead) return;
+    if (!this.fractureDecayState) this.fractureDecayState = createFractureDecayState();
+    this.fractureGauge = tickFractureDecay(
+      this.fractureGauge,
+      this.fractureDecayState,
+      dt,
+      this.isFractureAttacking(),
+    );
+  }
+
+  triggerOverloadImminenceProc() {
+    if (!this.isOverloadImminenceActive() || this._overloadImminenceGrenadeProcced) return;
+    this._overloadImminenceGrenadeProcced = true;
+
+    const pos = this.position.clone();
+    const { radius, dmgMult } = CHRONO_FRACTURE.overloadImminenceProc;
+    const scale = this.fractureGauge / 100;
+    const blastDmg = STATE.stats.atk * dmgMult * scale;
+
+    createSkillVisual('nova', pos, radius, 0xff8844, null);
+    spawnParticles(pos, 0xff8844, 18);
+    createDamageText('SURCHARGE!', pos, '#ff8844');
+
+    if (Globals.enemies) {
+      for (const e of Globals.enemies) {
+        if (e.dead) continue;
+        if (e.position.distanceTo(pos) <= radius + (e.radius || 0.5)) {
+          this.dealMagicDamage(e, blastDmg, { skill: true, skillKey: 'shift' });
+        }
+      }
+    }
+
+    this.resetFractureActivity();
+  }
+
   dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0 } = {}) {
     if (!enemy || enemy.dead) return 0;
     let dmg = baseDmg * ConvergenceEffects.getPrismBeamDmgMult(prismDepth);
@@ -988,6 +1043,7 @@ export class Chronoregulator extends PlayerBase {
         maxRange: 30,
         pos: Globals.player ? { x: Globals.player.position.x, y: Globals.player.position.y, z: Globals.player.position.z } : null,
       });
+      if (preview > 0) this.resetFractureActivity();
       return preview;
     }
 
@@ -996,6 +1052,7 @@ export class Chronoregulator extends PlayerBase {
       createDamageText('PRISME!', enemy.position, '#7df9ff');
     }
     enemy.takeDamage(dmg);
+    if (dmg > 0) this.resetFractureActivity();
     return dmg;
   }
 
@@ -1213,7 +1270,7 @@ export class Chronoregulator extends PlayerBase {
     this.destroyBeamVisuals();
     const mainDir = this.getAimDir();
     const staffOrigin = this.getBeamVisualOrigin();
-    const prismMods = PassiveKeystoneHooks.getExtraPrismLensMods();
+    const prismMods = PassiveKeystoneHooks.getExtraPrismLensMods(this);
     const coneAmp = STATE.passives?.continuumBurst ? 1.15 : 1;
     const refined = ConvergenceEffects.hasRefinedPrisms();
     const routes = resolveBeamRoutes(staffOrigin, mainDir, this.lenses, coneAmp, refined, prismMods.splitCount);
@@ -1267,7 +1324,7 @@ export class Chronoregulator extends PlayerBase {
     const hitOrigin = this.getBeamHitOrigin();
     const mainDir = this.getAimDir();
     const refined = ConvergenceEffects.hasRefinedPrisms();
-    const prismMods = PassiveKeystoneHooks.getExtraPrismLensMods();
+    const prismMods = PassiveKeystoneHooks.getExtraPrismLensMods(this);
     const routes = resolveBeamRoutes(
       hitOrigin,
       mainDir,
@@ -1604,11 +1661,22 @@ export class Chronoregulator extends PlayerBase {
     if (this.cooldowns[key] > 0) return;
 
     this.faceMouse();
-    this.spendFractureForSkill();
     this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
 
+    if (key === 'shift') {
+      this._overloadImminenceGrenadeProcced = false;
+      this.skillMolecularDephasing();
+      if (this.isOverloadImminenceActive()) {
+        this.triggerOverloadImminenceProc();
+      }
+      this.spendFractureForSkill();
+      this.resetFractureActivity();
+      return;
+    }
+
+    this.spendFractureForSkill();
+
     if (key === 'space') this.skillFocusLens();
-    else if (key === 'shift') this.skillMolecularDephasing();
     else if (key === 'e') this.skillTemporalConvergence();
   }
 
@@ -1905,8 +1973,12 @@ export class Chronoregulator extends PlayerBase {
 
   updateClassPassives(dt) {
     if (this.fractureSilence > 0) this.fractureSilence -= dt;
+    this.tickFractureDecay(dt);
     this.fractureGauge = clampFracture(this.fractureGauge);
-    updateChronoFractureUI(this.fractureGauge, this.fractureSilence, this.isLocalPlayer());
+    const decaying = this.fractureDecayState
+      ? isFractureDecaying(this.fractureGauge, this.fractureDecayState, this.isFractureAttacking())
+      : false;
+    updateChronoFractureUI(this.fractureGauge, this.fractureSilence, this.isLocalPlayer(), decaying);
     this.updateLenses(dt);
     updateChronoLensUI(this.lenses, this.isLocalPlayer());
     this.updateInstabilityMarks(dt);

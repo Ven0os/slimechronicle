@@ -10,10 +10,20 @@ import { ConstellationEngine } from '@/systems/constellationEngine';
 import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 import { canApplyGameplay, canDealDamageDirectly } from '@/multiplayer/net_authority';
 import { Projectile } from '@/gameplay/entities';
+import { LENS_SPLIT_COUNT_DEFAULT, LENS_SPLIT_COUNT_EXTRA_PRISM } from '@/gameplay/classes/chrono/beamHelpers';
 
 function rank(key: string): number {
   const p = STATE.passives as Record<string, number> | undefined;
   return (p?.[key] as number) || 0;
+}
+
+function passiveRankForPlayer(player: { _netExtraPrismLens?: number; isLocalPlayer?: () => boolean } | null | undefined, key: string): number {
+  if (!player) return rank(key);
+  if (key === 'extraPrismLens' && player._netExtraPrismLens != null) {
+    return player._netExtraPrismLens ? 1 : 0;
+  }
+  if (player.isLocalPlayer?.()) return rank(key);
+  return 0;
 }
 
 function passives() {
@@ -309,9 +319,11 @@ export const PassiveKeystoneHooks = {
     return false;
   },
 
-  getExtraPrismLensMods() {
-    if (!rank('extraPrismLens')) return { splitCount: 3, splitDmgMult: 1, burnOnSplit: false };
-    return { splitCount: 4, splitDmgMult: 0.85, burnOnSplit: true };
+  getExtraPrismLensMods(player?: { _netExtraPrismLens?: number; isLocalPlayer?: () => boolean } | null) {
+    if (!passiveRankForPlayer(player, 'extraPrismLens')) {
+      return { splitCount: LENS_SPLIT_COUNT_DEFAULT, splitDmgMult: 1, burnOnSplit: false };
+    }
+    return { splitCount: LENS_SPLIT_COUNT_EXTRA_PRISM, splitDmgMult: 0.9, burnOnSplit: true };
   },
 
   applyPrismLensBurn(enemy: { dead?: boolean; position?: THREE.Vector3 }, tickDmg: number) {

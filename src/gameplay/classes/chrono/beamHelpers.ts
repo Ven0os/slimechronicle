@@ -25,6 +25,27 @@ export type BeamRouteResult = {
   rays: BeamRay[];
 };
 
+/** Nombre de rayons lentille sans / avec Prisme Supplémentaire. */
+export const LENS_SPLIT_COUNT_DEFAULT = 3;
+export const LENS_SPLIT_COUNT_EXTRA_PRISM = 4;
+
+/**
+ * Distribution angulaire normalisée (× spread).
+ * 3 rayons : [-1, 0, +1]  → ex. −20°, 0°, +20°
+ * 4 rayons : [-1, −0.25, +0.25, +1] → ex. −12°, −3°, +3°, +12°
+ * Même ouverture extérieure ; les deux rayons centraux se chevauchent fortement.
+ */
+export function getLensRayAngleOffsets(rayCount: number): number[] {
+  if (rayCount >= LENS_SPLIT_COUNT_EXTRA_PRISM) return [-1, -0.25, 0.25, 1];
+  if (rayCount === LENS_SPLIT_COUNT_DEFAULT) return [-1, 0, 1];
+  if (rayCount === 2) return [-1, 1];
+  return [0];
+}
+
+export function getLensSplitRayCount(hasExtraPrism: boolean): number {
+  return hasExtraPrism ? LENS_SPLIT_COUNT_EXTRA_PRISM : LENS_SPLIT_COUNT_DEFAULT;
+}
+
 export function rotateDirXZ(dir: THREE.Vector3, angle: number): THREE.Vector3 {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
@@ -51,14 +72,6 @@ export function lensHitDistance(
   const flatDx = lens.pos.x - origin.x;
   const flatDz = lens.pos.z - origin.z;
   return Math.max(0.5, flatDx * dir.x + flatDz * dir.z);
-}
-
-function lensPointAt(origin: THREE.Vector3, dir: THREE.Vector3, dist: number): THREE.Vector3 {
-  return new THREE.Vector3(
-    origin.x + dir.x * dist,
-    origin.y,
-    origin.z + dir.z * dist,
-  );
 }
 
 type LensEntry = { lens: ChronoLens; id: string };
@@ -109,10 +122,55 @@ export function dedupeBeamRays(rays: BeamRay[]): BeamRay[] {
 
 const MAX_REFINED_CHAIN = CHRONO_SKILLS.refinedLens.maxActive;
 
+function buildLensSplitRays(
+  lensPos: THREE.Vector3,
+  mainDir: THREE.Vector3,
+  spread: number,
+  rayCount: number,
+  prismDepth: number,
+): BeamRay[] {
+  const origin = lensPos.clone();
+  const offsets = getLensRayAngleOffsets(rayCount);
+  return offsets.map((off) => ({
+    origin: origin.clone(),
+    dir: rotateDirXZ(mainDir, spread * off),
+    split: true,
+    prismDepth,
+  }));
+}
+
+/**
+ * Splits latéraux Apex : 2 ou 4 rayons selon lensSplitCount (jamais codé en dur à 3).
+ */
+function buildRefinedLateralSplitRays(
+  lensPos: THREE.Vector3,
+  mainDir: THREE.Vector3,
+  spread: number,
+  lensSplitCount: number,
+  prismDepth: number,
+): BeamRay[] {
+  const lateralRayCount = lensSplitCount >= LENS_SPLIT_COUNT_EXTRA_PRISM
+    ? LENS_SPLIT_COUNT_EXTRA_PRISM
+    : 2;
+  return buildLensSplitRays(lensPos, mainDir, spread, lateralRayCount, prismDepth);
+}
+
+/**
+ * Splits terminaux (mode base) : 3 ou 4 rayons selon lensSplitCount.
+ */
+function buildTerminalLensSplitRays(
+  lensPos: THREE.Vector3,
+  mainDir: THREE.Vector3,
+  spread: number,
+  lensSplitCount: number,
+  prismDepth: number,
+): BeamRay[] {
+  return buildLensSplitRays(lensPos, mainDir, spread, lensSplitCount, prismDepth);
+}
+
 /**
  * Résout le graphe de routage rayon/lentille de façon déterministe.
- * - Sans prismes affinés : 1 lentille max → split ×3 terminal.
- * - Avec prismes affinés : chaîne sur l'axe central uniquement ; splits latéraux terminaux.
+ * lensSplitCount pilote tous les splits (base et Apex) — jamais de boucle fixe à 3.
  */
 export function resolveBeamRoutes(
   hitOrigin: THREE.Vector3,
@@ -120,7 +178,7 @@ export function resolveBeamRoutes(
   lenses: ChronoLens[],
   coneAmp = 1,
   refinedPrisms = false,
-  lensSplitCount = 3,
+  lensSplitCount = LENS_SPLIT_COUNT_DEFAULT,
 ): BeamRouteResult {
   const mainDir = dir.clone().normalize();
   const entries = prepareActiveLenses(lenses);
@@ -139,13 +197,13 @@ export function resolveBeamRoutes(
   return resolveRefinedChainRoutes(hitOrigin, mainDir, entries, coneAmp, lensSplitCount);
 }
 
-/** Mode base : première lentille sur le rayon → 3 splits, pas de chaîne. */
+/** Mode base : première lentille → lensSplitCount splits terminaux. */
 function resolveSingleLensRoutes(
   hitOrigin: THREE.Vector3,
   mainDir: THREE.Vector3,
   entries: LensEntry[],
   coneAmp: number,
-  lensSplitCount = 3,
+  lensSplitCount = LENS_SPLIT_COUNT_DEFAULT,
 ): BeamRouteResult {
   const hit = findNearestLensOnRay(hitOrigin, mainDir, entries, new Set());
   if (!hit) {
@@ -157,24 +215,7 @@ function resolveSingleLensRoutes(
 
   const lensPos = hit.entry.lens.pos.clone();
   const spread = CHRONO_SKILLS.lens.cone * coneAmp;
-  const rays: BeamRay[] = [];
-  if (lensSplitCount >= 4) {
-    const offsets = [-1.5, -0.5, 0.5, 1.5];
-    for (const off of offsets) {
-      rays.push({
-        origin: lensPos.clone(),
-        dir: rotateDirXZ(mainDir, spread * off),
-        split: true,
-        prismDepth: 1,
-      });
-    }
-  } else {
-    rays.push(
-      { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, -spread), split: true, prismDepth: 1 },
-      { origin: lensPos.clone(), dir: mainDir.clone(), split: true, prismDepth: 1 },
-      { origin: lensPos.clone(), dir: rotateDirXZ(mainDir, spread), split: true, prismDepth: 1 },
-    );
-  }
+  const rays = buildTerminalLensSplitRays(lensPos, mainDir, spread, lensSplitCount, 1);
 
   return {
     trunk: [{ from: hitOrigin.clone(), to: lensPos.clone() }],
@@ -183,15 +224,17 @@ function resolveSingleLensRoutes(
 }
 
 /**
- * Mode prismes affinés : chaîne sur le rayon central ; splits latéraux sans re-chaînement.
- * Max 3 lentilles visitées → au plus 2×3 splits + 1 rayon central final = 7 rayons.
+ * Mode Apex (prismes affinés) : chaîne centrale + splits latéraux à chaque lentille.
+ * Sans passif : 2 latéraux + 1 central final = 3 rayons (1 lentille).
+ * Avec Prisme Supplémentaire : 4 latéraux (distribution −12/−3/+3/+12), pas de central
+ * supplémentaire sur une seule lentille ; chaîne multi-lentilles conserve le central final.
  */
 function resolveRefinedChainRoutes(
   hitOrigin: THREE.Vector3,
   mainDir: THREE.Vector3,
   entries: LensEntry[],
   coneAmp: number,
-  lensSplitCount = 3,
+  lensSplitCount = LENS_SPLIT_COUNT_DEFAULT,
 ): BeamRouteResult {
   const trunk: BeamTrunkSegment[] = [];
   const rays: BeamRay[] = [];
@@ -210,31 +253,24 @@ function resolveRefinedChainRoutes(
     visited.add(hit.entry.id);
 
     const nextDepth = depth + 1;
-    // Splits latéraux : terminaux (ne traversent pas d'autres lentilles)
-    rays.push({
-      origin: lensPos.clone(),
-      dir: rotateDirXZ(mainDir, -spread),
-      split: true,
-      prismDepth: nextDepth,
-    });
-    rays.push({
-      origin: lensPos.clone(),
-      dir: rotateDirXZ(mainDir, spread),
-      split: true,
-      prismDepth: nextDepth,
-    });
+    rays.push(...buildRefinedLateralSplitRays(lensPos, mainDir, spread, lensSplitCount, nextDepth));
 
     cursor = lensPos;
     depth = nextDepth;
   }
 
-  // Rayon central final (continue après la dernière lentille ou sans lentille)
-  rays.push({
-    origin: cursor.clone(),
-    dir: mainDir.clone(),
-    split: depth > 0,
-    prismDepth: depth,
-  });
+  const hasExtraPrism = lensSplitCount >= LENS_SPLIT_COUNT_EXTRA_PRISM;
+  const singleLensWithExtraPrism = hasExtraPrism && depth === 1;
+  const needsCentralExitRay = depth > 0 && !singleLensWithExtraPrism;
+
+  if (needsCentralExitRay) {
+    rays.push({
+      origin: cursor.clone(),
+      dir: mainDir.clone(),
+      split: true,
+      prismDepth: depth,
+    });
+  }
 
   return { trunk, rays: dedupeBeamRays(rays) };
 }
@@ -246,8 +282,9 @@ export function getBeamRays(
   lenses: ChronoLens[],
   coneAmp = 1,
   refinedPrisms = false,
+  lensSplitCount = LENS_SPLIT_COUNT_DEFAULT,
 ): BeamRay[] {
-  return resolveBeamRoutes(hitOrigin, dir, lenses, coneAmp, refinedPrisms).rays;
+  return resolveBeamRoutes(hitOrigin, dir, lenses, coneAmp, refinedPrisms, lensSplitCount).rays;
 }
 
 export function getBeamHitInfo(
