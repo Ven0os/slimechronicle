@@ -297,6 +297,15 @@ function animate(): void {
     Globals.camera.lookAt(0, 0, 0);
   }
 
+  if (Globals.cameraShake) {
+    Globals.camera.position.x += Globals.cameraShake.x;
+    Globals.camera.position.y += Globals.cameraShake.y;
+    Globals.camera.position.z += Globals.cameraShake.z;
+    Globals.cameraShake.x *= 0.88;
+    Globals.cameraShake.y *= 0.88;
+    Globals.cameraShake.z *= 0.88;
+  }
+
   Globals.renderer.render(Globals.scene, Globals.camera);
 }
 

@@ -1778,7 +1778,7 @@ export const GameLogic = {
         const e = new Enemy(type, pos);
         addEnemy(e);
 
-        const msg = type === 'king' ? "LE ROI EST LÀ !" : "LE SEIGNEUR SLIME APPROCHE !";
+        const msg = type === 'king' ? "AETHELGARD EST LÀ !" : "LE SEIGNEUR SLIME APPROCHE !";
         const color = type === 'king' ? "#ffd700" : "#9b59b6";
         if (Globals.player) createDamageText(msg, Globals.player.position, color);
     },
@@ -1976,7 +1976,7 @@ export const GameLogic = {
         }
         if (targetAltar) {
             if (targetAltar.type === 'royal_seal') {
-                window.UI?.toast("Résolvez le rituel des 4 piliers pour réveiller le Roi...");
+                window.UI?.toast("Résolvez le rituel des 4 piliers pour réveiller le Souverain d'Ambre...");
                 return;
             }
 

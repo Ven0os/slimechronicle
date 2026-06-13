@@ -1,282 +1,389 @@
 // @ts-nocheck
-// Ce fichier gère uniquement la construction graphique du Roi Slime
-// pour garder le code de gameplay propre.
+import * as THREE from 'three';
 
-export function buildKingSlimeModel(scaleVal = 1) {
+// Ce fichier gère la construction graphique ultra-détaillée d'Aethelgard, le Souverain d'Ambre.
+// Il est conçu avec le même niveau de détail et la même philosophie modulaire que la classe Chronorégisseur.
+export function buildKingSlimeModel(scaleVal = 1, swordOnGround = false) {
     const mesh = new THREE.Group();
     mesh.castShadow = true;
     mesh.scale.setScalar(scaleVal);
 
-    // --- PALETTE DE MATÉRIAUX AVANCÉE ---
+    // --- PALETTE DE MATÉRIAUX AVANCÉE (AMBRE, GRÈS & OR) ---
     const materials = {
+        // Ambre gélatineux, translucide et très brillant (comme les effets de Chronorégisseur)
+        amber: new THREE.MeshPhysicalMaterial({ 
+            color: 0xffa500, // Orange ambré
+            emissive: 0xff4500, // Lueur orange/rouge
+            emissiveIntensity: 1.0,
+            transparent: true,
+            opacity: 0.85,
+            roughness: 0.1,
+            metalness: 0.05,
+            transmission: 0.75,
+            thickness: 1.3
+        }),
+        // Grès sculpté, mat et fissuré pour l'armure lourde
+        sandstone: new THREE.MeshStandardMaterial({ 
+            color: 0xc4a47a, 
+            roughness: 0.95, 
+            metalness: 0.05,
+            flatShading: true
+        }),
+        // Or brillant d'ornement
         gold: new THREE.MeshStandardMaterial({ 
             color: 0xffd700, 
-            roughness: 0.3, 
-            metalness: 1.0, 
-            emissive: 0xaa6600, 
-            emissiveIntensity: 0.2 
+            roughness: 0.2, 
+            metalness: 0.95,
+            emissive: 0xaa6600,
+            emissiveIntensity: 0.25
         }),
-        darkMetal: new THREE.MeshStandardMaterial({ 
-            color: 0x1a1a1a, 
-            roughness: 0.7, 
-            metalness: 0.5 
+        // Pierre sombre volcanique pour les piques et articulations d'armure
+        darkStone: new THREE.MeshStandardMaterial({ 
+            color: 0x332c23, 
+            roughness: 0.8, 
+            metalness: 0.2
         }),
+        // Lueur néon intense (Visor, yeux et cœur d'énergie)
+        energy: new THREE.MeshStandardMaterial({ 
+            color: 0xff8800,
+            emissive: 0xffaa00,
+            emissiveIntensity: 2.5,
+            transparent: true,
+            opacity: 0.95,
+            roughness: 0.1,
+            metalness: 0.1
+        }),
+        // Cape royale rouge déchirée par le sable du désert
         clothRed: new THREE.MeshStandardMaterial({ 
-            color: 0x8b0000, 
+            color: 0x661111, 
             roughness: 0.9, 
             side: THREE.DoubleSide 
-        }),
-        energy: new THREE.MeshStandardMaterial({ 
-            color: 0x00ff00, 
-            emissive: 0x00ff00, 
-            emissiveIntensity: 2.0, 
-            transparent: true, 
-            opacity: 0.9 
-        }),
-        skin: new THREE.MeshStandardMaterial({
-            color: 0x222222, // Peau sombre (void)
-            roughness: 0.9
         })
     };
 
     const parts = {};
 
-    // --- 1. JAMBES (Articulées et Blindées) ---
-    parts.legL = createLeg(materials, -1);
-    parts.legR = createLeg(materials, 1);
-    parts.legL.position.set(-0.5, 0.8, 0);
-    parts.legR.position.set( 0.5, 0.8, 0);
+    // --- 1. JAMBES (Armures lourdes multicouches avec jointures ambre) ---
+    const legLData = createLeg(materials, -1);
+    const legRData = createLeg(materials, 1);
+    parts.legL = legLData.legGroup;
+    parts.shinL = legLData.lowerLegGroup;
+    parts.legR = legRData.legGroup;
+    parts.shinR = legRData.lowerLegGroup;
+    parts.legL.position.set(-0.6, 1.18, 0); // Ajusté (+0.38) pour aligner les pieds au sol
+    parts.legR.position.set( 0.6, 1.18, 0); // Ajusté (+0.38) pour aligner les pieds au sol
     mesh.add(parts.legL); 
     mesh.add(parts.legR);
 
-    // --- 2. TORSE (Massif et Détaillé) ---
+    // --- 2. TORSE MASSIVE DE SOUVERAIN (Multi-plaques imbriquées) ---
     parts.body = new THREE.Group();
-    parts.body.position.y = 1.6;
+    parts.body.position.y = 2.03; // Ajusté (+0.38) pour aligner le corps
     mesh.add(parts.body);
 
-    // Plastron principal
-    const chestGeo = new THREE.CylinderGeometry(0.7, 0.5, 0.9, 8);
-    const chest = new THREE.Mesh(chestGeo, materials.gold);
-    parts.body.add(chest);
+    // Noyau gélatineux interne en ambre
+    const slimeCoreGeo = new THREE.CylinderGeometry(0.42, 0.35, 0.95, 12);
+    slimeCoreGeo.scale(1, 1, 0.85);
+    const innerSlime = new THREE.Mesh(slimeCoreGeo, materials.amber);
+    parts.body.add(innerSlime);
 
-    // Détails armure (Collier)
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.1, 8, 16), materials.darkMetal);
-    collar.position.y = 0.45;
-    collar.rotation.x = Math.PI / 2;
+    // Cuirasse de grès lourd (Devant)
+    const chestArmor = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.88, 0.38), materials.sandstone);
+    chestArmor.position.set(0, 0.02, 0.24);
+    parts.body.add(chestArmor);
+
+    // Protection dorsale lourde en grès
+    const backArmor = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.88, 0.3), materials.sandstone);
+    backArmor.position.set(0, 0.02, -0.24);
+    parts.body.add(backArmor);
+
+    // Bordures dorées sur la poitrine (Gauchers et Droitiers)
+    const chestGoldL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.72, 0.06), materials.gold);
+    chestGoldL.position.set(-0.32, 0.02, 0.42);
+    chestArmor.add(chestGoldL);
+
+    const chestGoldR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.72, 0.06), materials.gold);
+    chestGoldR.position.set(0.32, 0.02, 0.42);
+    chestArmor.add(chestGoldR);
+
+    // Collerette d'armure lourde (Cylinder)
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 0.15, 8), materials.gold);
+    collar.position.y = 0.52;
     parts.body.add(collar);
 
-    // Cœur d'énergie (Réacteur)
-    parts.core = new THREE.Mesh(new THREE.OctahedronGeometry(0.25, 1), materials.energy);
-    parts.core.position.set(0, 0.1, 0.45);
+    // Cœur d'énergie (cristal d'ambre au centre de la cuirasse)
+    parts.core = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), materials.energy);
+    parts.core.position.set(0, 0.1, 0.42);
     parts.body.add(parts.core);
     
-    // Protection du cœur (Grille)
-    const coreGuard = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 8, 4), materials.gold);
-    coreGuard.position.set(0, 0.1, 0.55);
-    parts.body.add(coreGuard);
+    // Grille de confinement dorée
+    const coreShield = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.03, 8, 4), materials.gold);
+    coreShield.position.set(0, 0.1, 0.46);
+    parts.body.add(coreShield);
 
-    // --- 3. TÊTE (Couronnée) ---
+    // Vents d'échappement à l'arrière (comme le réacteur de Chronorégisseur)
+    const exhaustL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 6), materials.darkStone);
+    exhaustL.position.set(-0.24, 0.2, -0.42);
+    exhaustL.rotation.x = -Math.PI / 4;
+    parts.body.add(exhaustL);
+
+    const exhaustR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 6), materials.darkStone);
+    exhaustR.position.set(0.24, 0.2, -0.42);
+    exhaustR.rotation.x = -Math.PI / 4;
+    parts.body.add(exhaustR);
+
+    // --- 3. TÊTE ULTRA-DÉTAILLÉE (Casque de combat) ---
     parts.head = new THREE.Group();
-    parts.head.position.y = 0.65;
+    parts.head.position.y = 0.72;
     parts.body.add(parts.head);
 
-    // Crâne / Casque
-    const headBase = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 0.5), materials.darkMetal);
-    parts.head.add(headBase);
+    // Casque de grès sculpté
+    const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.56, 0.52), materials.sandstone);
+    parts.head.add(helmet);
 
-    // Visage (Plaque dorée)
-    const facePlate = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.4, 0.1), materials.gold);
-    facePlate.position.set(0, -0.05, 0.21);
-    parts.head.add(facePlate);
+    // Visière de combat (fente lumineuse d'énergie ambrée)
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.08), materials.energy);
+    visor.position.set(0, 0.06, 0.24);
+    parts.head.add(visor);
 
-    // Barbe métallique
-    const beard = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 4), materials.gold);
-    beard.position.set(0, -0.4, 0.22);
-    beard.rotation.x = Math.PI;
-    parts.head.add(beard);
+    // Mentonnière dorée
+    const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 4), materials.gold);
+    jaw.position.set(0, -0.38, 0.2);
+    jaw.rotation.x = Math.PI;
+    parts.head.add(jaw);
 
-    // Couronne (Complexe)
-    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.32, 0.15, 8), materials.gold);
-    crownBase.position.y = 0.35;
+    // Cornes arrières de pierre sombre recourbées vers le bas/côté
+    const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 4), materials.darkStone);
+    hornL.position.set(-0.25, 0.28, -0.16);
+    hornL.rotation.set(-0.3, 0.2, -0.4);
+    parts.head.add(hornL);
+
+    const hornR = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 4), materials.darkStone);
+    hornR.position.set(0.25, 0.28, -0.16);
+    hornR.rotation.set(-0.3, -0.2, 0.4);
+    parts.head.add(hornR);
+
+    // Couronne de grès détaillée mais cassée (couleurs sablées)
+    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.32, 0.12, 8), materials.sandstone);
+    crownBase.position.y = 0.36;
     parts.head.add(crownBase);
     
-    for(let i=0; i<6; i++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 4), materials.gold);
+    // 5 pics potentiels, mais certains sont cassés/absents pour l'effet ruine
+    const spikeIndices = [0, 1, 3, 4]; // Les pics 2 et 5 sont cassés/manquants
+    for (let i of spikeIndices) {
+        // Hauteurs inégales pour l'effet brisé
+        const h = i === 1 ? 0.16 : (i === 3 ? 0.32 : 0.24);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, h, 4), materials.sandstone);
         const angle = (i / 6) * Math.PI * 2;
-        spike.position.set(Math.cos(angle)*0.3, 0.5, Math.sin(angle)*0.3);
+        spike.position.set(Math.cos(angle) * 0.32, 0.36 + h / 2, Math.sin(angle) * 0.32);
+        // Rotations cassées (légèrement penchées)
+        spike.rotation.y = angle;
+        spike.rotation.x = 0.15 * (Math.random() - 0.5);
+        spike.rotation.z = 0.15 * (Math.random() - 0.5);
         parts.head.add(spike);
     }
-
-    // Yeux (Luisants)
-    const eyeGeo = new THREE.BoxGeometry(0.12, 0.04, 0.05);
-    const eyeL = new THREE.Mesh(eyeGeo, materials.energy); eyeL.position.set(-0.12, 0, 0.27);
-    const eyeR = new THREE.Mesh(eyeGeo, materials.energy); eyeR.position.set( 0.12, 0, 0.27);
-    parts.head.add(eyeL); parts.head.add(eyeR);
-
-    // --- 4. CAPE (Physique simulée par segments) ---
-    parts.capeGroup = new THREE.Group();
-    parts.capeGroup.position.set(0, 0.5, -0.35);
-    parts.body.add(parts.capeGroup);
     
-    parts.capeSegments = []; // Sera utilisé pour l'animation
-    let prevSeg = parts.capeGroup;
-    
-    // Attaches de la cape (Épaules)
-    const capePinL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1), materials.gold);
-    capePinL.rotation.z = Math.PI/2; capePinL.position.set(-0.3, 0, 0); parts.capeGroup.add(capePinL);
-    
-    const capePinR = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1), materials.gold);
-    capePinR.rotation.z = Math.PI/2; capePinR.position.set(0.3, 0, 0); parts.capeGroup.add(capePinR);
-
-    // Segments de la cape
-    for(let i=0; i<8; i++) {
-        const seg = new THREE.Group();
-        seg.position.y = i === 0 ? 0 : -0.25; // Espacement
-        prevSeg.add(seg);
-        
-        const width = 1.0 - (i * 0.08); // Se rétrécit vers le bas
-        const cloth = new THREE.Mesh(new THREE.BoxGeometry(width, 0.3, 0.05), materials.clothRed);
-        cloth.position.y = -0.15;
-        seg.add(cloth);
-        
-        // Détail doré sur le bas de la cape (dernier segment)
-        if (i === 7) {
-            const trim = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, 0.06), materials.gold);
-            trim.position.y = -0.28;
-            seg.add(trim);
-        }
-
-        parts.capeSegments.push(seg);
-        prevSeg = seg;
+    // Quelques gemmes d'ambre ternes incrustées sur la base
+    for (let i = 0; i < 4; i++) {
+        const gem = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.03), materials.amber);
+        const angle = (i / 4) * Math.PI * 2;
+        gem.position.set(Math.cos(angle) * 0.33, 0.36, Math.sin(angle) * 0.33);
+        gem.rotation.y = -angle;
+        parts.head.add(gem);
     }
 
-    // --- 5. BRAS & ÉPAULIÈRES ---
+    // --- 4. CAPE DÉCHIRÉE PAR LE SABLE (3 pans tressés tattered) ---
+    parts.capeGroup = new THREE.Group();
+    parts.capeGroup.position.set(0, 0.52, -0.38);
+    parts.body.add(parts.capeGroup);
+    
+    parts.capeSegments = [];
+    const stripOffsets = [-0.26, 0, 0.26];
+    
+    for (let s = 0; s < 3; s++) {
+        const stripRoot = new THREE.Group();
+        stripRoot.position.set(stripOffsets[s], 0, 0);
+        parts.capeGroup.add(stripRoot);
+
+        let prevSeg = stripRoot;
+        for (let i = 0; i < 8; i++) {
+            const seg = new THREE.Group();
+            seg.position.y = i === 0 ? 0 : -0.24;
+            prevSeg.add(seg);
+            
+            const width = 0.28 - (i * 0.02) + (Math.sin(s * 10 + i) * 0.02);
+            const cloth = new THREE.Mesh(new THREE.BoxGeometry(width, 0.28, 0.04), materials.clothRed);
+            cloth.position.y = -0.14;
+            
+            // Fissures/ornements dorés sur certains pans de la cape déchirée
+            if (i % 3 === 0) {
+                const trim = new THREE.Mesh(new THREE.BoxGeometry(width + 0.02, 0.05, 0.05), materials.gold);
+                trim.position.y = -0.14;
+                seg.add(trim);
+            }
+            seg.add(cloth);
+
+            parts.capeSegments.push(seg);
+            prevSeg = seg;
+        }
+    }
+
+    // --- 5. BRAS ET ÉPAULIÈRES LOURDES ---
     parts.armL = createArm(materials, -1);
     parts.armR = createArm(materials, 1);
     parts.body.add(parts.armL);
     parts.body.add(parts.armR);
 
-    // --- 6. ARME : LA LAME DU NÉANT (Void Cleaver) ---
+    // --- 6. L'ÉPÉE DE SOUVERAIN (Amber Sovereign Blade) ---
     parts.swordInfo = new THREE.Group();
-    // CORRECTION ICI : Remontée de -0.9 à -0.6 pour mieux tenir en main
-    parts.swordInfo.position.set(0, -0.6, 0); 
+    parts.swordInfo.position.set(0, -0.22, 0.05); // Collée à la main (entre les griffes du gantelet)
     parts.swordInfo.rotation.x = Math.PI/2;
-    parts.armR.children[2].add(parts.swordInfo); // Attaché à la main (index 2 dans createArm)
 
-    // Poignée longue
-    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.2), materials.darkMetal);
-    hilt.position.y = 0.2;
+    // Poignée
+    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.25), materials.darkStone);
+    hilt.position.y = 0.25;
     parts.swordInfo.add(hilt);
     
-    // Pommeau
     const pommel = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12), materials.gold);
-    pommel.position.y = -0.4;
+    pommel.position.y = -0.36;
     parts.swordInfo.add(pommel);
 
     // Garde massive
     const guardGroup = new THREE.Group();
-    guardGroup.position.y = 0.6;
+    guardGroup.position.y = 0.65;
     parts.swordInfo.add(guardGroup);
     
-    const guardCenter = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.3), materials.gold);
+    const guardCenter = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 0.32), materials.gold);
     guardGroup.add(guardCenter);
     
-    const guardWingL = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 4), materials.gold);
-    guardWingL.position.x = -0.4; guardWingL.rotation.z = Math.PI/2.5;
+    const guardWingL = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.65, 4), materials.sandstone);
+    guardWingL.position.x = -0.42; guardWingL.rotation.z = Math.PI/2.3;
     guardGroup.add(guardWingL);
     
-    const guardWingR = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 4), materials.gold);
-    guardWingR.position.x = 0.4; guardWingR.rotation.z = -Math.PI/2.5;
+    const guardWingR = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.65, 4), materials.sandstone);
+    guardWingR.position.x = 0.42; guardWingR.rotation.z = -Math.PI/2.3;
     guardGroup.add(guardWingR);
 
-    // Lame
+    // Lame en ambre translucide géante avec cœur en grès
     const bladeGroup = new THREE.Group();
-    bladeGroup.position.y = 0.7;
+    bladeGroup.position.y = 0.75;
     parts.swordInfo.add(bladeGroup);
     
-    // Corps de la lame
-    const bladeCore = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.8, 0.08), materials.darkMetal);
-    bladeCore.position.y = 1.4;
+    const bladeCore = new THREE.Mesh(new THREE.BoxGeometry(0.42, 2.7, 0.08), materials.sandstone);
+    bladeCore.position.y = 1.35;
     bladeGroup.add(bladeCore);
     
-    // Tranchant énergétique
-    const edgeL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.7, 0.02), materials.energy);
-    edgeL.position.set(-0.28, 1.4, 0);
+    const edgeL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.6, 0.06), materials.amber);
+    edgeL.position.set(-0.26, 1.35, 0);
     bladeGroup.add(edgeL);
     
-    const edgeR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.7, 0.02), materials.energy);
-    edgeR.position.set( 0.28, 1.4, 0);
+    const edgeR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.6, 0.06), materials.amber);
+    edgeR.position.set( 0.26, 1.35, 0);
     bladeGroup.add(edgeR);
     
-    // Pointe
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 4), materials.gold);
-    tip.position.y = 2.95;
-    tip.scale.z = 0.2;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.58, 4), materials.amber);
+    tip.position.y = 2.85;
+    tip.scale.z = 0.22;
     bladeGroup.add(tip);
+
+    if (!swordOnGround) {
+        parts.armR.children[2].add(parts.swordInfo);
+    }
 
     return { mesh, parts, materials };
 }
 
-// --- FONCTIONS UTILITAIRES DE CONSTRUCTION ---
-
-function createLeg(mats, side) { // side: -1 (Left) or 1 (Right)
+function createLeg(mats, side) {
     const legGroup = new THREE.Group();
 
-    // Cuisse
-    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.6, 0.4), mats.darkMetal);
-    thigh.position.y = -0.3;
+    // Joint cuisse ambre
+    const joint = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), mats.amber);
+    joint.position.y = -0.12;
+    legGroup.add(joint);
+
+    // Cuisse sandstone avec bordure or
+    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.56, 0.42), mats.sandstone);
+    thigh.position.y = -0.36;
+    const thighTrim = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.46), mats.gold);
+    thighTrim.position.y = 0.15;
+    thigh.add(thighTrim);
     legGroup.add(thigh);
 
-    // Genouillère
-    const knee = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22), mats.gold);
-    knee.position.set(0, -0.6, 0.2);
-    legGroup.add(knee);
+    // Lower leg group (shin/boot) attached at knee height
+    const lowerLegGroup = new THREE.Group();
+    lowerLegGroup.position.set(0, -0.6, 0);
+    legGroup.add(lowerLegGroup);
 
-    // Tibia / Botte
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.5), mats.gold);
-    boot.position.set(0, -0.85, 0.05);
-    
-    // Orteils de la botte
-    const toe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.3), mats.gold);
-    toe.position.set(0, -0.15, 0.3);
-    boot.add(toe);
+    // Genouillère gold massive
+    const knee = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24), mats.gold);
+    knee.position.set(0, -0.06, 0.22);
+    lowerLegGroup.add(knee);
 
-    legGroup.add(boot);
+    // Bottes lourdes
+    const bootGroup = new THREE.Group();
+    bootGroup.position.set(0, -0.32, 0.05);
+    lowerLegGroup.add(bootGroup);
 
-    return legGroup;
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.52, 0.52), mats.sandstone);
+    bootGroup.add(boot);
+
+    const shinGuard = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.12), mats.darkStone);
+    shinGuard.position.set(0, 0.05, 0.28);
+    bootGroup.add(shinGuard);
+
+    const toe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.32), mats.gold);
+    toe.position.set(0, -0.16, 0.35);
+    bootGroup.add(toe);
+
+    return { legGroup, lowerLegGroup };
 }
 
-function createArm(mats, side) { // side: -1 (Left) or 1 (Right)
+function createArm(mats, side) {
     const armGroup = new THREE.Group();
-    armGroup.position.set(0.8 * side, 0.3, 0);
+    armGroup.position.set(0.95 * side, 0.3, 0);
 
-    // Épaulière Massive (Pauldron)
-    const pauldron = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45), mats.gold);
-    pauldron.scale.set(1, 1.2, 1);
-    pauldron.position.y = 0.2;
-    
-    // Piques sur l'épaulière
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 4), mats.gold);
-    spike.position.y = 0.5;
-    pauldron.add(spike);
+    // Épaulières doubles couches massives
+    const pauldronGroup = new THREE.Group();
+    pauldronGroup.position.y = 0.25;
 
-    armGroup.add(pauldron);
+    const basePaul = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48), mats.sandstone);
+    basePaul.scale.set(1, 1.25, 1);
+    pauldronGroup.add(basePaul);
 
-    // Bras (Biceps)
-    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.5), mats.skin);
-    arm.position.y = -0.3;
+    const outerPaul = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.4, 0.56), mats.gold);
+    outerPaul.position.y = 0.1;
+    pauldronGroup.add(outerPaul);
+
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.36, 4), mats.amber);
+    spike.position.set(-0.22 * side, 0.42, 0);
+    spike.rotation.z = -0.32 * side;
+    pauldronGroup.add(spike);
+
+    armGroup.add(pauldronGroup);
+
+    // Biceps ambre
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.5), mats.amber);
+    arm.position.y = -0.28;
     armGroup.add(arm);
 
-    // Avant-bras / Gantelet
-    const gauntlet = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, 0.25), mats.darkMetal);
-    gauntlet.position.y = -0.7;
-    
-    // Détail or sur gantelet
-    const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.28), mats.gold);
-    cuff.position.y = 0.15;
-    gauntlet.add(cuff);
+    // Gantelet lourd (index 2)
+    const gauntletGroup = new THREE.Group();
+    gauntletGroup.position.y = -0.72;
 
-    armGroup.add(gauntlet);
+    const gauntlet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.48, 0.3), mats.sandstone);
+    gauntletGroup.add(gauntlet);
+
+    const gauntletTrim = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.34), mats.gold);
+    gauntletTrim.position.y = 0.15;
+    gauntletGroup.add(gauntletTrim);
+
+    for (let i = 0; i < 3; i++) {
+        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 4), mats.amber);
+        claw.position.set((i - 1) * 0.08, -0.25, 0.13);
+        claw.rotation.x = Math.PI / 4;
+        gauntletGroup.add(claw);
+    }
+
+    armGroup.add(gauntletGroup);
 
     return armGroup;
 }

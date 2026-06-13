@@ -294,21 +294,24 @@ export class RoyalSeal extends BaseEnemy {
         const tx = Math.cos(5 * Math.PI / 4) * (BOSS_ZONE.radius - 3.5);
         const tz = Math.sin(5 * Math.PI / 4) * (BOSS_ZONE.radius - 3.5);
         this.relativeOffset = new THREE.Vector3(BOSS_ZONE.cx + tx, 0, BOSS_ZONE.cz + tz).sub(this.position);
+        
+        // La rotation du trône (face à l'entrée)
         this.throneRotation = 5 * Math.PI / 4 + Math.PI - Math.PI / 2;
+        // Correction de rotation : le boss fait face à +Z, donc il doit être tourné à throneRotation + Math.PI / 2 pour faire face à la même direction que le trône
+        const bossRotY = this.throneRotation + Math.PI / 2;
 
-        // 1. Modèle du Roi Slime affalé
-        const modelData = buildKingSlimeModel(3.2);
+        // 1. Modèle d'Aethelgard
+        const modelData = buildKingSlimeModel(3.2, true);
         this.bossGroup = modelData.mesh;
         this.bossParts = modelData.parts;
         this.bossMaterials = modelData.materials;
 
-        // Positionné dans le siège du trône
+        // Positionné dans le siège du trône - Y abaissé à -1.6 pour reposer à plat sur le siège
         this.bossGroup.position.copy(this.relativeOffset);
-        this.bossGroup.position.y = 1.35;
-        // Tourné à 90 degrés vers la gauche (au repos)
-        this.bossGroup.rotation.y = this.throneRotation + Math.PI / 2;
+        this.bossGroup.position.y = -1.6;
+        this.bossGroup.rotation.y = bossRotY;
 
-        // Pose "Affalé, vide de toute âme"
+        // Pose "Assis sur le trône - reposé"
         this.bossParts.head.rotation.x = 0.8;
         this.bossParts.head.rotation.y = 0.1;
         this.bossParts.head.rotation.z = 0.15;
@@ -316,25 +319,60 @@ export class RoyalSeal extends BaseEnemy {
         this.bossParts.body.rotation.x = -0.35;
         this.bossParts.body.rotation.y = -0.05;
         
-        this.bossParts.armL.rotation.x = 0.3;
-        this.bossParts.armL.rotation.z = -0.4;
+        // Bras droit dans le vide, relâché vers le bas et prêt à prendre l'épée au sol
+        this.bossParts.armR.rotation.x = 0.8;
+        this.bossParts.armR.rotation.y = -0.2;
+        this.bossParts.armR.rotation.z = 0.3;
         
-        this.bossParts.armR.rotation.x = 0.5;
-        this.bossParts.armR.rotation.z = 0.5;
+        // Bras gauche posé de façon détendue sur l'unique accoudoir (gauche)
+        this.bossParts.armL.rotation.x = -0.4;
+        this.bossParts.armL.rotation.y = 0.2;
+        this.bossParts.armL.rotation.z = -0.8;
         
-        this.bossParts.legL.rotation.x = -0.2;
-        this.bossParts.legL.rotation.y = 0.2;
+        // Jambes pliées aux hanches et pliées aux genoux (shins)
+        this.bossParts.legL.rotation.x = -1.4;
+        this.bossParts.legL.rotation.y = 0.1;
+        if (this.bossParts.shinL) this.bossParts.shinL.rotation.x = 1.4;
         
-        this.bossParts.legR.rotation.x = -0.2;
-        this.bossParts.legR.rotation.y = -0.2;
+        this.bossParts.legR.rotation.x = -1.4;
+        this.bossParts.legR.rotation.y = -0.1;
+        if (this.bossParts.shinR) this.bossParts.shinR.rotation.x = 1.4;
 
-        // Épée pointant vers le bas de manière relâchée
-        this.bossParts.swordInfo.rotation.x = Math.PI * 0.9;
+        // Épée posée au sol à droite du trône (calculée localement par rapport à la rotation)
+        const fwd = new THREE.Vector3(Math.sin(bossRotY), 0, Math.cos(bossRotY)).normalize();
+        const right = new THREE.Vector3(Math.cos(bossRotY), 0, -Math.sin(bossRotY)).normalize();
+        
+        const swordPos = this.relativeOffset.clone()
+            .addScaledVector(right, 1.8) // 1.8 unités vers sa droite (là où l'accoudoir est cassé)
+            .addScaledVector(fwd, 0.4);   // 0.4 unités vers l'avant
+        swordPos.y = 0.15;
 
-        // Cœur et yeux éteints
-        this.bossMaterials.energy.emissiveIntensity = 0.0;
-        this.bossMaterials.energy.color.setHex(0x112211);
-        this.bossMaterials.energy.emissive.setHex(0x000000);
+        this.swordGroup = this.bossParts.swordInfo;
+        this.swordGroup.position.copy(swordPos);
+        this.swordGroup.rotation.set(0.15, bossRotY + 0.1, Math.PI / 2); // Couchée sur le flanc, alignée sur le boss
+        this.swordGroup.scale.setScalar(3.2); // Mise à l'échelle du boss (3.2) pour qu'elle soit bien visible au sol
+        this.add(this.swordGroup);
+        this.swordPickedUp = false;
+
+        // --- MATÉRIAUX ASSOMBRI POUR LE SOMMEIL AFK ---
+        if (this.bossMaterials.amber) {
+            this.bossMaterials.amber.color.setHex(0x332211);
+            this.bossMaterials.amber.emissive.setHex(0x000000);
+            this.bossMaterials.amber.emissiveIntensity = 0.0;
+        }
+        if (this.bossMaterials.gold) {
+            this.bossMaterials.gold.color.setHex(0x554433);
+            this.bossMaterials.gold.emissive.setHex(0x000000);
+            this.bossMaterials.gold.emissiveIntensity = 0.0;
+        }
+        if (this.bossMaterials.clothRed) {
+            this.bossMaterials.clothRed.color.setHex(0x221111);
+        }
+        if (this.bossMaterials.energy) {
+            this.bossMaterials.energy.emissiveIntensity = 0.0;
+            this.bossMaterials.energy.color.setHex(0x112211);
+            this.bossMaterials.energy.emissive.setHex(0x000000);
+        }
 
         this.add(this.bossGroup);
 
@@ -431,7 +469,7 @@ export class RoyalSeal extends BaseEnemy {
         }
         if (this.labelSprite) this.labelSprite.visible = false;
 
-        createDamageText("LE ROI S'ÉVEILLE...", new THREE.Vector3(BOSS_ZONE.cx, 5, BOSS_ZONE.cz), '#ffd700', 4.0);
+        createDamageText("AETHELGARD S'ÉVEILLE...", new THREE.Vector3(BOSS_ZONE.cx, 5, BOSS_ZONE.cz), '#ffaa00', 4.0);
     }
 
     update(dt) {
@@ -450,6 +488,10 @@ export class RoyalSeal extends BaseEnemy {
             return;
         }
 
+        const easeInOutCubic = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+        const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3);
+        const easeInOutQuad = (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+
         const tx = Math.cos(5 * Math.PI / 4) * (BOSS_ZONE.radius - 3.5);
         const tz = Math.sin(5 * Math.PI / 4) * (BOSS_ZONE.radius - 3.5);
         const thronePos = new THREE.Vector3(BOSS_ZONE.cx + tx, 0, BOSS_ZONE.cz + tz);
@@ -467,47 +509,99 @@ export class RoyalSeal extends BaseEnemy {
         const targetCamPos = new THREE.Vector3(BOSS_ZONE.cx - 3, 5, BOSS_ZONE.cz - 3);
         const targetLookAt = new THREE.Vector3(BOSS_ZONE.cx + tx, 2.3, BOSS_ZONE.cz + tz);
 
+        // Correction de rotation : le boss fait face à +Z, donc il doit être tourné à throneRotation + Math.PI / 2
+        const bossRotY = this.throneRotation + Math.PI / 2;
+
+        // Ondulations passives et respiration pour le rendre vivant
+        const breathe = Math.sin(t * 2.5) * 0.025;
+        const microSway = Math.cos(t * 1.5) * 0.015;
+
         // --- Phase 1 : Zoom caméra et grondement (0.0s - 2.0s) ---
         if (t < 2.0) {
             const pct = t / 2.0;
-            Globals.cameraOverride.position.lerpVectors(this.startCamPos, targetCamPos, pct);
-            this.currentLookAt.lerpVectors(this.startCamLookAt, targetLookAt, pct);
+            const easedPct = easeInOutCubic(pct);
+            Globals.cameraOverride.position.lerpVectors(this.startCamPos, targetCamPos, easedPct);
+            this.currentLookAt.lerpVectors(this.startCamLookAt, targetLookAt, easedPct);
             Globals.cameraOverride.lookAt.copy(this.currentLookAt);
 
             const pulse = Math.sin(t * 6) * 0.15;
-            this.bossMaterials.energy.emissiveIntensity = pulse > 0 ? pulse : 0;
+            if (this.bossMaterials.energy) {
+                this.bossMaterials.energy.emissiveIntensity = pulse > 0 ? pulse * 0.2 : 0;
+            }
             
-            // Le boss est assis de profil (90 degrés gauche)
-            this.bossGroup.rotation.y = this.throneRotation + Math.PI / 2;
+            // Le boss est assis de face
+            this.bossGroup.rotation.y = bossRotY;
+            
+            // Micro-mouvements de respiration de sommeil
+            this.bossParts.body.rotation.x = -0.35 + breathe;
+            this.bossParts.head.rotation.x = 0.8 + breathe * 0.5;
+            this.bossParts.head.rotation.y = 0.1 + microSway;
+            
+            if (this.bossParts.capeSegments) {
+                this.bossParts.capeSegments.forEach((seg, idx) => {
+                    seg.rotation.x = 0.15 + Math.sin(t * 2.0 - idx * 0.3) * 0.03;
+                });
+            }
         }
         // --- Phase 2 : Allumage yeux, rugissement et tremblement (2.0s - 4.5s) ---
         else if (t < 4.5) {
             const pct = (t - 2.0) / 2.5;
+            const easedPct = easeInOutCubic(pct);
+            
             Globals.cameraOverride.position.copy(targetCamPos);
             Globals.cameraOverride.lookAt.copy(targetLookAt);
 
-            this.bossMaterials.energy.emissiveIntensity = THREE.MathUtils.lerp(0.0, 2.5, pct);
-            this.bossMaterials.energy.color.setHex(0x00ff00);
-            this.bossMaterials.energy.emissive.setHex(0x00ff00);
+            // Waking up energy lueur: transition douce de sombre AFK à active Phase 1
+            if (this.bossMaterials.energy) {
+                this.bossMaterials.energy.color.lerpColors(new THREE.Color(0x112211), new THREE.Color(0x5e3c1a), easedPct);
+                this.bossMaterials.energy.emissive.lerpColors(new THREE.Color(0x000000), new THREE.Color(0x2d1705), easedPct);
+                this.bossMaterials.energy.emissiveIntensity = THREE.MathUtils.lerp(0.0, 0.3, easedPct);
+            }
+            if (this.bossMaterials.amber) {
+                this.bossMaterials.amber.color.lerpColors(new THREE.Color(0x332211), new THREE.Color(0x6e4e2b), easedPct);
+                this.bossMaterials.amber.emissive.lerpColors(new THREE.Color(0x000000), new THREE.Color(0x2b1c0a), easedPct);
+                this.bossMaterials.amber.emissiveIntensity = THREE.MathUtils.lerp(0.0, 0.2, easedPct);
+            }
+            if (this.bossMaterials.gold) {
+                this.bossMaterials.gold.color.lerpColors(new THREE.Color(0x554433), new THREE.Color(0x7a6348), easedPct);
+                this.bossMaterials.gold.emissive.lerpColors(new THREE.Color(0x000000), new THREE.Color(0x1a0f00), easedPct);
+                this.bossMaterials.gold.emissiveIntensity = THREE.MathUtils.lerp(0.0, 0.05, easedPct);
+            }
+            if (this.bossMaterials.clothRed) {
+                this.bossMaterials.clothRed.color.lerpColors(new THREE.Color(0x221111), new THREE.Color(0x3d2323), easedPct);
+            }
 
             if (!this.hasRoared) {
                 if (AudioSys.play) AudioSys.play('boss_roar', 1.8);
                 this.hasRoared = true;
             }
 
+            // Tremblement de caméra et micro-shudders du boss dus au réveil d'énergie
             const shake = 0.08 * (1.0 - pct);
             Globals.cameraOverride.position.x += (Math.random() - 0.5) * shake;
             Globals.cameraOverride.position.y += (Math.random() - 0.5) * shake;
             Globals.cameraOverride.position.z += (Math.random() - 0.5) * shake;
 
-            this.bossParts.head.rotation.x = THREE.MathUtils.lerp(0.8, 0.0, pct);
-            this.bossParts.head.rotation.y = THREE.MathUtils.lerp(0.1, 0.0, pct);
-            this.bossParts.head.rotation.z = THREE.MathUtils.lerp(0.15, 0.0, pct);
-            this.bossParts.body.rotation.x = THREE.MathUtils.lerp(-0.35, 0.0, pct);
-            this.bossParts.armR.rotation.x = THREE.MathUtils.lerp(0.5, -0.2, pct);
+            const tremor = Math.sin(t * 40) * 0.012 * (1.0 - pct);
+
+            // Il redresse sa tête et son corps tout en restant assis de façon organique
+            this.bossParts.head.rotation.x = THREE.MathUtils.lerp(0.8, 0.0, easedPct) + tremor;
+            this.bossParts.head.rotation.y = THREE.MathUtils.lerp(0.1, 0.0, easedPct);
+            this.bossParts.head.rotation.z = THREE.MathUtils.lerp(0.15, 0.0, easedPct) + tremor * 0.5;
             
-            // Reste de profil assis
-            this.bossGroup.rotation.y = this.throneRotation + Math.PI / 2;
+            // Le torse respire lourdement pendant le rugissement
+            const roarBreath = Math.sin(t * 8.0) * 0.03 * pct;
+            this.bossParts.body.rotation.x = THREE.MathUtils.lerp(-0.35, 0.0, easedPct) + roarBreath;
+            this.bossParts.body.rotation.y = -0.05 + microSway;
+
+            if (this.bossParts.capeSegments) {
+                this.bossParts.capeSegments.forEach((seg, idx) => {
+                    seg.rotation.x = 0.2 + Math.sin(t * 5.0 - idx * 0.4) * 0.08;
+                });
+            }
+            
+            // Reste de face assis
+            this.bossGroup.rotation.y = bossRotY;
         }
         // --- Phase 3 : Debout du trône, rotation vers l'avant, levée d'épée et onde de choc (4.5s - 7.0s) ---
         else {
@@ -515,16 +609,82 @@ export class RoyalSeal extends BaseEnemy {
             Globals.cameraOverride.position.copy(targetCamPos);
             Globals.cameraOverride.lookAt.copy(targetLookAt);
 
-            const fwd = new THREE.Vector3(Math.cos(this.throneRotation), 0, Math.sin(this.throneRotation)).normalize();
-            this.bossGroup.position.copy(this.relativeOffset).addScaledVector(fwd, pct * 2.2);
-            this.bossGroup.position.y = THREE.MathUtils.lerp(1.35, 0.4, pct);
+            const fwd = new THREE.Vector3(Math.sin(bossRotY), 0, Math.cos(bossRotY)).normalize();
 
-            // Rotation progressive : de 90 degrés gauche (repos) vers le face-à-face (throneRotation)
-            this.bossGroup.rotation.y = THREE.MathUtils.lerp(this.throneRotation + Math.PI / 2, this.throneRotation, pct);
+            // Animer le bras droit pour aller chercher l'épée au sol
+            if (pct < 0.36) { // De t = 4.5s à 5.4s (Prise de l'épée au sol)
+                const armPct = pct / 0.36;
+                const easedArmPct = easeInOutCubic(armPct);
+                
+                // Reste assis
+                this.bossGroup.position.copy(this.relativeOffset);
+                this.bossGroup.position.y = -1.6;
 
-            this.bossParts.armR.rotation.x = THREE.MathUtils.lerp(-0.2, -Math.PI / 1.2, pct);
-            this.bossParts.armR.rotation.z = THREE.MathUtils.lerp(0.5, -0.3, pct);
-            this.bossParts.swordInfo.rotation.x = THREE.MathUtils.lerp(Math.PI * 0.9, Math.PI / 2, pct);
+                // Le bras descend vers la poignée avec une courbe organique et un léger tremblement d'approche
+                const reachTremor = Math.sin(t * 30) * 0.008 * (1.0 - armPct);
+                this.bossParts.armR.rotation.x = THREE.MathUtils.lerp(0.8, 1.2, easedArmPct) + reachTremor;
+                this.bossParts.armR.rotation.y = THREE.MathUtils.lerp(-0.2, 0.0, easedArmPct);
+                this.bossParts.armR.rotation.z = THREE.MathUtils.lerp(0.3, 0.6, easedArmPct) + reachTremor * 0.5;
+
+                // Les jambes et l'autre bras restent dans la pose assise avec de légères vibrations de tension
+                const tension = Math.sin(t * 15) * 0.005;
+                this.bossParts.legL.rotation.x = -1.4 + tension;
+                this.bossParts.legR.rotation.x = -1.4 - tension;
+                if (this.bossParts.shinL) this.bossParts.shinL.rotation.x = 1.4;
+                if (this.bossParts.shinR) this.bossParts.shinR.rotation.x = 1.4;
+                
+                this.bossParts.armL.rotation.x = -0.4 + tension;
+                this.bossParts.armL.rotation.y = 0.2;
+                this.bossParts.armL.rotation.z = -0.8;
+                
+                this.bossParts.body.rotation.x = tension;
+            } else { // Après t = 5.4s (Se lève avec l'épée et avance)
+                const liftPct = (pct - 0.36) / (1 - 0.36);
+                const easedLiftPct = easeInOutQuad(liftPct);
+                
+                // Se lève et avance de façon dynamique (léger saut de force)
+                const jumpForce = Math.sin(liftPct * Math.PI) * 0.15;
+                this.bossGroup.position.copy(this.relativeOffset).addScaledVector(fwd, easedLiftPct * 2.2);
+                this.bossGroup.position.y = THREE.MathUtils.lerp(-1.6, 0.0, easedLiftPct) + jumpForce;
+
+                // Jambes se redressent de façon organique (le torse bascule d'abord en avant)
+                this.bossParts.legL.rotation.x = THREE.MathUtils.lerp(-1.4, 0.0, easedLiftPct);
+                this.bossParts.legR.rotation.x = THREE.MathUtils.lerp(-1.4, 0.0, easedLiftPct);
+                if (this.bossParts.shinL) this.bossParts.shinL.rotation.x = THREE.MathUtils.lerp(1.4, 0.0, easedLiftPct);
+                if (this.bossParts.shinR) this.bossParts.shinR.rotation.x = THREE.MathUtils.lerp(1.4, 0.0, easedLiftPct);
+
+                // Transfert de poids : le torse penche en avant puis se redresse fièrement
+                const weightShift = Math.sin(liftPct * Math.PI) * 0.16;
+                this.bossParts.body.rotation.x = THREE.MathUtils.lerp(0.0, -0.08, easedLiftPct) + weightShift;
+                this.bossParts.body.rotation.y = Math.sin(liftPct * Math.PI) * 0.08;
+
+                // Le bras gauche balance en contrepoids naturel
+                this.bossParts.armL.rotation.x = THREE.MathUtils.lerp(-0.4, 0.1, easedLiftPct);
+                this.bossParts.armL.rotation.y = THREE.MathUtils.lerp(0.2, 0.0, easedLiftPct);
+                this.bossParts.armL.rotation.z = THREE.MathUtils.lerp(-0.8, -0.2, easedLiftPct);
+
+                if (!this.swordPickedUp) {
+                    this.bossParts.armR.children[2].add(this.swordGroup);
+                    this.swordGroup.position.set(0, -0.22, 0.05); // Collée à la main (entre les griffes)
+                    this.swordGroup.rotation.set(Math.PI / 2, 0, 0);
+                    this.swordGroup.scale.setScalar(1.0); // Reset scale to 1.0 (matching hand parent scale)
+                    this.swordPickedUp = true;
+                    if (AudioSys.play) AudioSys.play('magic_cast', 1.0); // Son de ramassage magique
+                }
+
+                // Il lève le bras très haut avec l'épée vers le ciel, l'épée vibre
+                const swordVibrate = Math.sin(t * 50) * 0.01 * (1.0 - liftPct);
+                this.bossParts.armR.rotation.x = THREE.MathUtils.lerp(1.2, Math.PI / 1.2, easeInOutCubic(liftPct)) + swordVibrate;
+                this.bossParts.armR.rotation.y = THREE.MathUtils.lerp(0.0, 0.0, liftPct);
+                this.bossParts.armR.rotation.z = THREE.MathUtils.lerp(0.6, -0.3, easeInOutCubic(liftPct)) + swordVibrate;
+
+                // La cape s'envole en arrière avec l'onde de choc
+                if (this.bossParts.capeSegments) {
+                    this.bossParts.capeSegments.forEach((seg, idx) => {
+                        seg.rotation.x = THREE.MathUtils.lerp(0.2, 0.7 + Math.sin(t * 8.0 - idx * 0.4) * 0.12, liftPct);
+                    });
+                }
+            }
 
             if (!this.hasSlammed) {
                 if (AudioSys.play) {
@@ -532,8 +692,8 @@ export class RoyalSeal extends BaseEnemy {
                     AudioSys.play('earth_smash', 1.5);
                 }
                 const feetPos = thronePos.clone().addScaledVector(fwd, 1.0);
-                createSkillVisual('shockwave', feetPos, 16.0, 0x00ff00);
-                spawnParticles(feetPos, 0x00ff00, 150);
+                createSkillVisual('shockwave', feetPos, 16.0, 0xffaa00); // Shockwave ambre/orange
+                spawnParticles(feetPos, 0xffaa00, 150);
                 this.hasSlammed = true;
             }
         }
@@ -573,7 +733,7 @@ export class RoyalSeal extends BaseEnemy {
             }
             
             // Assigner l'orientation finale sur le GROUP global boss.rotation.y (pas boss.mesh.rotation.y !)
-            boss.rotation.y = this.throneRotation;
+            boss.rotation.y = this.throneRotation + Math.PI / 2;
             
             addEnemy(boss);
             STATE.bossSpawned = true; 

@@ -471,6 +471,9 @@ export class BaseEnemy extends THREE.Group {
     }
 
     getAggroRange() {
+        if (this.isBoss) {
+            return 120.0; // Les boss ont une aggro immense pour rester actifs partout dans l'arène
+        }
         let range = ENEMY_AGGRO_RANGE;
         if (this.isMiniBoss && this.miniBossStats?.pursuitMult > 1) {
             range *= this.miniBossStats.pursuitMult;

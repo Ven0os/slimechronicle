@@ -575,9 +575,9 @@ export class PlayerBase extends THREE.Group {
         
         if (Globals.enemies) {
             for (const enemy of Globals.enemies) {
-                if (enemy.dead || enemy.isBoss) continue;
+                if (enemy.dead || enemy.isBoss || enemy.radius === 0) continue;
                 const dist = this.position.distanceTo(enemy.position);
-                const enemyRadius = (enemy.radius || 0.5); 
+                const enemyRadius = enemy.radius !== undefined ? enemy.radius : 0.5; 
                 const minDist = this.radius + enemyRadius;
                 if (dist < minDist) {
                     const pushDir = this.position.clone().sub(enemy.position).normalize();

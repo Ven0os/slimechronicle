@@ -20,6 +20,7 @@ export const Globals = {
     safeHubMarker: null,
     water: null,
     cameraOverride: null,
+    cameraShake: { x: 0, y: 0, z: 0 },
 };
 
 // Actions du jeu exposées pour éviter les dépendances circulaires
