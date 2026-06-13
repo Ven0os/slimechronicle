@@ -28,14 +28,83 @@ export const SkillTree = {
       if (window.UI) window.UI.toast('✦ PALIER STELLAIRE : +25% EXP');
     }
 
-    ConstellationUI.refreshVisuals();
+    const postUnlockAction = () => {
+      SkillTree.render();
+      if (window.UI) window.UI.updateHUD();
+      if (window.BuffBar) window.BuffBar.render();
+      if (window.NewSkillUI) {
+        window.NewSkillUI.updatePoints();
+        window.NewSkillUI.updateInfoTab();
+        window.NewSkillUI.updatePassiveDisplay();
+      }
+    };
 
-    if (window.UI) window.UI.updateHUD();
-    if (window.BuffBar) window.BuffBar.render();
-    if (window.NewSkillUI) {
-      window.NewSkillUI.updatePoints();
-      window.NewSkillUI.updateInfoTab();
-      window.NewSkillUI.updatePassiveDisplay();
+    if (nodeId.endsWith('-10')) {
+      ConstellationUI.playBranchEndPassiveUnlockAnimation(nodeId, postUnlockAction);
+    } else if (nodeId.endsWith('-apex')) {
+      ConstellationUI.playApexUnlockAnimation(nodeId, postUnlockAction);
+    } else {
+      postUnlockAction();
+    }
+  },
+
+  maxAllocateBranch: function (classId: ClassId, branchId: string) {
+    if (window.isConstellationAnimating) return;
+
+    const data = getConstellationForClass(classId);
+    const branch = data.branches.find(b => b.id === branchId);
+    if (!branch) return;
+
+    let anyUnlocked = false;
+    let unlockedTenth = false;
+
+    for (const node of branch.nodes) {
+      if (ConstellationEngine.isNodeUnlocked(node.id)) {
+        continue;
+      }
+
+      const check = ConstellationEngine.canUnlock(node.id);
+      if (check.ok) {
+        const ok = ConstellationEngine.unlock(node.id);
+        if (ok) {
+          anyUnlocked = true;
+          if (node.id.endsWith('-10')) {
+            unlockedTenth = true;
+          }
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    if (anyUnlocked) {
+      if (AudioSys.sfx?.levelup) AudioSys.sfx.levelup();
+      else if (AudioSys.sfx?.ui_click) AudioSys.sfx.ui_click();
+
+      const classCount = ConstellationEngine.getUnlockedCountForClass();
+      if (classCount > 0 && classCount % 5 === 0) {
+        STATE.stats.xpMod = (STATE.stats.xpMod || 1) + 0.25;
+        if (window.UI) window.UI.toast('✦ PALIER STELLAIRE : +25% EXP');
+      }
+
+      const postUnlockAction = () => {
+        SkillTree.render();
+        if (window.UI) window.UI.updateHUD();
+        if (window.BuffBar) window.BuffBar.render();
+        if (window.NewSkillUI) {
+          window.NewSkillUI.updatePoints();
+          window.NewSkillUI.updateInfoTab();
+          window.NewSkillUI.updatePassiveDisplay();
+        }
+      };
+
+      if (unlockedTenth) {
+        ConstellationUI.playBranchEndPassiveUnlockAnimation(`${classId}-${branchId}-10`, postUnlockAction);
+      } else {
+        postUnlockAction();
+      }
     }
   },
 

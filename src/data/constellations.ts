@@ -32,7 +32,7 @@ export interface NodeEffects {
   xpMod?: number;
   /** Bonus % additif sur UN sort précis (ex. `{ space: 0.1 }` = +10% Rayon Stellaire). */
   skillMods?: Partial<Record<SkillKey, number>>;
-  /** Passif runtime — réservé aux keystones (palier 4) et apex. */
+  /** Passif runtime — réservé aux keystones (palier 10) et apex. */
   passive?: string;
   passiveRank?: number;
 }
@@ -66,25 +66,29 @@ export interface ClassConstellation {
   branches: ConstellationBranch[];
 }
 
-function chain(
+function branch10(
   classId: ClassId,
   branch: string,
   slot: ConstellationBranch['slot'],
   label: string,
-  defs: Array<Omit<ConstellationNode, 'id' | 'branch' | 'tier' | 'requires'> & { tier: number }>,
+  defs: Array<{
+    name: string;
+    desc: string;
+    icon: string;
+    effects: NodeEffects;
+    keystone?: boolean;
+  }>
 ): ConstellationBranch {
   const nodes: ConstellationNode[] = defs.map((d, i) => ({
     ...d,
-    id: `${classId}-${branch}-${d.tier}`,
+    id: `${classId}-${branch}-${i + 1}`,
     branch,
-    requires: i > 0 ? [`${classId}-${branch}-${d.tier - 1}`] : undefined,
+    tier: i + 1,
+    cost: 1,
+    requires: i > 0 ? [`${classId}-${branch}-${i}`] : undefined,
   }));
   return { id: branch, label, slot, nodes };
 }
-
-const APEX_REQ_COUNT = 10;
-
-export const CONSTELLATION_APEX_MIN_NODES = APEX_REQ_COUNT;
 
 export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
   warrior: {
@@ -95,7 +99,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'warrior-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Colosse Runique',
       desc: 'Parade : 30 % renvoi · +5 % DEF en dégâts réfléchis.',
       icon: 'fa-crown',
@@ -104,35 +108,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'runicColossus', passiveRank: 2 },
     },
     branches: [
-      chain('warrior', 'rempart', 'hp', 'Rempart', [
-        { tier: 1, name: 'Cuirasse', desc: '+25 HP', icon: 'fa-shield', cost: 1, effects: { maxHpFlat: 25 } },
-        { tier: 2, name: 'Garde-Fer', desc: '+8 DEF', icon: 'fa-shield-halved', cost: 1, effects: { def: 8 } },
-        { tier: 3, name: 'Forteresse', desc: '+20 HP, +5 DEF', icon: 'fa-icicles', cost: 1, effects: { maxHpFlat: 20, def: 5 } },
-        { tier: 4, name: 'Mur Impénétrable', desc: 'Passif : réduction de dégâts, parade renforcée et soins au blocage.', icon: 'fa-fort-awesome', cost: 1, keystone: true, effects: { maxHpFlat: 40, def: 10, regen: 1, passive: 'ironWall', passiveRank: 1 } },
+      branch10('warrior', 'rempart', 'hp', 'Rempart', [
+        { name: 'Cuirasse', desc: '+25 HP', icon: 'fa-shield', effects: { maxHpFlat: 25 } },
+        { name: 'Garde-Fer', desc: '+8 DEF', icon: 'fa-shield-halved', effects: { def: 8 } },
+        { name: 'Forteresse', desc: '+20 HP', icon: 'fa-icicles', effects: { maxHpFlat: 20 } },
+        { name: 'Écorce de Fer', desc: '+30 HP', icon: 'fa-tree', effects: { maxHpFlat: 30 } },
+        { name: 'Peau de Pierre', desc: '+10 DEF', icon: 'fa-gem', effects: { def: 10 } },
+        { name: 'Résilience', desc: '+35 HP', icon: 'fa-heart', effects: { maxHpFlat: 35 } },
+        { name: 'Rempart d\'Acier', desc: '+12 DEF', icon: 'fa-shield', effects: { def: 12 } },
+        { name: 'Vitalité Runique', desc: '+40 HP', icon: 'fa-mountain', effects: { maxHpFlat: 40 } },
+        { name: 'Bastion de Fer', desc: '+15 DEF', icon: 'fa-fort-awesome', effects: { def: 15 } },
+        {
+          name: 'Mur Impénétrable',
+          desc: 'Passif : réduction de dégâts, parade renforcée et soins au blocage.\n\nBONUS DE STATS\n+40 HP\n+10 DEF\n+1.0 HP/s',
+          icon: 'fa-fort-awesome',
+          keystone: true,
+          effects: { maxHpFlat: 40, def: 10, regen: 1.0, passive: 'ironWall' }
+        }
       ]),
-      chain('warrior', 'fureur', 'atk', 'Fureur', [
-        { tier: 1, name: 'Lame Lourde', desc: '+4 ATK', icon: 'fa-gavel', cost: 1, effects: { atk: 4 } },
-        { tier: 2, name: 'Ferveur', desc: '+4 ATK', icon: 'fa-fire', cost: 1, effects: { atk: 4 } },
-        { tier: 3, name: 'Sang de Bataille', desc: '+8 ATK', icon: 'fa-droplet', cost: 1, effects: { atk: 8 } },
-        { tier: 4, name: 'Titan Sanguin', desc: 'Passif : HP convertis en DEF bonus et dégâts amplifiés.', icon: 'fa-dumbbell', cost: 1, keystone: true, effects: { atk: 6, maxHpFlat: 28, passive: 'titanBlood', passiveRank: 1 } },
+      branch10('warrior', 'fureur', 'atk', 'Fureur', [
+        { name: 'Lame Lourde', desc: '+4 ATK', icon: 'fa-gavel', effects: { atk: 4 } },
+        { name: 'Ferveur', desc: '+4 ATK', icon: 'fa-fire', effects: { atk: 4 } },
+        { name: 'Sang de Bataille', desc: '+6 ATK', icon: 'fa-droplet', effects: { atk: 6 } },
+        { name: 'Rage Croissante', desc: '+6 ATK', icon: 'fa-fire-flame-curved', effects: { atk: 6 } },
+        { name: 'Force Brute', desc: '+8 ATK', icon: 'fa-hand-fist', effects: { atk: 8 } },
+        { name: 'Courroux', desc: '+8 ATK', icon: 'fa-bolt', effects: { atk: 8 } },
+        { name: 'Fureur Interne', desc: '+10 ATK', icon: 'fa-burst', effects: { atk: 10 } },
+        { name: 'Lame de Sang', desc: '+10 ATK', icon: 'fa-droplet', effects: { atk: 10 } },
+        { name: 'Puissance Pure', desc: '+12 ATK', icon: 'fa-dumbbell', effects: { atk: 12 } },
+        {
+          name: 'Sang de Titan',
+          desc: 'Passif : HP convertis en DEF bonus et dégâts amplifiés.\n\nBONUS DE STATS\n+10 ATK\n+30 HP\n+8% Crit Chance',
+          icon: 'fa-dumbbell',
+          keystone: true,
+          effects: { atk: 10, maxHpFlat: 30, crit: 0.08, passive: 'titanBlood' }
+        }
       ]),
-      chain('warrior', 'cri', 'spd', 'Cri', [
-        { tier: 1, name: 'Allure de Guerre', desc: '+1.0 Vitesse sprint', icon: 'fa-shoe-prints', cost: 1, effects: { speed: 1 } },
-        { tier: 2, name: 'Hâte Martiale', desc: '-8% recharge Cri de Guerre', icon: 'fa-bolt', cost: 1, effects: { skillCdMods: { shift: -0.08 } } },
-        { tier: 3, name: 'Élan Tactique', desc: '+0.8 sprint, -5% recharge Cri de Guerre', icon: 'fa-bullhorn', cost: 1, effects: { speed: 0.8, skillCdMods: { shift: -0.05 } } },
-        { tier: 4, name: 'Parade Réactive', desc: 'Passif : fin de Parade accélère les compétences et confère l\'intangibilité.', icon: 'fa-shield-virus', cost: 1, keystone: true, effects: { def: 8, skillCdMods: { space: -0.08, shift: -0.08, e: -0.08 }, passive: 'parryRefund', passiveRank: 1 } },
+      branch10('warrior', 'cri', 'spd', 'Cri', [
+        { name: 'Allure de Guerre', desc: '+1.0 Vitesse sprint', icon: 'fa-shoe-prints', effects: { speed: 1.0 } },
+        { name: 'Hâte Martiale', desc: '-8% CD Cri de Guerre', icon: 'fa-bolt', effects: { skillCdMods: { shift: -0.08 } } },
+        { name: 'Élan Tactique', desc: '+0.8 Vitesse sprint', icon: 'fa-bullhorn', effects: { speed: 0.8 } },
+        { name: 'Souffle Martial', desc: '-6% CD Cri de Guerre', icon: 'fa-wind', effects: { skillCdMods: { shift: -0.06 } } },
+        { name: 'Célérité', desc: '+0.8 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 0.8 } },
+        { name: 'Cri Écho', desc: '-5% CD Cri de Guerre', icon: 'fa-volume-high', effects: { skillCdMods: { shift: -0.05 } } },
+        { name: 'Allure Légère', desc: '+0.6 Vitesse sprint', icon: 'fa-feather', effects: { speed: 0.6 } },
+        { name: 'Réduction Tactique', desc: '-5% CD Cri de Guerre', icon: 'fa-clock', effects: { skillCdMods: { shift: -0.05 } } },
+        { name: 'Élan Suprême', desc: '+0.8 Vitesse sprint', icon: 'fa-forward', effects: { speed: 0.8 } },
+        {
+          name: 'Parade Réactive',
+          desc: 'Passif : fin de Parade accélère les compétences et confère l\'intangibilité.\n\nBONUS DE STATS\n+8 DEF\n+1.0 Vitesse sprint\n+6% Crit Chance',
+          icon: 'fa-shield-virus',
+          keystone: true,
+          effects: { def: 8, speed: 1.0, crit: 0.06, passive: 'parryRefund' }
+        }
       ]),
-      chain('warrior', 'gardien', 'hp', 'Gardien', [
-        { tier: 1, name: 'Voix de Commandement', desc: '+8% Cri de Guerre', icon: 'fa-bullhorn', cost: 1, effects: { skillMods: { shift: 0.08 } } },
-        { tier: 2, name: 'Ralliement', desc: '+6 DEF', icon: 'fa-shield-heart', cost: 1, effects: { def: 6 } },
-        { tier: 3, name: 'Protecteur', desc: '+16 HP, −5% recharge Cri de Guerre', icon: 'fa-users', cost: 1, effects: { maxHpFlat: 16, skillCdMods: { shift: -0.05 } } },
-        { tier: 4, name: 'Cri du Gardien', desc: 'Passif : Cri de Guerre renforce les alliés en zone.', icon: 'fa-shield-heart', cost: 1, keystone: true, effects: { maxHpFlat: 32, def: 8, passive: 'guardianWarCry', passiveRank: 1 } },
+      branch10('warrior', 'gardien', 'hp', 'Gardien', [
+        { name: 'Voix de Commandement', desc: '+8% Cri de Guerre', icon: 'fa-bullhorn', effects: { skillMods: { shift: 0.08 } } },
+        { name: 'Ralliement', desc: '+6 DEF', icon: 'fa-shield-heart', effects: { def: 6 } },
+        { name: 'Protecteur', desc: '+16 HP', icon: 'fa-users', effects: { maxHpFlat: 16 } },
+        { name: 'Vigilance', desc: '+8 DEF', icon: 'fa-eye', effects: { def: 8 } },
+        { name: 'Peau de Garde', desc: '+20 HP', icon: 'fa-user-shield', effects: { maxHpFlat: 20 } },
+        { name: 'Muraille Mobile', desc: '+10 DEF', icon: 'fa-fort-awesome', effects: { def: 10 } },
+        { name: 'Cri de Ralliement', desc: '+24 HP', icon: 'fa-users-viewfinder', effects: { maxHpFlat: 24 } },
+        { name: 'Rempart Divin', desc: '+12 DEF', icon: 'fa-shield-halved', effects: { def: 12 } },
+        { name: 'Discipline', desc: '+30 HP', icon: 'fa-dumbbell', effects: { maxHpFlat: 30 } },
+        {
+          name: 'Cri du Gardien',
+          desc: 'Passif : Cri de Guerre renforce les alliés en zone.\n\nBONUS DE STATS\n+32 HP\n+8 DEF\n+0.8 HP/s',
+          icon: 'fa-shield-heart',
+          keystone: true,
+          effects: { maxHpFlat: 32, def: 8, regen: 0.8, passive: 'guardianWarCry' }
+        }
       ]),
-      chain('warrior', 'seisme', 'mst', 'Séisme', [
-        { tier: 1, name: 'Impact', desc: '+5% Crit Chance', icon: 'fa-burst', cost: 1, effects: { crit: 0.05 } },
-        { tier: 2, name: 'Fracas', desc: '+15% Crit Damage', icon: 'fa-explosion', cost: 1, effects: { critDmg: 0.15 } },
-        { tier: 3, name: 'Puissance Tellurique', desc: '+6 ATK, +8% Frappe Sismique', icon: 'fa-mountain', cost: 1, effects: { atk: 6, skillMods: { space: 0.08 } } },
-        { tier: 4, name: 'Cataclysme', desc: 'Passif : fin de Parade déclenche un séisme gratuit chargé.', icon: 'fa-meteor', cost: 1, keystone: true, effects: { atk: 8, skillMods: { space: 0.1 }, passive: 'parryCharge', passiveRank: 1 } },
+      branch10('warrior', 'seisme', 'mst', 'Séisme', [
+        { name: 'Impact', desc: '+5% Crit Chance', icon: 'fa-burst', effects: { crit: 0.05 } },
+        { name: 'Fracas', desc: '+15% Crit Damage', icon: 'fa-explosion', effects: { critDmg: 0.15 } },
+        { name: 'Puissance Tellurique', desc: '+6 ATK', icon: 'fa-mountain', effects: { atk: 6 } },
+        { name: 'Secousse', desc: '+4% Crit Chance', icon: 'fa-volcano', effects: { crit: 0.04 } },
+        { name: 'Onde de Choc', desc: '+10% Crit Damage', icon: 'fa-wave-square', effects: { critDmg: 0.10 } },
+        { name: 'Force Sismique', desc: '+6 ATK', icon: 'fa-gavel', effects: { atk: 6 } },
+        { name: 'Impact Majeur', desc: '+4% Crit Chance', icon: 'fa-burst', effects: { crit: 0.04 } },
+        { name: 'Cataclysme Lunaire', desc: '+10% Crit Damage', icon: 'fa-meteor', effects: { critDmg: 0.10 } },
+        { name: 'Puissance Sismique', desc: '+8 ATK', icon: 'fa-mountain', effects: { atk: 8 } },
+        {
+          name: 'Charge Sismique',
+          desc: 'Passif : fin de Parade déclenche un séisme gratuit chargé.\n\nBONUS DE STATS\n+8 ATK\n+5% Crit Chance\n+15% Dégâts Crit',
+          icon: 'fa-meteor',
+          keystone: true,
+          effects: { atk: 8, crit: 0.05, critDmg: 0.15, passive: 'parryCharge' }
+        }
       ]),
     ],
   },
@@ -145,7 +209,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'mage-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Paradoxe Absolu',
       desc: 'Tous les 5 kills : stat permanente +0,01–0,09 %.',
       icon: 'fa-infinity',
@@ -154,35 +218,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'paradoxOverload', passiveRank: 2 },
     },
     branches: [
-      chain('mage', 'flux', 'atk', 'Flux', [
-        { tier: 1, name: 'Arcane', desc: '+5 ATK', icon: 'fa-wand-magic-sparkles', cost: 1, effects: { atk: 5 } },
-        { tier: 2, name: 'Décharge', desc: '+10% Arcane Barrage', icon: 'fa-bolt', cost: 1, effects: { skillMods: { space: 0.1 } } },
-        { tier: 3, name: 'Conduit', desc: '+4 ATK, +8% Arcane Barrage', icon: 'fa-recycle', cost: 1, effects: { atk: 4, skillMods: { space: 0.08 } } },
-        { tier: 4, name: 'Tempête Arcanique', desc: 'Passif : sorts réduisent les autres CD', icon: 'fa-hurricane', cost: 1, keystone: true, effects: { atk: 6, skillMods: { space: 0.1 }, passive: 'arcaneOverload', passiveRank: 1 } },
+      branch10('mage', 'flux', 'atk', 'Flux', [
+        { name: 'Arcane', desc: '+5 ATK', icon: 'fa-wand-magic-sparkles', effects: { atk: 5 } },
+        { name: 'Décharge', desc: '+8% Arcane Barrage', icon: 'fa-bolt', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Conduit', desc: '+4 ATK', icon: 'fa-recycle', effects: { atk: 4 } },
+        { name: 'Amplification', desc: '+8% Arcane Barrage', icon: 'fa-bolt', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Flux Interne', desc: '+5 ATK', icon: 'fa-star-of-david', effects: { atk: 5 } },
+        { name: 'Surchargé', desc: '+10% Arcane Barrage', icon: 'fa-sun', effects: { skillMods: { space: 0.10 } } },
+        { name: 'Conduit Pur', desc: '+6 ATK', icon: 'fa-wand-magic', effects: { atk: 6 } },
+        { name: 'Tempête Céleste', desc: '+10% Arcane Barrage', icon: 'fa-cloud-showers-water', effects: { skillMods: { space: 0.10 } } },
+        { name: 'Énergie Arcane', desc: '+8 ATK', icon: 'fa-meteor', effects: { atk: 8 } },
+        {
+          name: 'Surcharge Arcane',
+          desc: 'Passif : sorts réduisent les autres CD.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
+          icon: 'fa-hurricane',
+          keystone: true,
+          effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'arcaneOverload' }
+        }
       ]),
-      chain('mage', 'givre', 'hp', 'Givre', [
-        { tier: 1, name: 'Résilience', desc: '+32 HP', icon: 'fa-snowflake', cost: 1, effects: { maxHpFlat: 32 } },
-        { tier: 2, name: 'Barrière de Glace', desc: '+6 DEF', icon: 'fa-icicles', cost: 1, effects: { def: 6 } },
-        { tier: 3, name: 'Cœur de Glace', desc: '+20 HP, +5 DEF', icon: 'fa-hourglass', cost: 1, effects: { maxHpFlat: 20, def: 5 } },
-        { tier: 4, name: 'Cœur Gelé', desc: 'Passif : Chronostase ralentit davantage', icon: 'fa-heart-pulse', cost: 1, keystone: true, effects: { maxHpFlat: 35, regen: 1.2, passive: 'deepStasis', passiveRank: 1 } },
+      branch10('mage', 'givre', 'hp', 'Givre', [
+        { name: 'Résilience', desc: '+32 HP', icon: 'fa-snowflake', effects: { maxHpFlat: 32 } },
+        { name: 'Barrière de Glace', desc: '+6 DEF', icon: 'fa-icicles', effects: { def: 6 } },
+        { name: 'Cœur de Glace', desc: '+20 HP', icon: 'fa-hourglass', effects: { maxHpFlat: 20 } },
+        { name: 'Armure Cristalline', desc: '+8 DEF', icon: 'fa-shield', effects: { def: 8 } },
+        { name: 'Stase Résiliente', desc: '+30 HP', icon: 'fa-hourglass-empty', effects: { maxHpFlat: 30 } },
+        { name: 'Rampart Gelé', desc: '+10 DEF', icon: 'fa-fort-awesome-alt', effects: { def: 10 } },
+        { name: 'Vitalité Gelée', desc: '+35 HP', icon: 'fa-heart-pulse', effects: { maxHpFlat: 35 } },
+        { name: 'Glaçon Impénétrable', desc: '+12 DEF', icon: 'fa-cube', effects: { def: 12 } },
+        { name: 'Cœur Glacial', desc: '+40 HP', icon: 'fa-snowflake', effects: { maxHpFlat: 40 } },
+        {
+          name: 'Stase Profonde',
+          desc: 'Passif : Chronostase ralentit davantage.\n\nBONUS DE STATS\n+45 HP\n+10 DEF\n+1.2 HP/s',
+          icon: 'fa-heart-pulse',
+          keystone: true,
+          effects: { maxHpFlat: 45, def: 10, regen: 1.2, passive: 'deepStasis' }
+        }
       ]),
-      chain('mage', 'mirage', 'spd', 'Mirage', [
-        { tier: 1, name: 'Pas Fantôme', desc: '+1.2 Vitesse sprint', icon: 'fa-ghost', cost: 1, effects: { speed: 1.2 } },
-        { tier: 2, name: 'Hâte Arcane', desc: '-10% recharge Transfert', icon: 'fa-stopwatch', cost: 1, effects: { skillCdMods: { e: -0.1 } } },
-        { tier: 3, name: 'Éclipse Rapide', desc: '+1.0 sprint, -6% recharge Transfert', icon: 'fa-stairs', cost: 1, effects: { speed: 1, skillCdMods: { e: -0.06 } } },
-        { tier: 4, name: 'Transfert Maîtrisé', desc: 'Passif : Transfert explosif et reset au kill.', icon: 'fa-right-left', cost: 1, keystone: true, effects: { atk: 5, speed: 0.8, skillCdMods: { e: -0.10 }, passive: 'blinkMastery', passiveRank: 1 } },
+      branch10('mage', 'mirage', 'spd', 'Mirage', [
+        { name: 'Pas Fantôme', desc: '+1.2 Vitesse sprint', icon: 'fa-ghost', effects: { speed: 1.2 } },
+        { name: 'Hâte Arcane', desc: '-10% recharge Transfert', icon: 'fa-stopwatch', effects: { skillCdMods: { e: -0.1 } } },
+        { name: 'Éclipse Rapide', desc: '+1.0 Vitesse sprint', icon: 'fa-stairs', effects: { speed: 1.0 } },
+        { name: 'Vortex de Dash', desc: '-8% recharge Transfert', icon: 'fa-arrow-rotate-left', effects: { skillCdMods: { e: -0.08 } } },
+        { name: 'Pas Illusionniste', desc: '+0.8 Vitesse sprint', icon: 'fa-masks-theater', effects: { speed: 0.8 } },
+        { name: 'Hâte de Mirage', desc: '-6% recharge Transfert', icon: 'fa-clock', effects: { skillCdMods: { e: -0.06 } } },
+        { name: 'Écho Fantomatique', desc: '+0.8 Vitesse sprint', icon: 'fa-eye', effects: { speed: 0.8 } },
+        { name: 'Blink Fluide', desc: '-6% recharge Transfert', icon: 'fa-bolt', effects: { skillCdMods: { e: -0.06 } } },
+        { name: 'Échappée Arcane', desc: '+1.0 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 1.0 } },
+        {
+          name: 'Transfert Maîtrisé',
+          desc: 'Passif : Transfert explosif et reset au kill.\n\nBONUS DE STATS\n+6 ATK\n+1.0 Vitesse sprint\n+5% Crit Chance',
+          icon: 'fa-right-left',
+          keystone: true,
+          effects: { atk: 6, speed: 1.0, crit: 0.05, passive: 'blinkMastery' }
+        }
       ]),
-      chain('mage', 'prisme', 'mst', 'Prisme', [
-        { tier: 1, name: 'Focus', desc: '+4% Crit Chance', icon: 'fa-eye', cost: 1, effects: { crit: 0.04 } },
-        { tier: 2, name: 'Résonance', desc: '+10% XP', icon: 'fa-graduation-cap', cost: 1, effects: { xpMod: 0.1 } },
-        { tier: 3, name: 'Précision Arcane', desc: '+5% Crit Chance, +8% Crit Damage', icon: 'fa-crosshairs', cost: 1, effects: { crit: 0.05, critDmg: 0.08 } },
-        { tier: 4, name: 'Singularité', desc: 'Passif : Barrage Arcanique élargi et rafales renforcées.', icon: 'fa-atom', cost: 1, keystone: true, effects: { crit: 0.08, critDmg: 0.12, passive: 'cloneExtend', passiveRank: 1 } },
+      branch10('mage', 'prisme', 'mst', 'Prisme', [
+        { name: 'Focus', desc: '+4% Crit Chance', icon: 'fa-eye', effects: { crit: 0.04 } },
+        { name: 'Résonance', desc: '+10% XP', icon: 'fa-graduation-cap', effects: { xpMod: 0.10 } },
+        { name: 'Précision Arcane', desc: '+5% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.05 } },
+        { name: 'XP Étendu', desc: '+8% XP', icon: 'fa-graduation-cap', effects: { xpMod: 0.08 } },
+        { name: 'Focus Divin', desc: '+4% Crit Chance', icon: 'fa-eye', effects: { crit: 0.04 } },
+        { name: 'Résonance Pure', desc: '+8% XP', icon: 'fa-book-open', effects: { xpMod: 0.08 } },
+        { name: 'Focus Temporel', desc: '+5% Crit Chance', icon: 'fa-clock', effects: { crit: 0.05 } },
+        { name: 'XP Amplifié', desc: '+8% XP', icon: 'fa-scroll', effects: { xpMod: 0.08 } },
+        { name: 'Lentille du Destin', desc: '+10% Dégâts Crit', icon: 'fa-gem', effects: { critDmg: 0.10 } },
+        {
+          name: 'Clones Persistants',
+          desc: 'Passif : les clones durent plus longtemps.\n\nBONUS DE STATS\n+8% Crit Chance\n+12% Dégâts Crit\n+10% XP',
+          icon: 'fa-atom',
+          keystone: true,
+          effects: { crit: 0.08, critDmg: 0.12, xpMod: 0.10, passive: 'cloneExtend' }
+        }
       ]),
-      chain('mage', 'replique', 'mst', 'Réplique', [
-        { tier: 1, name: 'Echo Arcanique', desc: '+4% Crit Chance', icon: 'fa-clone', cost: 1, effects: { crit: 0.04 } },
-        { tier: 2, name: 'Reflet', desc: '+8% Transfert', icon: 'fa-ghost', cost: 1, effects: { skillMods: { e: 0.08 } } },
-        { tier: 3, name: 'Duplicata', desc: '+5% Crit Chance, +6% Arcane Barrage', icon: 'fa-eye', cost: 1, effects: { crit: 0.05, skillMods: { space: 0.06 } } },
-        { tier: 4, name: 'Paradoxe Répliqué', desc: 'Passif : les clones reproduisent vos compétences.', icon: 'fa-clone', cost: 1, keystone: true, effects: { atk: 5, skillCdMods: { space: -0.08, shift: -0.08, e: -0.08 }, passive: 'paradoxReplicated', passiveRank: 1 } },
+      branch10('mage', 'replique', 'mst', 'Réplique', [
+        { name: 'Echo Arcanique', desc: '+4% Crit Chance', icon: 'fa-clone', effects: { crit: 0.04 } },
+        { name: 'Reflet', desc: '+8% Transfert', icon: 'fa-ghost', effects: { skillMods: { e: 0.08 } } },
+        { name: 'Duplicata', desc: '+5% Crit Chance', icon: 'fa-eye', effects: { crit: 0.05 } },
+        { name: 'Clonage', desc: '+6% Arcane Barrage', icon: 'fa-clone', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Reflet Pur', desc: '+8% Transfert', icon: 'fa-compass', effects: { skillMods: { e: 0.08 } } },
+        { name: 'Duplicata Supérieur', desc: '+4% Crit Chance', icon: 'fa-eye-low-vision', effects: { crit: 0.04 } },
+        { name: 'Écho Double', desc: '+6% Arcane Barrage', icon: 'fa-network-wired', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Clonage de l\'Ombre', desc: '+8% Transfert', icon: 'fa-mask', effects: { skillMods: { e: 0.08 } } },
+        { name: 'Duplicata d\'Or', desc: '+6% Arcane Barrage', icon: 'fa-trophy', effects: { skillMods: { space: 0.06 } } },
+        {
+          name: 'Paradoxe Répliqué',
+          desc: 'Passif : les clones reproduisent vos compétences.\n\nBONUS DE STATS\n+8 ATK\n+0.8 Vitesse sprint\n+6% Crit Chance',
+          icon: 'fa-clone',
+          keystone: true,
+          effects: { atk: 8, speed: 0.8, crit: 0.06, passive: 'paradoxReplicated' }
+        }
       ]),
     ],
   },
@@ -195,7 +319,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'sentinel-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Hélios Incarné',
       desc: 'Aura 14 m · Puits Solaire · bonus/malus ancrage.',
       icon: 'fa-sun',
@@ -204,35 +328,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'solarInspiration', passiveRank: 2 },
     },
     branches: [
-      chain('sentinel', 'rayon', 'atk', 'Rayon', [
-        { tier: 1, name: 'Focalisation', desc: '+4 ATK', icon: 'fa-sun', cost: 1, effects: { atk: 4 } },
-        { tier: 2, name: 'Faisceau', desc: '+12% Rayon Stellaire', icon: 'fa-bolt', cost: 1, effects: { skillMods: { space: 0.12 } } },
-        { tier: 3, name: 'Amplificateur', desc: '+5 ATK, +8% Rayon Stellaire', icon: 'fa-battery-full', cost: 1, effects: { atk: 5, skillMods: { space: 0.08 } } },
-        { tier: 4, name: 'Supernova', desc: 'Passif : Rayon Stellaire +10 % taille, scaling HP max', icon: 'fa-star', cost: 1, keystone: true, effects: { atk: 8, crit: 0.08, passive: 'solarBeamHaste', passiveRank: 1 } },
+      branch10('sentinel', 'rayon', 'atk', 'Rayon', [
+        { name: 'Focalisation', desc: '+4 ATK', icon: 'fa-sun', effects: { atk: 4 } },
+        { name: 'Faisceau', desc: '+12% Rayon Stellaire', icon: 'fa-bolt', effects: { skillMods: { space: 0.12 } } },
+        { name: 'Amplificateur', desc: '+5 ATK', icon: 'fa-battery-full', effects: { atk: 5 } },
+        { name: 'Optique Solaire', desc: '+8% Rayon Stellaire', icon: 'fa-glasses', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Focalisation Pure', desc: '+6 ATK', icon: 'fa-star', effects: { atk: 6 } },
+        { name: 'Lentille Solaire', desc: '+8% Rayon Stellaire', icon: 'fa-eye', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Laser Stellaire', desc: '+6 ATK', icon: 'fa-burst', effects: { atk: 6 } },
+        { name: 'Super-Faisceau', desc: '+10% Rayon Stellaire', icon: 'fa-meteor', effects: { skillMods: { space: 0.10 } } },
+        { name: 'Fureur Solaire', desc: '+8 ATK', icon: 'fa-sun', effects: { atk: 8 } },
+        {
+          name: 'Faisceau Dévastateur',
+          desc: 'Passif : Rayon Stellaire +10 % taille, scaling HP max, impact renforcé.\n\nBONUS DE STATS\n+10 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
+          icon: 'fa-sun',
+          keystone: true,
+          effects: { atk: 10, crit: 0.08, critDmg: 0.12, passive: 'solarBeamHaste' }
+        }
       ]),
-      chain('sentinel', 'surcharge', 'atk', 'Surcharge', [
-        { tier: 1, name: 'Condensateur', desc: '+6% Rayon Stellaire', icon: 'fa-battery-half', cost: 1, effects: { skillMods: { space: 0.06 } } },
-        { tier: 2, name: 'Amplificateur', desc: '+4 ATK', icon: 'fa-bolt', cost: 1, effects: { atk: 4 } },
-        { tier: 3, name: 'Surintensité', desc: '+8% Rayon Stellaire, +4% Crit Chance', icon: 'fa-sun', cost: 1, effects: { skillMods: { space: 0.08 }, crit: 0.04 } },
-        { tier: 4, name: 'Surcharge Stellaire', desc: 'Passif : Rayon Stellaire charge jusqu\'à 250 %', icon: 'fa-star', cost: 1, keystone: true, effects: { crit: 0.15, critDmg: 0.20, passive: 'stellarOvercharge', passiveRank: 1 } },
+      branch10('sentinel', 'surcharge', 'atk', 'Surcharge', [
+        { name: 'Condensateur', desc: '+6% Rayon Stellaire', icon: 'fa-battery-half', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Surintensité', desc: '+4 ATK', icon: 'fa-bolt', effects: { atk: 4 } },
+        { name: 'Amplification', desc: '+8% Rayon Stellaire', icon: 'fa-sun', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Accumulateur', desc: '+4% Crit Chance', icon: 'fa-bolt', effects: { crit: 0.04 } },
+        { name: 'Condensateur Majeur', desc: '+6% Rayon Stellaire', icon: 'fa-battery-full', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Surtension', desc: '+6 ATK', icon: 'fa-bolt', effects: { atk: 6 } },
+        { name: 'Surcharge Solaire', desc: '+6% Rayon Stellaire', icon: 'fa-burst', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Accumulation Critique', desc: '+4% Crit Chance', icon: 'fa-hourglass-start', effects: { crit: 0.04 } },
+        { name: 'Condensateur Pur', desc: '+8 ATK', icon: 'fa-plug', effects: { atk: 8 } },
+        {
+          name: 'Surcharge Stellaire',
+          desc: 'Passif : Rayon Stellaire charge jusqu\'à 250 %.\n\nBONUS DE STATS\n+15% Crit Chance\n+20% Dégâts Crit\n+8 ATK',
+          icon: 'fa-star',
+          keystone: true,
+          effects: { crit: 0.15, critDmg: 0.20, atk: 8, passive: 'stellarOvercharge' }
+        }
       ]),
-      chain('sentinel', 'sanctuaire', 'hp', 'Sanctuaire', [
-        { tier: 1, name: 'Vitalité Sacrée', desc: '+28 HP', icon: 'fa-heart', cost: 1, effects: { maxHpFlat: 28 } },
-        { tier: 2, name: 'Bénédiction', desc: '+1.2 HP/s', icon: 'fa-hand-holding-medical', cost: 1, effects: { regen: 1.2 } },
-        { tier: 3, name: 'Ancrage Sacré', desc: '+16 HP, +0.8 HP/s', icon: 'fa-circle-radiation', cost: 1, effects: { maxHpFlat: 16, regen: 0.8 } },
-        { tier: 4, name: 'Autel Mobile', desc: 'Passif : soins reçus amplifiés et Champ de Lumière renforcé.', icon: 'fa-church', cost: 1, keystone: true, effects: { maxHpFlat: 50, regen: 0.8, passive: 'healAmp', passiveRank: 1 } },
+      branch10('sentinel', 'sanctuaire', 'hp', 'Sanctuaire', [
+        { name: 'Vitalité Sacrée', desc: '+28 HP', icon: 'fa-heart', effects: { maxHpFlat: 28 } },
+        { name: 'Bénédiction', desc: '+1.2 HP/s', icon: 'fa-hand-holding-medical', effects: { regen: 1.2 } },
+        { name: 'Ancrage Sacré', desc: '+16 HP', icon: 'fa-circle-radiation', effects: { maxHpFlat: 16 } },
+        { name: 'Restauration Solaire', desc: '+0.8 HP/s', icon: 'fa-hand-sparkles', effects: { regen: 0.8 } },
+        { name: 'Vitalité Majeure', desc: '+30 HP', icon: 'fa-heart', effects: { maxHpFlat: 30 } },
+        { name: 'Ancrage Divin', desc: '+0.8 HP/s', icon: 'fa-church', effects: { regen: 0.8 } },
+        { name: 'Restauration Sacrée', desc: '+32 HP', icon: 'fa-user-shield', effects: { maxHpFlat: 32 } },
+        { name: 'Fontaine de Vie', desc: '+1.0 HP/s', icon: 'fa-faucet-drip', effects: { regen: 1.0 } },
+        { name: 'Vitalité Solaire', desc: '+36 HP', icon: 'fa-sun', effects: { maxHpFlat: 36 } },
+        {
+          name: 'Bénédiction',
+          desc: 'Passif : soins reçus amplifiés et Champ de Lumière renforcé.\n\nBONUS DE STATS\n+50 HP\n+1.5 HP/s\n+8 DEF',
+          icon: 'fa-church',
+          keystone: true,
+          effects: { maxHpFlat: 50, regen: 1.5, def: 8, passive: 'healAmp' }
+        }
       ]),
-      chain('sentinel', 'aile', 'spd', 'Aile', [
-        { tier: 1, name: 'Légèreté', desc: '+1.0 Vitesse sprint', icon: 'fa-feather', cost: 1, effects: { speed: 1 } },
-        { tier: 2, name: 'Célérité Divine', desc: '-9% recharge Rayon Stellaire', icon: 'fa-wind', cost: 1, effects: { skillCdMods: { space: -0.09 } } },
-        { tier: 3, name: 'Plumes Légères', desc: '+0.9 sprint, -6% recharge Rayon Stellaire', icon: 'fa-person-running', cost: 1, effects: { speed: 0.9, skillCdMods: { space: -0.06 } } },
-        { tier: 4, name: 'Plumes d\'Or', desc: 'Passif : burst de sprint après Rayon Stellaire.', icon: 'fa-dove', cost: 1, keystone: true, effects: { speedPct: 0.12, skillCdMods: { space: -0.08 }, passive: 'beamHaste', passiveRank: 1 } },
+      branch10('sentinel', 'aile', 'spd', 'Aile', [
+        { name: 'Légèreté', desc: '+1.0 Vitesse sprint', icon: 'fa-feather', effects: { speed: 1.0 } },
+        { name: 'Célérité Divine', desc: '-9% CD Rayon Stellaire', icon: 'fa-wind', effects: { skillCdMods: { space: -0.09 } } },
+        { name: 'Plumes Légères', desc: '+0.9 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 0.9 } },
+        { name: 'Vol Astral', desc: '-6% CD Rayon Stellaire', icon: 'fa-plane-up', effects: { skillCdMods: { space: -0.06 } } },
+        { name: 'Élan Céleste', desc: '+0.8 Vitesse sprint', icon: 'fa-shoe-prints', effects: { speed: 0.8 } },
+        { name: 'Vent Solaire', desc: '-6% CD Rayon Stellaire', icon: 'fa-wind', effects: { skillCdMods: { space: -0.06 } } },
+        { name: 'Plumes de Vent', desc: '+0.8 Vitesse sprint', icon: 'fa-feather', effects: { speed: 0.8 } },
+        { name: 'Élan de Lumière', desc: '-5% CD Rayon Stellaire', icon: 'fa-bolt', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Vol Solaire', desc: '+1.0 Vitesse sprint', icon: 'fa-dove', effects: { speed: 1.0 } },
+        {
+          name: 'Hâte Solaire',
+          desc: 'Passif : burst de sprint après Rayon Stellaire.\n\nBONUS DE STATS\n+1.0 Vitesse sprint\n+25 HP\n+6% Crit Chance',
+          icon: 'fa-dove',
+          keystone: true,
+          effects: { speed: 1.0, maxHpFlat: 25, crit: 0.06, passive: 'beamHaste' }
+        }
       ]),
-      chain('sentinel', 'egide', 'mst', 'Égide', [
-        { tier: 1, name: 'Protection', desc: '+5 DEF', icon: 'fa-shield', cost: 1, effects: { def: 5 } },
-        { tier: 2, name: 'Rempart Sacré', desc: '+13 HP', icon: 'fa-shield-heart', cost: 1, effects: { maxHpFlat: 13 } },
-        { tier: 3, name: 'Bastion', desc: '+8 DEF, +13 HP', icon: 'fa-shield-halved', cost: 1, effects: { def: 8, maxHpFlat: 13 } },
-        { tier: 4, name: 'Martyr', desc: 'Passif : soins excédentaires convertis en bouclier d\'absorption.', icon: 'fa-hand-sparkles', cost: 1, keystone: true, effects: { maxHpFlat: 45, def: 10, passive: 'overhealShield', passiveRank: 1 } },
+      branch10('sentinel', 'egide', 'mst', 'Égide', [
+        { name: 'Protection', desc: '+5 DEF', icon: 'fa-shield', effects: { def: 5 } },
+        { name: 'Rempart Sacré', desc: '+13 HP', icon: 'fa-shield-heart', effects: { maxHpFlat: 13 } },
+        { name: 'Bastion', desc: '+8 DEF', icon: 'fa-shield-halved', effects: { def: 8 } },
+        { name: 'Égide Divine', desc: '+15 HP', icon: 'fa-cross', effects: { maxHpFlat: 15 } },
+        { name: 'Bouclier Céleste', desc: '+10 DEF', icon: 'fa-shield-virus', effects: { def: 10 } },
+        { name: 'Bastion Solaire', desc: '+20 HP', icon: 'fa-heart', effects: { maxHpFlat: 20 } },
+        { name: 'Protection Pure', desc: '+12 DEF', icon: 'fa-shield-halved', effects: { def: 12 } },
+        { name: 'Rempart Solaire', desc: '+25 HP', icon: 'fa-sun', effects: { maxHpFlat: 25 } },
+        { name: 'Bastion d\'Acier', desc: '+14 DEF', icon: 'fa-fort-awesome', effects: { def: 14 } },
+        {
+          name: 'Martyr',
+          desc: 'Passif : soins excédentaires convertis en bouclier d\'absorption.\n\nBONUS DE STATS\n+45 HP\n+10 DEF\n+0.8 HP/s',
+          icon: 'fa-hand-sparkles',
+          keystone: true,
+          effects: { maxHpFlat: 45, def: 10, regen: 0.8, passive: 'overhealShield' }
+        }
       ]),
     ],
   },
@@ -245,7 +429,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'blade-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Soif Éternelle',
       desc: '+0,3 % Crit Chance et Crit Damage par % HP manquant.',
       icon: 'fa-skull',
@@ -254,35 +438,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'eternalThirst', passiveRank: 2 },
     },
     branches: [
-      chain('blade', 'hemo', 'atk', 'Hémorragie', [
-        { tier: 1, name: 'Lame Affûtée', desc: '+3 ATK', icon: 'fa-scythe', cost: 1, effects: { atk: 3 } },
-        { tier: 2, name: 'Précision Mortelle', desc: '+8% Crit Chance', icon: 'fa-crosshairs', cost: 1, effects: { crit: 0.08 } },
-        { tier: 3, name: 'Affûtage Sanglant', desc: '+6% Crit Chance, +1% vol de vie', icon: 'fa-droplet', cost: 1, effects: { crit: 0.06, lifesteal: 0.01 } },
-        { tier: 4, name: 'Bain de Sang', desc: 'Passif : critiques appliquent Saignée', icon: 'fa-bath', cost: 1, keystone: true, effects: { lifesteal: 0.02, critDmg: 0.15, passive: 'hemorrhage', passiveRank: 1 } },
+      branch10('blade', 'hemo', 'atk', 'Hémorragie', [
+        { name: 'Lame Affûtée', desc: '+3 ATK', icon: 'fa-slash', effects: { atk: 3 } },
+        { name: 'Précision Mortelle', desc: '+8% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.08 } },
+        { name: 'Affûtage Sanglant', desc: '+6% Crit Chance', icon: 'fa-droplet', effects: { crit: 0.06 } },
+        { name: 'Vol de Vie', desc: '+1% Vol de vie', icon: 'fa-heart-circle-bolt', effects: { lifesteal: 0.01 } },
+        { name: 'Lame de Saignée', desc: '+4 ATK', icon: 'fa-droplet', effects: { atk: 4 } },
+        { name: 'Précision Majeure', desc: '+6% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.06 } },
+        { name: 'Vol de Vie Sanguin', desc: '+1% Vol de vie', icon: 'fa-droplet', effects: { lifesteal: 0.01 } },
+        { name: 'Lame Critique', desc: '+8% Crit Chance', icon: 'fa-burst', effects: { crit: 0.08 } },
+        { name: 'Tranchant Cruel', desc: '+6 ATK', icon: 'fa-gavel', effects: { atk: 6 } },
+        {
+          name: 'Saignée',
+          desc: 'Passif : critiques appliquent Saignée.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+2% Vol de vie',
+          icon: 'fa-bath',
+          keystone: true,
+          effects: { atk: 8, crit: 0.08, lifesteal: 0.02, passive: 'hemorrhage' }
+        }
       ]),
-      chain('blade', 'sanguine', 'atk', 'Sanguine', [
-        { tier: 1, name: 'Pulsation', desc: '+4 ATK', icon: 'fa-heart-pulse', cost: 1, effects: { atk: 4 } },
-        { tier: 2, name: 'Sang Bouillonnant', desc: '+6% Crit Chance', icon: 'fa-fire', cost: 1, effects: { crit: 0.06 } },
-        { tier: 3, name: 'Soif Critique', desc: '+8% Crit Damage', icon: 'fa-droplet', cost: 1, effects: { critDmg: 0.08 } },
-        { tier: 4, name: 'Frénésie Sanglante', desc: 'Passif : sous 50 % HP, Frénésie offensive', icon: 'fa-fire-flame-curved', cost: 1, keystone: true, effects: { crit: 0.08, critDmg: 0.12, attackSpeedMod: -0.10, passive: 'bloodFrenzy', passiveRank: 1 } },
+      branch10('blade', 'sanguine', 'atk', 'Sanguine', [
+        { name: 'Pulsation', desc: '+4 ATK', icon: 'fa-heart-pulse', effects: { atk: 4 } },
+        { name: 'Sang Bouillonnant', desc: '+6% Crit Chance', icon: 'fa-fire', effects: { crit: 0.06 } },
+        { name: 'Soif Critique', desc: '+8% Crit Damage', icon: 'fa-droplet', effects: { critDmg: 0.08 } },
+        { name: 'Pulsation Cruelle', desc: '+5 ATK', icon: 'fa-heart-pulse', effects: { atk: 5 } },
+        { name: 'Ferveur Critique', desc: '+5% Crit Chance', icon: 'fa-fire-flame-curved', effects: { crit: 0.05 } },
+        { name: 'Sang en Fureur', desc: '+8% Crit Damage', icon: 'fa-explosion', effects: { critDmg: 0.08 } },
+        { name: 'Rage Critique', desc: '+6 ATK', icon: 'fa-burst', effects: { atk: 6 } },
+        { name: 'Vitesse Martiale', desc: '-4% Vitesse d\'attaque', icon: 'fa-stopwatch', effects: { attackSpeedMod: -0.04 } },
+        { name: 'Hémoglobine Pure', desc: '+6 ATK', icon: 'fa-vial', effects: { atk: 6 } },
+        {
+          name: 'Frénésie Sanglante',
+          desc: 'Passif : sous 50 % HP, Frénésie offensive.\n\nBONUS DE STATS\n+8% Crit Chance\n+12% Dégâts Crit\n-10% Vitesse d\'attaque',
+          icon: 'fa-fire-flame-curved',
+          keystone: true,
+          effects: { crit: 0.08, critDmg: 0.12, attackSpeedMod: -0.10, passive: 'bloodFrenzy' }
+        }
       ]),
-      chain('blade', 'ombre', 'spd', 'Ombre', [
-        { tier: 1, name: 'Foulée', desc: '+1.5 Vitesse sprint', icon: 'fa-person-running', cost: 1, effects: { speed: 1.5 } },
-        { tier: 2, name: 'Hâte des Ombres', desc: '-12% recharge Ombre Véloce', icon: 'fa-bolt', cost: 1, effects: { skillCdMods: { shift: -0.12 } } },
-        { tier: 3, name: 'Pas Furtifs', desc: '+1.0 sprint, -8% cadence d\'attaque', icon: 'fa-ghost', cost: 1, effects: { speed: 1, attackSpeedMod: -0.08 } },
-        { tier: 4, name: 'Pas du Néant', desc: 'Passif : intangible au dash et reset au kill.', icon: 'fa-street-view', cost: 1, keystone: true, effects: { atk: 5, skillCdMods: { shift: -0.10 }, passive: 'dashReset', passiveRank: 1 } },
+      branch10('blade', 'ombre', 'spd', 'Ombre', [
+        { name: 'Foulée', desc: '+1.5 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 1.5 } },
+        { name: 'Hâte des Ombres', desc: '-12% CD Ombre Véloce', icon: 'fa-bolt', effects: { skillCdMods: { shift: -0.12 } } },
+        { name: 'Pas Furtifs', desc: '+1.0 Vitesse sprint', icon: 'fa-ghost', effects: { speed: 1.0 } },
+        { name: 'Dash Silencieux', desc: '-8% CD Ombre Véloce', icon: 'fa-circle-arrow-right', effects: { skillCdMods: { shift: -0.08 } } },
+        { name: 'Course de l\'Ombre', desc: '+0.8 Vitesse sprint', icon: 'fa-person-walking-dashed-line', effects: { speed: 0.8 } },
+        { name: 'Recharge Furtive', desc: '-6% CD Ombre Véloce', icon: 'fa-clock', effects: { skillCdMods: { shift: -0.06 } } },
+        { name: 'Pas du Spectre', desc: '+0.8 Vitesse sprint', icon: 'fa-ghost', effects: { speed: 0.8 } },
+        { name: 'Hâte Ombragée', desc: '-6% CD Ombre Véloce', icon: 'fa-bolt', effects: { skillCdMods: { shift: -0.06 } } },
+        { name: 'Foulée Divine', desc: '+1.0 Vitesse sprint', icon: 'fa-forward', effects: { speed: 1.0 } },
+        {
+          name: 'Pas du Néant',
+          desc: 'Passif : intangible au dash et reset au kill.\n\nBONUS DE STATS\n+1.2 Vitesse sprint\n+6 ATK\n+6% Crit Chance',
+          icon: 'fa-street-view',
+          keystone: true,
+          effects: { speed: 1.2, atk: 6, crit: 0.06, passive: 'dashReset' }
+        }
       ]),
-      chain('blade', 'cyclone', 'mst', 'Cyclone', [
-        { tier: 1, name: 'Tourbillon', desc: '+8% Toupie Létale', icon: 'fa-hurricane', cost: 1, effects: { skillMods: { space: 0.08 } } },
-        { tier: 2, name: 'Lames Multiples', desc: '+6 ATK', icon: 'fa-burst', cost: 1, effects: { atk: 6 } },
-        { tier: 3, name: 'Rafale', desc: '+10% Toupie Létale, +4 ATK', icon: 'fa-circle-notch', cost: 1, effects: { skillMods: { space: 0.1 }, atk: 4 } },
-        { tier: 4, name: 'Maelström', desc: 'Passif : Toupie Létale aspire les ennemis vers le centre.', icon: 'fa-tornado', cost: 1, keystone: true, effects: { atk: 6, skillMods: { space: 0.10 }, passive: 'cyclonePull', passiveRank: 1 } },
+      branch10('blade', 'cyclone', 'mst', 'Cyclone', [
+        { name: 'Tourbillon', desc: '+8% Toupie Létale', icon: 'fa-hurricane', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Lames Multiples', desc: '+6 ATK', icon: 'fa-burst', effects: { atk: 6 } },
+        { name: 'Rafale', desc: '+10% Toupie Létale', icon: 'fa-circle-notch', effects: { skillMods: { space: 0.10 } } },
+        { name: 'Tranchant Rotatif', desc: '+4 ATK', icon: 'fa-gavel', effects: { atk: 4 } },
+        { name: 'Tempête de Lames', desc: '+8% Toupie Létale', icon: 'fa-tornado', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Vent Déchireur', desc: '+5 ATK', icon: 'fa-wind', effects: { atk: 5 } },
+        { name: 'Cyclone Cruel', desc: '+8% Toupie Létale', icon: 'fa-dharmachakra', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Rafale Tranchante', desc: '+6 ATK', icon: 'fa-shield-virus', effects: { atk: 6 } },
+        { name: 'Lame Cyclone', desc: '+10% Toupie Létale', icon: 'fa-hurricane', effects: { skillMods: { space: 0.10 } } },
+        {
+          name: 'Maelström',
+          desc: 'Passif : Toupie Létale aspire les ennemis vers le centre.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
+          icon: 'fa-tornado',
+          keystone: true,
+          effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'cyclonePull' }
+        }
       ]),
-      chain('blade', 'survie', 'hp', 'Survie', [
-        { tier: 1, name: 'Endurance', desc: '+25 HP', icon: 'fa-heart', cost: 1, effects: { maxHpFlat: 25 } },
-        { tier: 2, name: 'Régénération', desc: '+0.8 HP/s', icon: 'fa-bandage', cost: 1, effects: { regen: 0.8 } },
-        { tier: 3, name: 'Vitalité Tenace', desc: '+16 HP, +0.5 HP/s', icon: 'fa-fire', cost: 1, effects: { maxHpFlat: 16, regen: 0.5 } },
-        { tier: 4, name: 'Dernier Souffle', desc: 'Passif : survie à un coup fatal avec intangibilité.', icon: 'fa-heart-crack', cost: 1, keystone: true, effects: { maxHpFlat: 38, regen: 0.6, passive: 'lastBreath', passiveRank: 1 } },
+      branch10('blade', 'survie', 'hp', 'Survie', [
+        { name: 'Endurance', desc: '+25 HP', icon: 'fa-heart', effects: { maxHpFlat: 25 } },
+        { name: 'Régénération', desc: '+0.8 HP/s', icon: 'fa-bandage', effects: { regen: 0.8 } },
+        { name: 'Vitalité Tenace', desc: '+16 HP', icon: 'fa-fire', effects: { maxHpFlat: 16 } },
+        { name: 'Peau de Fer', desc: '+6 DEF', icon: 'fa-shield-halved', effects: { def: 6 } },
+        { name: 'Endurance Majeure', desc: '+28 HP', icon: 'fa-heart', effects: { maxHpFlat: 28 } },
+        { name: 'Régénération Pure', desc: '+0.6 HP/s', icon: 'fa-briefcase-medical', effects: { regen: 0.6 } },
+        { name: 'Vitalité Sanguine', desc: '+30 HP', icon: 'fa-droplet', effects: { maxHpFlat: 30 } },
+        { name: 'Carapace Runique', desc: '+8 DEF', icon: 'fa-shield', effects: { def: 8 } },
+        { name: 'Endurance Pure', desc: '+32 HP', icon: 'fa-heart-pulse', effects: { maxHpFlat: 32 } },
+        {
+          name: 'Dernier Souffle',
+          desc: 'Passif : survie à un coup fatal avec intangibilité.\n\nBONUS DE STATS\n+38 HP\n+8 DEF\n+0.6 HP/s',
+          icon: 'fa-heart-crack',
+          keystone: true,
+          effects: { maxHpFlat: 38, def: 8, regen: 0.6, passive: 'lastBreath' }
+        }
       ]),
     ],
   },
@@ -295,7 +539,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'pacifier-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Pacte de Sang',
       desc: '+45 % Crit Damage · Méga-Crit tous les 3 tirs.',
       icon: 'fa-heart-pulse',
@@ -304,35 +548,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'bloodPact', passiveRank: 2 },
     },
     branches: [
-      chain('pacifier', 'transfusion', 'hp', 'Transfusion', [
-        { tier: 1, name: 'Sang Fort', desc: '+32 HP', icon: 'fa-heart', cost: 1, effects: { maxHpFlat: 32 } },
-        { tier: 2, name: 'Flux Vital', desc: '+1 HP/s', icon: 'fa-droplet', cost: 1, effects: { regen: 1 } },
-        { tier: 3, name: 'Réservoir', desc: '+20 HP, +0.6 HP/s', icon: 'fa-shield-heart', cost: 1, effects: { maxHpFlat: 20, regen: 0.6 } },
-        { tier: 4, name: 'Overflow', desc: 'Passif : bouclier de sang renforcé et overflow de soins.', icon: 'fa-fill-drip', cost: 1, keystone: true, effects: { maxHpFlat: 42, regen: 0.8, passive: 'shieldOverflow', passiveRank: 1 } },
+      branch10('pacifier', 'transfusion', 'hp', 'Transfusion', [
+        { name: 'Sang Fort', desc: '+32 HP', icon: 'fa-heart', effects: { maxHpFlat: 32 } },
+        { name: 'Flux Vital', desc: '+1.0 HP/s', icon: 'fa-droplet', effects: { regen: 1.0 } },
+        { name: 'Réservoir', desc: '+20 HP', icon: 'fa-shield-heart', effects: { maxHpFlat: 20 } },
+        { name: 'Sang Épais', desc: '+0.6 HP/s', icon: 'fa-droplet', effects: { regen: 0.6 } },
+        { name: 'Réservoir Majeur', desc: '+25 HP', icon: 'fa-heart', effects: { maxHpFlat: 25 } },
+        { name: 'Barrière de Sang', desc: '+6 DEF', icon: 'fa-shield-halved', effects: { def: 6 } },
+        { name: 'Flux Sacré', desc: '+28 HP', icon: 'fa-heart-circle-check', effects: { maxHpFlat: 28 } },
+        { name: 'Régénération Divine', desc: '+0.8 HP/s', icon: 'fa-hand-holding-medical', effects: { regen: 0.8 } },
+        { name: 'Réservoir Divin', desc: '+30 HP', icon: 'fa-shield-heart', effects: { maxHpFlat: 30 } },
+        {
+          name: 'Overflow',
+          desc: 'Passif : bouclier de sang renforcé et overflow de soins.\n\nBONUS DE STATS\n+42 HP\n+0.8 HP/s\n+8 DEF',
+          icon: 'fa-fill-drip',
+          keystone: true,
+          effects: { maxHpFlat: 42, regen: 0.8, def: 8, passive: 'shieldOverflow' }
+        }
       ]),
-      chain('pacifier', 'jugement', 'atk', 'Jugement', [
-        { tier: 1, name: 'Sentence', desc: '+5 ATK', icon: 'fa-gavel', cost: 1, effects: { atk: 5 } },
-        { tier: 2, name: 'Marque Profonde', desc: '+10% Verdict Sanguin', icon: 'fa-crosshairs', cost: 1, effects: { skillMods: { shift: 0.1 } } },
-        { tier: 3, name: 'Condamnation', desc: '+4 ATK, +8% Verdict Sanguin', icon: 'fa-eye', cost: 1, effects: { atk: 4, skillMods: { shift: 0.08 } } },
-        { tier: 4, name: 'Exécution', desc: 'Passif : dégâts massifs sur cibles marquées par Verdict Sanguin.', icon: 'fa-skull-crossbones', cost: 1, keystone: true, effects: { atk: 8, crit: 0.10, passive: 'executioner', passiveRank: 1 } },
+      branch10('pacifier', 'jugement', 'atk', 'Jugement', [
+        { name: 'Sentence', desc: '+5 ATK', icon: 'fa-gavel', effects: { atk: 5 } },
+        { name: 'Marque Profonde', desc: '+10% Verdict Sanguin', icon: 'fa-crosshairs', effects: { skillMods: { shift: 0.10 } } },
+        { name: 'Condamnation', desc: '+4 ATK', icon: 'fa-eye', effects: { atk: 4 } },
+        { name: 'Verdict Pénétrant', desc: '+8% Verdict Sanguin', icon: 'fa-skull-crossbones', effects: { skillMods: { shift: 0.08 } } },
+        { name: 'Sentence Pure', desc: '+5 ATK', icon: 'fa-gavel', effects: { atk: 5 } },
+        { name: 'Condamnation Éternelle', desc: '+8% Verdict Sanguin', icon: 'fa-crosshairs', effects: { skillMods: { shift: 0.08 } } },
+        { name: 'Sentence Majeure', desc: '+6 ATK', icon: 'fa-star-of-david', effects: { atk: 6 } },
+        { name: 'Marque de Sang', desc: '+8% Verdict Sanguin', icon: 'fa-eye', effects: { skillMods: { shift: 0.08 } } },
+        { name: 'Exécuteur Impitoyable', desc: '+8 ATK', icon: 'fa-skull', effects: { atk: 8 } },
+        {
+          name: 'Exécution',
+          desc: 'Passif : dégâts massifs sur cibles marquées par Verdict Sanguin.\n\nBONUS DE STATS\n+8 ATK\n+10% Crit Chance\n+15% Dégâts Crit',
+          icon: 'fa-skull-crossbones',
+          keystone: true,
+          effects: { atk: 8, crit: 0.10, critDmg: 0.15, passive: 'executioner' }
+        }
       ]),
-      chain('pacifier', 'frénésie', 'spd', 'Frénésie', [
-        { tier: 1, name: 'Réflexes', desc: '+1.0 Vitesse sprint', icon: 'fa-bolt', cost: 1, effects: { speed: 1 } },
-        { tier: 2, name: 'Cadence', desc: '-10% cadence d\'attaque', icon: 'fa-stopwatch', cost: 1, effects: { attackSpeedMod: -0.1 } },
-        { tier: 3, name: 'Tir Rapide', desc: '+0.6 sprint, -8% cadence d\'attaque', icon: 'fa-gun', cost: 1, effects: { speed: 0.6, attackSpeedMod: -0.08 } },
-        { tier: 4, name: 'Adrénaline', desc: 'Passif : kill en Frénésie recharge immédiatement la compétence.', icon: 'fa-syringe', cost: 1, keystone: true, effects: { attackSpeedMod: -0.10, speed: 0.8, passive: 'frenzyAdrenaline', passiveRank: 1 } },
+      branch10('pacifier', 'frénesie', 'spd', 'Frénésie', [
+        { name: 'Réflexes', desc: '+1.0 Vitesse sprint', icon: 'fa-bolt', effects: { speed: 1.0 } },
+        { name: 'Cadence', desc: '-10% Vitesse d\'attaque', icon: 'fa-stopwatch', effects: { attackSpeedMod: -0.10 } },
+        { name: 'Tir Rapide', desc: '+0.6 Vitesse sprint', icon: 'fa-gun', effects: { speed: 0.6 } },
+        { name: 'Cadence Sanguine', desc: '-8% Vitesse d\'attaque', icon: 'fa-clock', effects: { attackSpeedMod: -0.08 } },
+        { name: 'Réflexes Majeurs', desc: '+0.6 Vitesse sprint', icon: 'fa-bolt', effects: { speed: 0.6 } },
+        { name: 'Cadence Divine', desc: '-6% Vitesse d\'attaque', icon: 'fa-bolt-lightning', effects: { attackSpeedMod: -0.06 } },
+        { name: 'Tir Accéléré', desc: '+0.6 Vitesse sprint', icon: 'fa-forward', effects: { speed: 0.6 } },
+        { name: 'Cadence Critique', desc: '-6% Vitesse d\'attaque', icon: 'fa-stopwatch-20', effects: { attackSpeedMod: -0.06 } },
+        { name: 'Sprint de Frénésie', desc: '+0.8 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 0.8 } },
+        {
+          name: 'Adrénaline',
+          desc: 'Passif : kill en Frénésie recharge immédiatement la compétence.\n\nBONUS DE STATS\n+0.8 Vitesse sprint\n-10% Vitesse d\'attaque\n+6 ATK',
+          icon: 'fa-syringe',
+          keystone: true,
+          effects: { speed: 0.8, attackSpeedMod: -0.10, atk: 6, passive: 'frenzyAdrenaline' }
+        }
       ]),
-      chain('pacifier', 'pistol', 'spd', 'Pistol', [
-        { tier: 1, name: 'Gâchette Rapide', desc: '−6% cadence d\'attaque', icon: 'fa-gun', cost: 1, effects: { attackSpeedMod: -0.06 } },
-        { tier: 2, name: 'Transfusion Légère', desc: '+13 HP', icon: 'fa-droplet', cost: 1, effects: { maxHpFlat: 13 } },
-        { tier: 3, name: 'Tir Sanguin', desc: '−8% cadence, +0.5 sprint', icon: 'fa-crosshairs', cost: 1, effects: { attackSpeedMod: -0.08, speed: 0.5 } },
-        { tier: 4, name: 'Transfusion Accélérée', desc: 'Passif : Blood Pistol cadence et sécurité renforcées.', icon: 'fa-syringe', cost: 1, keystone: true, effects: { attackSpeedMod: -0.12, maxHpFlat: 28, passive: 'acceleratedTransfusion', passiveRank: 1 } },
+      branch10('pacifier', 'pistol', 'spd', 'Pistol', [
+        { name: 'Gâchette Rapide', desc: '-6% Vitesse d\'attaque', icon: 'fa-gun', effects: { attackSpeedMod: -0.06 } },
+        { name: 'Transfusion Légère', desc: '+13 HP', icon: 'fa-droplet', effects: { maxHpFlat: 13 } },
+        { name: 'Tir Sanguin', desc: '-8% Vitesse d\'attaque', icon: 'fa-crosshairs', effects: { attackSpeedMod: -0.08 } },
+        { name: 'Gâchette Divine', desc: '+15 HP', icon: 'fa-shield-heart', effects: { maxHpFlat: 15 } },
+        { name: 'Cadence de Blood Pistol', desc: '-6% Vitesse d\'attaque', icon: 'fa-stopwatch', effects: { attackSpeedMod: -0.06 } },
+        { name: 'Transfusion Divine', desc: '+18 HP', icon: 'fa-droplet', effects: { maxHpFlat: 18 } },
+        { name: 'Cadence Pure', desc: '-6% Vitesse d\'attaque', icon: 'fa-clock', effects: { attackSpeedMod: -0.06 } },
+        { name: 'Transfusion Majeure', desc: '+20 HP', icon: 'fa-heart', effects: { maxHpFlat: 20 } },
+        { name: 'Tir de Précision', desc: '+6 ATK', icon: 'fa-eye', effects: { atk: 6 } },
+        {
+          name: 'Transfusion Accélérée',
+          desc: 'Passif : Blood Pistol cadence et sécurité renforcées.\n\nBONUS DE STATS\n-12% Vitesse d\'attaque\n+28 HP\n+8 ATK',
+          icon: 'fa-syringe',
+          keystone: true,
+          effects: { attackSpeedMod: -0.12, maxHpFlat: 28, atk: 8, passive: 'acceleratedTransfusion' }
+        }
       ]),
-      chain('pacifier', 'rituel', 'mst', 'Rituel', [
-        { tier: 1, name: 'Précision', desc: '+5% Crit Chance', icon: 'fa-bullseye', cost: 1, effects: { crit: 0.05 } },
-        { tier: 2, name: 'XP Sanglant', desc: '+12% XP', icon: 'fa-graduation-cap', cost: 1, effects: { xpMod: 0.12 } },
-        { tier: 3, name: 'Rituel Affûté', desc: '+4% Crit Chance, +8% XP', icon: 'fa-arrow-up', cost: 1, effects: { crit: 0.04, xpMod: 0.08 } },
-        { tier: 4, name: 'Hémoglobine', desc: 'Passif : Saut Vampirique zone, dégâts et soins amplifiés.', icon: 'fa-vial', cost: 1, keystone: true, effects: { lifesteal: 0.03, atk: 5, passive: 'vampJumpAmp', passiveRank: 1 } },
+      branch10('pacifier', 'rituel', 'mst', 'Rituel', [
+        { name: 'Précision', desc: '+5% Crit Chance', icon: 'fa-bullseye', effects: { crit: 0.05 } },
+        { name: 'XP Sanglant', desc: '+12% XP', icon: 'fa-graduation-cap', effects: { xpMod: 0.12 } },
+        { name: 'Rituel Affûté', desc: '+4% Crit Chance', icon: 'fa-arrow-up', effects: { crit: 0.04 } },
+        { name: 'Vol de Vie Rituel', desc: '+1% Vol de vie', icon: 'fa-droplet', effects: { lifesteal: 0.01 } },
+        { name: 'Précision Rituelle', desc: '+4% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.04 } },
+        { name: 'XP de Combat', desc: '+8% XP', icon: 'fa-book-open', effects: { xpMod: 0.08 } },
+        { name: 'XP Sacré', desc: '+8% XP', icon: 'fa-scroll', effects: { xpMod: 0.08 } },
+        { name: 'Vol de Vie Majeur', desc: '+1% Vol de vie', icon: 'fa-vial', effects: { lifesteal: 0.01 } },
+        { name: 'Concentration Rituelle', desc: '+5 ATK', icon: 'fa-star-of-david', effects: { atk: 5 } },
+        {
+          name: 'Saut Vampirique+',
+          desc: 'Passif : Saut Vampirique zone, dégâts et soins amplifiés.\n\nBONUS DE STATS\n+3% Vol de vie\n+5 ATK\n+6% Crit Chance',
+          icon: 'fa-vial',
+          keystone: true,
+          effects: { lifesteal: 0.03, atk: 5, crit: 0.06, passive: 'vampJumpAmp' }
+        }
       ]),
     ],
   },
@@ -345,7 +649,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'eclipse-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Dualité Céleste',
       desc: '6 attaques renforcées · +50 % hâte · vulnérabilité.',
       icon: 'fa-circle-half-stroke',
@@ -354,35 +658,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'celestialConvergence', passiveRank: 2 },
     },
     branches: [
-      chain('eclipse', 'soleil', 'atk', 'Soleil', [
-        { tier: 1, name: 'Éclat', desc: '+4 ATK', icon: 'fa-sun', cost: 1, effects: { atk: 4 } },
-        { tier: 2, name: 'Rayonnement', desc: '+10% Fulgurance Solaire', icon: 'fa-fire', cost: 1, effects: { skillMods: { space: 0.1 } } },
-        { tier: 3, name: 'Brasier', desc: '+3 ATK, +8% Fulgurance Solaire', icon: 'fa-meteor', cost: 1, effects: { atk: 3, skillMods: { space: 0.08 } } },
-        { tier: 4, name: 'Corona', desc: 'Passif : Fulgurance Solaire dash et brûlure multi-ticks.', icon: 'fa-sun-plant-wilt', cost: 1, keystone: true, effects: { atk: 5, skillMods: { space: 0.10 }, passive: 'solarFlare', passiveRank: 1 } },
+      branch10('eclipse', 'soleil', 'atk', 'Soleil', [
+        { name: 'Éclat', desc: '+4 ATK', icon: 'fa-sun', effects: { atk: 4 } },
+        { name: 'Rayonnement', desc: '+10% Fulgurance Solaire', icon: 'fa-fire', effects: { skillMods: { space: 0.10 } } },
+        { name: 'Brasier', desc: '+3 ATK', icon: 'fa-meteor', effects: { atk: 3 } },
+        { name: 'Incinération Solaire', desc: '+8% Fulgurance Solaire', icon: 'fa-sun-plant-wilt', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Éclat Solaire', desc: '+4 ATK', icon: 'fa-star', effects: { atk: 4 } },
+        { name: 'Chaleur Intense', desc: '+8% Fulgurance Solaire', icon: 'fa-fire-flame-curved', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Brasier Pur', desc: '+5 ATK', icon: 'fa-burst', effects: { atk: 5 } },
+        { name: 'Chaleur Céleste', desc: '+10% Fulgurance Solaire', icon: 'fa-sun-plant-wilt', effects: { skillMods: { space: 0.10 } } },
+        { name: 'Fournaise Solaire', desc: '+6 ATK', icon: 'fa-meteor', effects: { atk: 6 } },
+        {
+          name: 'Corona',
+          desc: 'Passif : Fulgurance Solaire dash et brûlure multi-ticks.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
+          icon: 'fa-sun-plant-wilt',
+          keystone: true,
+          effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'solarFlare' }
+        }
       ]),
-      chain('eclipse', 'devoration', 'atk', 'Dévoration', [
-        { tier: 1, name: 'Brasier Intérieur', desc: '+3 ATK', icon: 'fa-fire', cost: 1, effects: { atk: 3 } },
-        { tier: 2, name: 'Incinération', desc: '+8% Fulgurance Solaire', icon: 'fa-sun', cost: 1, effects: { skillMods: { space: 0.08 } } },
-        { tier: 3, name: 'Fournaise', desc: '+7 ATK', icon: 'fa-meteor', cost: 1, effects: { atk: 7 } },
-        { tier: 4, name: 'Soleil Dévorant', desc: 'Passif : lance et Brûlure Solaire renforcées.', icon: 'fa-sun-plant-wilt', cost: 1, keystone: true, effects: { atk: 11, skillMods: { space: 0.08 }, passive: 'devouringSun', passiveRank: 1 } },
+      branch10('eclipse', 'devoration', 'atk', 'Dévoration', [
+        { name: 'Brasier Intérieur', desc: '+3 ATK', icon: 'fa-fire', effects: { atk: 3 } },
+        { name: 'Incinération', desc: '+8% Fulgurance Solaire', icon: 'fa-sun', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Fournaise', desc: '+5 ATK', icon: 'fa-meteor', effects: { atk: 5 } },
+        { name: 'Éclat de Dévoration', desc: '+6% Fulgurance Solaire', icon: 'fa-sun-plant-wilt', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Brasier de Lance', desc: '+4 ATK', icon: 'fa-star-of-david', effects: { atk: 4 } },
+        { name: 'Chaleur Dévorante', desc: '+6% Fulgurance Solaire', icon: 'fa-fire-flame-simple', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Fournaise Pure', desc: '+5 ATK', icon: 'fa-volcano', effects: { atk: 5 } },
+        { name: 'Éclat Pur', desc: '+8% Fulgurance Solaire', icon: 'fa-burst', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Brasier Astral', desc: '+6 ATK', icon: 'fa-sun', effects: { atk: 6 } },
+        {
+          name: 'Soleil Dévorant',
+          desc: 'Passif : lance et Brûlure Solaire renforcées.\n\nBONUS DE STATS\n+12 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
+          icon: 'fa-sun-plant-wilt',
+          keystone: true,
+          effects: { atk: 12, crit: 0.08, critDmg: 0.12, passive: 'devouringSun' }
+        }
       ]),
-      chain('eclipse', 'lune', 'mst', 'Lune', [
-        { tier: 1, name: 'Froid Lunaire', desc: '+6% Crit Chance', icon: 'fa-moon', cost: 1, effects: { crit: 0.06 } },
-        { tier: 2, name: 'Pic Affûté', desc: '+15% Crit Damage', icon: 'fa-icicles', cost: 1, effects: { critDmg: 0.15 } },
-        { tier: 3, name: 'Lame Lunaire', desc: '+4% Crit Chance, +10% Crit Damage', icon: 'fa-snowflake', cost: 1, effects: { crit: 0.04, critDmg: 0.1 } },
-        { tier: 4, name: 'Pleine Lune', desc: 'Passif : Pic de Lune élargi et ralentissement renforcé.', icon: 'fa-circle', cost: 1, keystone: true, effects: { crit: 0.10, critDmg: 0.12, passive: 'lunarSpike', passiveRank: 1 } },
+      branch10('eclipse', 'lune', 'mst', 'Lune', [
+        { name: 'Froid Lunaire', desc: '+6% Crit Chance', icon: 'fa-moon', effects: { crit: 0.06 } },
+        { name: 'Pic Affûté', desc: '+15% Crit Damage', icon: 'fa-icicles', effects: { critDmg: 0.15 } },
+        { name: 'Lame Lunaire', desc: '+4% Crit Chance', icon: 'fa-snowflake', effects: { crit: 0.04 } },
+        { name: 'Glaçon Astral', desc: '+10% Crit Damage', icon: 'fa-cube', effects: { critDmg: 0.10 } },
+        { name: 'Reflet Lunaire', desc: '+4% Crit Chance', icon: 'fa-eye-low-vision', effects: { crit: 0.04 } },
+        { name: 'Pic de Cristal', desc: '+8% Crit Damage', icon: 'fa-gem', effects: { critDmg: 0.08 } },
+        { name: 'Froid Pur', desc: '+5% Crit Chance', icon: 'fa-snowflake', effects: { crit: 0.05 } },
+        { name: 'Givre Lunaire', desc: '+8% Crit Damage', icon: 'fa-icicles', effects: { critDmg: 0.08 } },
+        { name: 'Lame d\'Argent', desc: '+10% Crit Damage', icon: 'fa-circle', effects: { critDmg: 0.10 } },
+        {
+          name: 'Pleine Lune',
+          desc: 'Passif : Pic de Lune élargi et ralentissement renforcé.\n\nBONUS DE STATS\n+10% Crit Chance\n+12% Dégâts Crit\n+6 ATK',
+          icon: 'fa-circle',
+          keystone: true,
+          effects: { crit: 0.10, critDmg: 0.12, atk: 6, passive: 'lunarSpike' }
+        }
       ]),
-      chain('eclipse', 'orbite', 'spd', 'Orbite', [
-        { tier: 1, name: 'Agilité', desc: '+1.1 Vitesse sprint', icon: 'fa-wind', cost: 1, effects: { speed: 1.1 } },
-        { tier: 2, name: 'Cycle Rapide', desc: '-8% recharge Cataclysme', icon: 'fa-stopwatch', cost: 1, effects: { skillCdMods: { e: -0.08 } } },
-        { tier: 3, name: 'Orbite Stable', desc: '+0.8 sprint, -5% recharge Cataclysme', icon: 'fa-yin-yang', cost: 1, effects: { speed: 0.8, skillCdMods: { e: -0.05 } } },
-        { tier: 4, name: 'Équinoxe', desc: 'Passif : stacks Soleil/Lune alternés et vitesse en Ascension.', icon: 'fa-arrows-spin', cost: 1, keystone: true, effects: { speedPct: 0.10, skillCdMods: { e: -0.08 }, passive: 'orbitalWeave', passiveRank: 1 } },
+      branch10('eclipse', 'orbite', 'spd', 'Orbite', [
+        { name: 'Agilité', desc: '+1.1 Vitesse sprint', icon: 'fa-wind', effects: { speed: 1.1 } },
+        { name: 'Cycle Rapide', desc: '-8% CD Cataclysme', icon: 'fa-stopwatch', effects: { skillCdMods: { e: -0.08 } } },
+        { name: 'Orbite Stable', desc: '+0.8 Vitesse sprint', icon: 'fa-yin-yang', effects: { speed: 0.8 } },
+        { name: 'Vitesse Orbitale', desc: '-6% CD Cataclysme', icon: 'fa-clock', effects: { skillCdMods: { e: -0.06 } } },
+        { name: 'Agilité Céleste', desc: '+0.8 Vitesse sprint', icon: 'fa-wind', effects: { speed: 0.8 } },
+        { name: 'Cycle de Lune', desc: '-6% CD Cataclysme', icon: 'fa-moon', effects: { skillCdMods: { e: -0.06 } } },
+        { name: 'Pas Astral', desc: '+0.8 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 0.8 } },
+        { name: 'Recharge d\'Ascension', desc: '-5% CD Cataclysme', icon: 'fa-bolt', effects: { skillCdMods: { e: -0.05 } } },
+        { name: 'Équinoxe Stellaire', desc: '+1.0 Vitesse sprint', icon: 'fa-arrows-spin', effects: { speed: 1.0 } },
+        {
+          name: 'Tissage Orbital',
+          desc: 'Passif : stacks Soleil/Lune alternés et vitesse en Ascension.\n\nBONUS DE STATS\n+1.0 Vitesse sprint\n+8 ATK\n+6% Crit Chance',
+          icon: 'fa-arrows-spin',
+          keystone: true,
+          effects: { speed: 1.0, atk: 8, crit: 0.06, passive: 'orbitalWeave' }
+        }
       ]),
-      chain('eclipse', 'vide', 'hp', 'Vide', [
-        { tier: 1, name: 'Ancrage', desc: '+25 HP', icon: 'fa-heart', cost: 1, effects: { maxHpFlat: 25 } },
-        { tier: 2, name: 'Résilience', desc: '+5 DEF', icon: 'fa-shield', cost: 1, effects: { def: 5 } },
-        { tier: 3, name: 'Carapace du Vide', desc: '+16 HP, +4 DEF', icon: 'fa-circle-notch', cost: 1, effects: { maxHpFlat: 16, def: 4 } },
-        { tier: 4, name: 'Trou Noir', desc: 'Passif : Cataclysme aspire les ennemis et frappe plus fort.', icon: 'fa-circle-dot', cost: 1, keystone: true, effects: { maxHpFlat: 32, def: 8, passive: 'voidPull', passiveRank: 1 } },
+      branch10('eclipse', 'vide', 'hp', 'Vide', [
+        { name: 'Ancrage', desc: '+25 HP', icon: 'fa-heart', effects: { maxHpFlat: 25 } },
+        { name: 'Résilience', desc: '+5 DEF', icon: 'fa-shield', effects: { def: 5 } },
+        { name: 'Carapace du Vide', desc: '+16 HP', icon: 'fa-circle-notch', effects: { maxHpFlat: 16 } },
+        { name: 'Mur du Néant', desc: '+4 DEF', icon: 'fa-shield-halved', effects: { def: 4 } },
+        { name: 'Ancrage Majeur', desc: '+20 HP', icon: 'fa-heart-pulse', effects: { maxHpFlat: 20 } },
+        { name: 'Résilience Céleste', desc: '+6 DEF', icon: 'fa-fingerprint', effects: { def: 6 } },
+        { name: 'Carapace Sombre', desc: '+24 HP', icon: 'fa-circle-dot', effects: { maxHpFlat: 24 } },
+        { name: 'Bastion du Vide', desc: '+8 DEF', icon: 'fa-fort-awesome', effects: { def: 8 } },
+        { name: 'Ancrage Astral', desc: '+30 HP', icon: 'fa-atom', effects: { maxHpFlat: 30 } },
+        {
+          name: 'Trou Noir',
+          desc: 'Passif : Cataclysme aspire les ennemis et frappe plus fort.\n\nBONUS DE STATS\n+32 HP\n+8 DEF\n+0.8 HP/s',
+          icon: 'fa-circle-dot',
+          keystone: true,
+          effects: { maxHpFlat: 32, def: 8, regen: 0.8, passive: 'voidPull' }
+        }
       ]),
     ],
   },
@@ -395,7 +759,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
     apex: {
       id: 'chronoregulator-apex',
       branch: 'apex',
-      tier: 5,
+      tier: 11,
       name: 'Architecte de la Fracture',
       desc: '3 prismes · Fracture 150 % · +0,33 % dmg/Fracture.',
       icon: 'fa-infinity',
@@ -404,35 +768,95 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       effects: { passive: 'continuumMastery', passiveRank: 2 },
     },
     branches: [
-      chain('chronoregulator', 'continuum', 'atk', 'Rayon', [
-        { tier: 1, name: 'Flux Brut', desc: '+5 ATK', icon: 'fa-bullseye', cost: 1, effects: { atk: 5 } },
-        { tier: 2, name: 'Canalisation', desc: '+10% Rayon de Distorsion', icon: 'fa-wave-square', cost: 1, effects: { skillMods: { primary: 0.1 } } },
-        { tier: 3, name: 'Surcharge', desc: '+4 ATK, +8% Rayon de Distorsion', icon: 'fa-burst', cost: 1, effects: { atk: 4, skillMods: { primary: 0.08 } } },
-        { tier: 4, name: 'Prisme Affiné', desc: 'Passif : cône lentille élargi, rayon +8%, Convergence +0,5 s', icon: 'fa-gem', cost: 1, keystone: true, effects: { atk: 6, skillMods: { primary: 0.1 }, passive: 'continuumBurst', passiveRank: 1 } },
+      branch10('chronoregulator', 'continuum', 'atk', 'Rayon', [
+        { name: 'Flux Brut', desc: '+5 ATK', icon: 'fa-bullseye', effects: { atk: 5 } },
+        { name: 'Canalisation', desc: '+10% Rayon de Distorsion', icon: 'fa-wave-square', effects: { skillMods: { primary: 0.10 } } },
+        { name: 'Surcharge', desc: '+4 ATK', icon: 'fa-burst', effects: { atk: 4 } },
+        { name: 'Lumière Polarisée', desc: '+8% Rayon de Distorsion', icon: 'fa-bolt', effects: { skillMods: { primary: 0.08 } } },
+        { name: 'Flux Majeur', desc: '+5 ATK', icon: 'fa-sun', effects: { atk: 5 } },
+        { name: 'Canalisation Divine', desc: '+8% Rayon de Distorsion', icon: 'fa-wave-square', effects: { skillMods: { primary: 0.08 } } },
+        { name: 'Surcharge Pure', desc: '+6 ATK', icon: 'fa-star-of-david', effects: { atk: 6 } },
+        { name: 'Laser Fracturé', desc: '+10% Rayon de Distorsion', icon: 'fa-arrow-right-to-bracket', effects: { skillMods: { primary: 0.10 } } },
+        { name: 'Énergie Pure', desc: '+8 ATK', icon: 'fa-gem', effects: { atk: 8 } },
+        {
+          name: 'Prisme Affiné',
+          desc: 'Passif : cône lentille élargi, rayon +8%, Convergence +0,5 s.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
+          icon: 'fa-gem',
+          keystone: true,
+          effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'continuumBurst' }
+        }
       ]),
-      chain('chronoregulator', 'lentille', 'mst', 'Lentille', [
-        { tier: 1, name: 'Facette', desc: '+4% Crit Chance', icon: 'fa-gem', cost: 1, effects: { crit: 0.04 } },
-        { tier: 2, name: 'Réfraction', desc: '+8% Lentille de Focalisation', icon: 'fa-wave-square', cost: 1, effects: { skillMods: { space: 0.08 } } },
-        { tier: 3, name: 'Prisme Brut', desc: '+5 ATK, −5% recharge Lentille', icon: 'fa-eye', cost: 1, effects: { atk: 5, skillCdMods: { space: -0.05 } } },
-        { tier: 4, name: 'Prisme Supplémentaire', desc: 'Passif : lentilles projettent 4 rayons brûlants', icon: 'fa-gem', cost: 1, keystone: true, effects: { atk: 6, skillCdMods: { space: -0.07 }, passive: 'extraPrismLens', passiveRank: 1 } },
+      branch10('chronoregulator', 'lentille', 'mst', 'Lentille', [
+        { name: 'Facette', desc: '+4% Crit Chance', icon: 'fa-gem', effects: { crit: 0.04 } },
+        { name: 'Réfraction', desc: '+8% Lentille de Focalisation', icon: 'fa-wave-square', effects: { skillMods: { space: 0.08 } } },
+        { name: 'Prisme Brut', desc: '+5 ATK', icon: 'fa-eye', effects: { atk: 5 } },
+        { name: 'Optique de Rupture', desc: '-5% CD Lentille', icon: 'fa-stopwatch', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Facette Pure', desc: '+4% Crit Chance', icon: 'fa-gem', effects: { crit: 0.04 } },
+        { name: 'Réfraction Majeure', desc: '+6% Lentille de Focalisation', icon: 'fa-wave-square', effects: { skillMods: { space: 0.06 } } },
+        { name: 'Prisme Cristallin', desc: '+5 ATK', icon: 'fa-shield-halved', effects: { atk: 5 } },
+        { name: 'Optique Divine', desc: '-5% CD Lentille', icon: 'fa-clock', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Cristal Focal', desc: '+5% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.05 } },
+        {
+          name: 'Prisme Supplémentaire',
+          desc: 'Passif : lentilles projettent 4 rayons brûlants.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
+          icon: 'fa-gem',
+          keystone: true,
+          effects: { atk: 8, crit: 0.08, critDmg: 0.12, passive: 'extraPrismLens' }
+        }
       ]),
-      chain('chronoregulator', 'echo', 'atk', 'Rupture', [
-        { tier: 1, name: 'Impact', desc: '+6 ATK', icon: 'fa-burst', cost: 1, effects: { atk: 6 } },
-        { tier: 2, name: 'Résonance', desc: '+10% Explosion de Rupture', icon: 'fa-wave-square', cost: 1, effects: { skillMods: { rupture: 0.1 } } },
-        { tier: 3, name: 'Faille', desc: '+5 ATK, +6% Explosion de Rupture', icon: 'fa-crosshairs', cost: 1, effects: { atk: 5, skillMods: { rupture: 0.06 } } },
-        { tier: 4, name: 'Déchirure Amplifiée', desc: 'Passif : explosion volontaire de Fracture renforcée.', icon: 'fa-burst', cost: 1, keystone: true, effects: { atk: 8, crit: 0.08, passive: 'ruptureSurge', passiveRank: 1 } },
+      branch10('chronoregulator', 'echo', 'atk', 'Rupture', [
+        { name: 'Impact', desc: '+6 ATK', icon: 'fa-burst', effects: { atk: 6 } },
+        { name: 'Résonance', desc: '+10% Explosion de Rupture', icon: 'fa-wave-square', effects: { skillMods: { rupture: 0.10 } } },
+        { name: 'Faille', desc: '+5 ATK', icon: 'fa-crosshairs', effects: { atk: 5 } },
+        { name: 'Onde Fractale', desc: '+6% Explosion de Rupture', icon: 'fa-arrow-down-up-across-line', effects: { skillMods: { rupture: 0.06 } } },
+        { name: 'Impact de Faille', desc: '+5 ATK', icon: 'fa-burst', effects: { atk: 5 } },
+        { name: 'Résonance Pure', desc: '+6% Explosion de Rupture', icon: 'fa-wave-square', effects: { skillMods: { rupture: 0.06 } } },
+        { name: 'Faille Majeure', desc: '+6 ATK', icon: 'fa-star-of-david', effects: { atk: 6 } },
+        { name: 'Onde de Rupture', desc: '+8% Explosion de Rupture', icon: 'fa-arrow-rotate-left', effects: { skillMods: { rupture: 0.08 } } },
+        { name: 'Impact Pur', desc: '+8 ATK', icon: 'fa-burst', effects: { atk: 8 } },
+        {
+          name: 'Déchirure Amplifiée',
+          desc: 'Passif : explosion volontaire de Fracture renforcée.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+10% Dégâts Crit',
+          icon: 'fa-burst',
+          keystone: true,
+          effects: { atk: 8, crit: 0.08, critDmg: 0.10, passive: 'ruptureSurge' }
+        }
       ]),
-      chain('chronoregulator', 'distorsion', 'spd', 'Conduction', [
-        { tier: 1, name: 'Foulée', desc: '+1.1 Vitesse sprint', icon: 'fa-person-running', cost: 1, effects: { speed: 1.1 } },
-        { tier: 2, name: 'Accélération', desc: '-8% recharge Lentille', icon: 'fa-stopwatch', cost: 1, effects: { skillCdMods: { space: -0.08 } } },
-        { tier: 3, name: 'Flux', desc: '+0.8 sprint, -6% recharge Lentille', icon: 'fa-wind', cost: 1, effects: { speed: 0.8, skillCdMods: { space: -0.06 } } },
-        { tier: 4, name: 'Conduction Fractale', desc: 'Passif : compétences coûtent moins de Fracture.', icon: 'fa-hourglass-half', cost: 1, keystone: true, effects: { speedPct: 0.08, skillCdMods: { space: -0.08 }, passive: 'anachronismeAmp', passiveRank: 1 } },
+      branch10('chronoregulator', 'distorsion', 'spd', 'Conduction', [
+        { name: 'Foulée', desc: '+1.1 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 1.1 } },
+        { name: 'Accélération', desc: '-8% CD Lentille', icon: 'fa-stopwatch', effects: { skillCdMods: { space: -0.08 } } },
+        { name: 'Flux', desc: '+0.8 Vitesse sprint', icon: 'fa-wind', effects: { speed: 0.8 } },
+        { name: 'Conduction Temporelle', desc: '-6% CD Lentille', icon: 'fa-hourglass-start', effects: { skillCdMods: { space: -0.06 } } },
+        { name: 'Pas de Conduction', desc: '+0.8 Vitesse sprint', icon: 'fa-shoe-prints', effects: { speed: 0.8 } },
+        { name: 'Accélération Divine', desc: '-6% CD Lentille', icon: 'fa-bolt-lightning', effects: { skillCdMods: { space: -0.06 } } },
+        { name: 'Foulée Céleste', desc: '+0.8 Vitesse sprint', icon: 'fa-person-running', effects: { speed: 0.8 } },
+        { name: 'Hâte de Lentille', desc: '-5% CD Lentille', icon: 'fa-clock', effects: { skillCdMods: { space: -0.05 } } },
+        { name: 'Conduction Pure', desc: '+1.0 Vitesse sprint', icon: 'fa-bolt', effects: { speed: 1.0 } },
+        {
+          name: 'Conduction Fractale',
+          desc: 'Passif : compétences coûtent moins de Fracture.\n\nBONUS DE STATS\n+1.0 Vitesse sprint\n+6 ATK\n+6% Crit Chance',
+          icon: 'fa-hourglass-half',
+          keystone: true,
+          effects: { speed: 1.0, atk: 6, crit: 0.06, passive: 'anachronismeAmp' }
+        }
       ]),
-      chain('chronoregulator', 'paradoxe', 'mst', 'Déphasage', [
-        { tier: 1, name: 'Focus', desc: '+4% Crit Chance', icon: 'fa-eye', cost: 1, effects: { crit: 0.04 } },
-        { tier: 2, name: 'Déchirure', desc: '+10% XP', icon: 'fa-graduation-cap', cost: 1, effects: { xpMod: 0.1 } },
-        { tier: 3, name: 'Faille', desc: '+5% Crit Chance, +8% Crit Damage', icon: 'fa-crosshairs', cost: 1, effects: { crit: 0.05, critDmg: 0.08 } },
-        { tier: 4, name: 'Déphasage Renforcé', desc: 'Passif : Déphasage portée élargie et Instabilité prolongée.', icon: 'fa-atom', cost: 1, keystone: true, effects: { crit: 0.08, critDmg: 0.10, passive: 'freezeFieldAmp', passiveRank: 1 } },
+      branch10('chronoregulator', 'paradoxe', 'mst', 'Déphasage', [
+        { name: 'Focus', desc: '+4% Crit Chance', icon: 'fa-eye', effects: { crit: 0.04 } },
+        { name: 'Déchirure', desc: '+10% XP', icon: 'fa-graduation-cap', effects: { xpMod: 0.10 } },
+        { name: 'Faille', desc: '+5% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.05 } },
+        { name: 'Focus Majeur', desc: '+8% XP', icon: 'fa-graduation-cap', effects: { xpMod: 0.08 } },
+        { name: 'Déchirure Pure', desc: '+4% Crit Chance', icon: 'fa-eye', effects: { crit: 0.04 } },
+        { name: 'Instabilité', desc: '+8% XP', icon: 'fa-book-open', effects: { xpMod: 0.08 } },
+        { name: 'Faille Céleste', desc: '+5% Crit Chance', icon: 'fa-star-of-david', effects: { crit: 0.05 } },
+        { name: 'XP de Déphasage', desc: '+8% XP', icon: 'fa-scroll', effects: { xpMod: 0.08 } },
+        { name: 'Focus Temporel', desc: '+8% Dégâts Crit', icon: 'fa-gem', effects: { critDmg: 0.08 } },
+        {
+          name: 'Déphasage Renforcé',
+          desc: 'Passif : Déphasage portée élargie et Instabilité prolongée.\n\nBONUS DE STATS\n+8% Crit Chance\n+10% Dégâts Crit\n+10% XP',
+          icon: 'fa-atom',
+          keystone: true,
+          effects: { crit: 0.08, critDmg: 0.10, xpMod: 0.10, passive: 'freezeFieldAmp' }
+        }
       ]),
     ],
   },

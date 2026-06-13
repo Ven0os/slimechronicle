@@ -17,22 +17,40 @@ import { getPassiveMeta } from '@/data/passiveCatalog';
 import { formatPassiveDetailHtml } from '@/data/passiveScalingConfig';
 import { getBranchLayout, getClassLayout } from '@/data/constellationLayouts';
 import { ConstellationEngine } from '@/systems/constellationEngine';
+import { AudioSys } from '@/core/ressources';
 
 const SLOT_CLASS = { atk: 'branch-atk', hp: 'branch-hp', spd: 'branch-spd', mst: 'branch-mst' };
 
 /** Canvas large pour constellation éparpillée */
 const CANVAS = { size: 720, cx: 360, cy: 360 };
 
-const MIN_NODE_GAP_PX = 14;
-const BRANCH_CHAIN_EXTRA_PX = 18;
-const BRANCH_TIER_COUNT = 4;
-const NODE_SIZE = { normal: 40, keystone: 46 };
+const MIN_NODE_GAP_PX = 4;
+const BRANCH_CHAIN_EXTRA_PX = 2;
+const BRANCH_TIER_COUNT = 10;
+const NODE_SIZE = { normal: 22, keystone: 28 };
 /** Zone réservée autour de l'Apex — réduite pour garder les keystones proches. */
-const APEX_CLEAR_RADIUS = 46;
-const CANVAS_MARGIN = 36;
+const APEX_CLEAR_RADIUS = 38;
+const CANVAS_MARGIN = 30;
 
 let selectedNodeId: string | null = null;
 let layoutCache: Map<string, { x: number; y: number; size: number }> = new Map();
+
+let zoomScale = 1.0;
+let panX = 0;
+let panY = 0;
+let isPanning = false;
+let startPanX = 0;
+let startPanY = 0;
+let initialPanX = 0;
+let initialPanY = 0;
+let hasDragged = false;
+
+function updateViewportTransform(): void {
+  const inner = document.getElementById('constellation-inner');
+  if (inner) {
+    inner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+  }
+}
 
 interface PlacedNode {
   id: string;
@@ -44,6 +62,26 @@ interface PlacedNode {
   keystone?: boolean;
 }
 
+const CLASS_BRANCH_INDICES: Record<string, Record<string, number>> = {
+  warrior: { cri: 0, fureur: 1, gardien: 2, rempart: 3, seisme: 4 },
+  mage: { flux: 0, mirage: 1, prisme: 2, givre: 3, replique: 4 },
+  sentinel: { rayon: 0, aile: 1, sanctuaire: 2, egide: 3, surcharge: 4 },
+  blade: { hemo: 0, sanguine: 1, ombre: 2, cyclone: 3, survie: 4 },
+  pacifier: { jugement: 0, frénesie: 1, rituel: 2, transfusion: 3, pistol: 4 },
+  eclipse: { soleil: 0, orbite: 1, lune: 2, vide: 3, devoration: 4 },
+  chronoregulator: { continuum: 0, echo: 1, distorsion: 2, lentille: 3, paradoxe: 4 }
+};
+
+const CLASS_LAYOUT_OFFSETS: Record<string, number> = {
+  warrior: 0,
+  mage: 15,
+  sentinel: 30,
+  blade: 45,
+  pacifier: 60,
+  eclipse: 75,
+  chronoregulator: 90
+};
+
 function hashPair(a: string, b: string): number {
   return (a + b).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
 }
@@ -52,36 +90,111 @@ function maxOrbitRadius(): number {
   return CANVAS.size / 2 - CANVAS_MARGIN - NODE_SIZE.keystone / 2;
 }
 
-/** Placement en arc par classe — palier 4 (keystone) proche de l'Apex. */
+/** Placement en arc par classe — palier 10 (keystone) proche de l'Apex. */
 function scatterNodePos(
   classId: ClassId,
   branchId: string,
   tierIndex: number,
   keystone = false,
 ): { x: number; y: number } {
-  const classLayout = getClassLayout(classId);
-  const branch = getBranchLayout(classId, branchId);
-  const baseRad = (branch.angleDeg * Math.PI) / 180;
-  const angle = baseRad + tierIndex * branch.tierAngleStep;
+  const cx = CANVAS.cx;
+  const cy = CANVAS.cy;
 
-  let frac: number;
-  if (tierIndex >= BRANCH_TIER_COUNT - 1) {
-    frac = classLayout.keystoneRadiusFrac;
-  } else {
-    frac = classLayout.outerTierFracs[tierIndex] ?? classLayout.outerTierFracs[2];
+  // Répartition radiale uniforme des 5 branches à 72° d'écart
+  const branchIdx = CLASS_BRANCH_INDICES[classId]?.[branchId] ?? 0;
+  const offsetDeg = CLASS_LAYOUT_OFFSETS[classId] ?? 0;
+  const angleDeg = branchIdx * 72 + offsetDeg - 90;
+  const baseRad = (angleDeg * Math.PI) / 180;
+
+  // Progression de rayon : de l'extérieur (310px) vers l'intérieur (85px)
+  const R_max = 310;
+  const R_min = 85;
+  const R = R_max - tierIndex * (R_max - R_min) / 9;
+
+  switch (classId) {
+    case 'chronoregulator': {
+      // Prism-inspired geometry: rayon droit et net formant une étoile géométrique parfaite
+      return {
+        x: cx + R * Math.cos(baseRad),
+        y: cy + R * Math.sin(baseRad)
+      };
+    }
+
+    case 'warrior': {
+      // Runic Warrior -> Defensive fortress structure: forme concentrique carrée fortifiée
+      const cos = Math.cos(baseRad);
+      const sin = Math.sin(baseRad);
+      const scale = 1 / Math.max(Math.abs(cos), Math.abs(sin));
+      return {
+        x: cx + R * cos * scale,
+        y: cy + R * sin * scale
+      };
+    }
+
+    case 'pacifier': {
+      // Pacifier -> Aggressive forward progression: resserrement exponentiel vers le centre et léger angle chevron
+      const k = tierIndex / 9;
+      const pac_R = 85 + 235 * Math.pow(1 - k, 1.35);
+      const bend = Math.sin(k * Math.PI) * 0.12;
+      return {
+        x: cx + pac_R * Math.cos(baseRad + bend),
+        y: cy + pac_R * Math.sin(baseRad + bend)
+      };
+    }
+
+    case 'sentinel': {
+      // Sentinel -> Symmetrical defensive structure: ailes symétriques courbées
+      let wingBend = 0;
+      if (branchIdx === 1 || branchIdx === 2) {
+        wingBend = Math.sin((tierIndex / 9) * Math.PI) * 0.22;
+      } else if (branchIdx === 3 || branchIdx === 4) {
+        wingBend = -Math.sin((tierIndex / 9) * Math.PI) * 0.22;
+      }
+      return {
+        x: cx + R * Math.cos(baseRad + wingBend),
+        y: cy + R * Math.sin(baseRad + wingBend)
+      };
+    }
+
+    case 'eclipse': {
+      // Eclipse Knight -> Dual-path eclipse inspired pattern: branches solaires courbent à gauche, lunaires à droite
+      let eclipseCurve = 0;
+      if (branchId === 'soleil' || branchId === 'devoration') {
+        eclipseCurve = -0.35 * Math.sin((tierIndex / 9) * Math.PI);
+      } else if (branchId === 'lune' || branchId === 'vide') {
+        eclipseCurve = 0.35 * Math.sin((tierIndex / 9) * Math.PI);
+      }
+      return {
+        x: cx + R * Math.cos(baseRad + eclipseCurve),
+        y: cy + R * Math.sin(baseRad + eclipseCurve)
+      };
+    }
+
+    case 'mage': {
+      // Paradox Mage -> Distorted asymmetrical geometry: spirale asymétrique
+      const spiralOffset = 0.42 * Math.sin((tierIndex / 9) * Math.PI * 1.15) * (branchIdx % 2 === 0 ? 1 : -1);
+      return {
+        x: cx + R * Math.cos(baseRad + spiralOffset),
+        y: cy + R * Math.sin(baseRad + spiralOffset)
+      };
+    }
+
+    case 'blade': {
+      // Bladebreaker -> Aggressive offensive branching: dent de scie
+      const zigzag = (tierIndex % 2 === 0 ? 0.08 : -0.08);
+      return {
+        x: cx + R * Math.cos(baseRad + zigzag),
+        y: cy + R * Math.sin(baseRad + zigzag)
+      };
+    }
+
+    default: {
+      return {
+        x: cx + R * Math.cos(baseRad),
+        y: cy + R * Math.sin(baseRad)
+      };
+    }
   }
-
-  let dist = maxOrbitRadius() * frac * branch.spread * branch.radiusBias;
-
-  const seed = branchId.split('').reduce((a, c) => a + c.charCodeAt(0), tierIndex * 31);
-  const perp = angle + Math.PI / 2;
-  const perpOffset = Math.sin(seed * 0.09) * (keystone ? 3 : 7);
-  const alongOffset = Math.cos(seed * 0.05) * (keystone ? 2 : 5);
-
-  return {
-    x: CANVAS.cx + Math.cos(angle) * (dist + alongOffset) + Math.cos(perp) * perpOffset,
-    y: CANVAS.cy + Math.sin(angle) * (dist + alongOffset) + Math.sin(perp) * perpOffset,
-  };
 }
 
 /** Demi-diagonale du losange (carré pivoté 45°) */
@@ -105,10 +218,13 @@ function enforceMinimumSpacing(nodes: PlacedNode[], iterations = 64): PlacedNode
   for (let iter = 0; iter < iterations; iter++) {
     let moved = false;
 
+    // 1. Enforce boundaries (both inner and outer) inside the loop
     for (const n of nodes) {
       const dx = n.x - cx;
       const dy = n.y - cy;
       const dist = Math.hypot(dx, dy) || 0.001;
+
+      // Inner boundary (APEX)
       const minApex = nodeRadius(n.size) + APEX_CLEAR_RADIUS + MIN_NODE_GAP_PX;
       if (dist < minApex) {
         const push = (minApex - dist) / dist;
@@ -116,8 +232,16 @@ function enforceMinimumSpacing(nodes: PlacedNode[], iterations = 64): PlacedNode
         n.y += dy * push;
         moved = true;
       }
+
+      // Outer boundary (Orbit Limit)
+      if (dist > orbitLimit) {
+        n.x = cx + (dx / dist) * orbitLimit;
+        n.y = cy + (dy / dist) * orbitLimit;
+        moved = true;
+      }
     }
 
+    // 2. Pairwise overlaps
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const a = nodes[i];
@@ -152,11 +276,17 @@ function enforceMinimumSpacing(nodes: PlacedNode[], iterations = 64): PlacedNode
     if (!moved) break;
   }
 
+  // 3. Final clamping to ensure strict boundaries
   for (const n of nodes) {
     const dx = n.x - cx;
     const dy = n.y - cy;
     const dist = Math.hypot(dx, dy) || 0.001;
-    if (dist > orbitLimit) {
+    const minApex = nodeRadius(n.size) + APEX_CLEAR_RADIUS + MIN_NODE_GAP_PX;
+
+    if (dist < minApex) {
+      n.x = cx + (dx / dist) * minApex;
+      n.y = cy + (dy / dist) * minApex;
+    } else if (dist > orbitLimit) {
       n.x = cx + (dx / dist) * orbitLimit;
       n.y = cy + (dy / dist) * orbitLimit;
     }
@@ -424,6 +554,73 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
   `;
   svg.appendChild(defs);
 
+  // --- DESSIN DES GRILLES CÉLESTES D'ARRIÈRE-PLAN ---
+  if (classId === 'warrior') {
+    // Concentriques carrées fortifiées
+    [320, 230, 140].forEach(r => {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', String(cx - r));
+      rect.setAttribute('y', String(cy - r));
+      rect.setAttribute('width', String(r * 2));
+      rect.setAttribute('height', String(r * 2));
+      rect.setAttribute('fill', 'none');
+      rect.setAttribute('stroke', theme);
+      rect.setAttribute('stroke-width', '0.8');
+      rect.setAttribute('opacity', '0.045');
+      rect.setAttribute('stroke-dasharray', '4 8');
+      svg.appendChild(rect);
+    });
+  } else if (classId === 'chronoregulator') {
+    // Concentriques pentagonales géométriques
+    [320, 230, 140].forEach(r => {
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      const pts: string[] = [];
+      const offsetDeg = CLASS_LAYOUT_OFFSETS.chronoregulator ?? 90;
+      for (let side = 0; side < 5; side++) {
+        const angle = (side * 72 + offsetDeg - 90) * Math.PI / 180;
+        pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+      }
+      polygon.setAttribute('points', pts.join(' '));
+      polygon.setAttribute('fill', 'none');
+      polygon.setAttribute('stroke', theme);
+      polygon.setAttribute('stroke-width', '0.8');
+      polygon.setAttribute('opacity', '0.06');
+      polygon.setAttribute('stroke-dasharray', '4 8');
+      svg.appendChild(polygon);
+    });
+  } else if (classId === 'eclipse') {
+    // Cercles d'éclipse croisés (Soleil et Lune)
+    [
+      { kx: cx - 110, ky: cy, r: 160 },
+      { kx: cx + 110, ky: cy, r: 160 }
+    ].forEach(cSpec => {
+      const cCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      cCircle.setAttribute('cx', String(cSpec.kx));
+      cCircle.setAttribute('cy', String(cSpec.ky));
+      cCircle.setAttribute('r', String(cSpec.r));
+      cCircle.setAttribute('fill', 'none');
+      cCircle.setAttribute('stroke', theme);
+      cCircle.setAttribute('stroke-width', '0.8');
+      cCircle.setAttribute('opacity', '0.04');
+      cCircle.setAttribute('stroke-dasharray', '3 9');
+      svg.appendChild(cCircle);
+    });
+  } else {
+    // Concentriques circulaires célestes standards
+    [320, 230, 140].forEach(r => {
+      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      ring.setAttribute('cx', String(cx));
+      ring.setAttribute('cy', String(cy));
+      ring.setAttribute('r', String(r));
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', theme);
+      ring.setAttribute('stroke-width', '0.8');
+      ring.setAttribute('opacity', '0.04');
+      ring.setAttribute('stroke-dasharray', '3 9');
+      svg.appendChild(ring);
+    });
+  }
+
   const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   core.setAttribute('cx', String(cx));
   core.setAttribute('cy', String(cy));
@@ -453,6 +650,7 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
       seg.setAttribute('y1', String(pt.y));
       seg.setAttribute('x2', String(next.x));
       seg.setAttribute('y2', String(next.y));
+      seg.setAttribute('class', `branch-line branch-line-${branch.id} ${st}`);
       seg.setAttribute('stroke', st === 'unlocked' ? theme : '#3a3a48');
       seg.setAttribute('stroke-opacity', st === 'unlocked' ? '0.55' : '0.18');
       seg.setAttribute('stroke-width', st === 'unlocked' ? '1.8' : '1');
@@ -469,7 +667,7 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
       toApex.setAttribute('y1', String(keystone.y));
       toApex.setAttribute('x2', String(cx));
       toApex.setAttribute('y2', String(cy));
-      toApex.setAttribute('class', `culmination-link${isPrimary ? ' culmination-link-primary' : ''}`);
+      toApex.setAttribute('class', `culmination-link culmination-link-${branch.id} ${ks}${isPrimary ? ' culmination-link-primary' : ''}`);
       toApex.setAttribute('stroke', ks === 'unlocked' ? (isPrimary ? 'url(#apexLineGrad)' : theme) : '#3a3a48');
       toApex.setAttribute('stroke-opacity', ks === 'unlocked' ? (isPrimary ? '0.75' : '0.5') : '0.14');
       toApex.setAttribute('stroke-width', ks === 'unlocked' ? (isPrimary ? '2.2' : '1.6') : '1');
@@ -495,7 +693,7 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
   const keystoneRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   keystoneRing.setAttribute('cx', String(cx));
   keystoneRing.setAttribute('cy', String(cy));
-  keystoneRing.setAttribute('r', String(maxOrbitRadius() * getClassLayout(classId).keystoneRadiusFrac + 8));
+  keystoneRing.setAttribute('r', '93');
   keystoneRing.setAttribute('fill', 'none');
   keystoneRing.setAttribute('stroke', apexUnlocked ? 'url(#apexLineGrad)' : theme);
   keystoneRing.setAttribute('stroke-width', apexUnlocked ? '1.5' : '1');
@@ -506,6 +704,7 @@ function drawOrbits(svg: SVGSVGElement, classId: ClassId, theme: string): void {
 
 function bindNode(el: HTMLElement, node: ConstellationNode, onUnlock: (id: string) => void): void {
   const select = () => {
+    if (window.isConstellationAnimating || isPanning) return;
     selectedNodeId = node.id;
     renderDetailPanel(node, (STATE.class || 'warrior') as ClassId);
     document.querySelectorAll('.tree-node, .center-star').forEach((n) => n.classList.remove('selected'));
@@ -513,6 +712,8 @@ function bindNode(el: HTMLElement, node: ConstellationNode, onUnlock: (id: strin
   };
   el.addEventListener('mouseenter', select);
   el.addEventListener('click', () => {
+    if (window.isConstellationAnimating) return;
+    if (hasDragged) return;
     select();
     if (nodeStatus(node.id) === 'available') onUnlock(node.id);
   });
@@ -522,6 +723,11 @@ export const ConstellationUI = {
   render(onUnlock: (id: string) => void): void {
     const mount = document.querySelector('#view-tree .constellation-layout');
     if (!mount) return;
+
+    // Reset pan/zoom on full render
+    zoomScale = 1.0;
+    panX = 0;
+    panY = 0;
 
     const classId = (STATE.class || 'warrior') as ClassId;
     const data = getConstellationForClass(classId);
@@ -552,6 +758,26 @@ export const ConstellationUI = {
           <div class="apex-progress-text">${apexProg} / ${apexTotal} Nœuds · ${keystones} / ${keystonesTotal} Passifs</div>
           <div class="apex-progress-status">${apexStatusLabel(apexState)}</div>
         </div>
+
+        <div class="sidebar-section-title"><i class="fas fa-network-wired"></i> Branches de Talent</div>
+        <div class="sidebar-branches-list">
+          ${data.branches.map(branch => {
+            const prog = branchProgress(classId, branch.id);
+            const isCompleted = prog.unlocked === prog.total;
+            return `
+              <div class="sidebar-branch-row" data-branch-id="${branch.id}">
+                <div class="branch-row-info">
+                  <span class="branch-row-name">${branch.label}</span>
+                  <span class="branch-row-prog">${prog.unlocked} / ${prog.total}</span>
+                </div>
+                <button class="branch-max-btn ${isCompleted ? 'completed' : ''}" data-max-branch="${branch.id}" ${isCompleted ? 'disabled' : ''}>
+                  MAX
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
         <div class="sidebar-node-hint">
           <p><span class="hint-dot hint-stat"></span> Paliers 1–3 : stats</p>
           <p><span class="hint-dot hint-keystone"></span> Palier 4 : spécialisation</p>
@@ -559,16 +785,18 @@ export const ConstellationUI = {
         </div>
       </aside>
       <div class="constellation-canvas">
-        <svg class="constellation-svg" id="constellation-svg"></svg>
-        <div class="constellation-nodes-layer" id="constellation-nodes"></div>
-        <div class="${centerStarClass(apexState, apexUnlocked)}" id="node-apex" data-node-id="${data.apex.id}">
-          <span class="apex-rainbow-ring" aria-hidden="true"></span>
-          <span class="apex-rainbow-ring apex-rainbow-delay" aria-hidden="true"></span>
-          <span class="apex-sparkle-field" aria-hidden="true"></span>
-          <span class="apex-core">
-            <i class="fas ${data.apex.icon} center-icon"></i>
-            <span class="center-label">APEX</span>
-          </span>
+        <div class="constellation-inner" id="constellation-inner">
+          <svg class="constellation-svg" id="constellation-svg"></svg>
+          <div class="constellation-nodes-layer" id="constellation-nodes"></div>
+          <div class="${centerStarClass(apexState, apexUnlocked)}" id="node-apex" data-node-id="${data.apex.id}">
+            <span class="apex-rainbow-ring" aria-hidden="true"></span>
+            <span class="apex-rainbow-ring apex-rainbow-delay" aria-hidden="true"></span>
+            <span class="apex-sparkle-field" aria-hidden="true"></span>
+            <span class="apex-core">
+              <i class="fas ${data.apex.icon} center-icon"></i>
+              <span class="center-label">APEX</span>
+            </span>
+          </div>
         </div>
       </div>
       <aside class="constellation-detail-panel" id="constellation-detail"></aside>
@@ -611,6 +839,91 @@ export const ConstellationUI = {
 
     const apexEl = mount.querySelector('#node-apex');
     bindNode(apexEl, data.apex, onUnlock);
+
+
+    // Pan & Zoom Listeners setup
+    const canvas = mount.querySelector('.constellation-canvas');
+    if (canvas) {
+      // Set initial transform
+      updateViewportTransform();
+
+      // Panning
+      canvas.addEventListener('mousedown', (e: MouseEvent) => {
+        if (window.isConstellationAnimating) return;
+        if (e.button !== 0) return;
+
+        isPanning = true;
+        canvas.classList.add('grabbing');
+        startPanX = e.clientX;
+        startPanY = e.clientY;
+        initialPanX = panX;
+        initialPanY = panY;
+        hasDragged = false;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          if (!isPanning) return;
+          const dx = moveEvent.clientX - startPanX;
+          const dy = moveEvent.clientY - startPanY;
+          if (Math.hypot(dx, dy) > 5) {
+            hasDragged = true;
+          }
+          panX = initialPanX + dx;
+          panY = initialPanY + dy;
+          updateViewportTransform();
+        };
+
+        const handleMouseUp = () => {
+          isPanning = false;
+          canvas.classList.remove('grabbing');
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+      });
+
+      // Zooming
+      canvas.addEventListener('wheel', (e: WheelEvent) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+
+        const oldScale = zoomScale;
+        const zoomFactor = 1.1;
+        if (e.deltaY < 0) {
+          zoomScale = Math.min(2.2, zoomScale * zoomFactor);
+        } else {
+          zoomScale = Math.max(0.4, zoomScale / zoomFactor);
+        }
+
+        const ratio = zoomScale / oldScale;
+        panX = mouseX - ratio * (mouseX - panX);
+        panY = mouseY - ratio * (mouseY - panY);
+
+        updateViewportTransform();
+      }, { passive: false });
+
+      // Double click to reset
+      canvas.addEventListener('dblclick', () => {
+        zoomScale = 1.0;
+        panX = 0;
+        panY = 0;
+        updateViewportTransform();
+      });
+    }
+    // Max branch allocation button bindings
+    const maxBtns = mount.querySelectorAll('.branch-max-btn');
+    maxBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const branchId = btn.getAttribute('data-max-branch');
+        if (branchId && window.SkillTree) {
+          window.SkillTree.maxAllocateBranch(classId, branchId);
+        }
+      });
+    });
 
     renderDetailPanel(null, classId);
     this.refreshVisuals();
@@ -669,4 +982,215 @@ export const ConstellationUI = {
       if (node) renderDetailPanel(node, classId);
     }
   },
+
+  playBranchEndPassiveUnlockAnimation(nodeId: string, onComplete: () => void): void {
+    const node = getNodeById(nodeId);
+    if (!node || !node.keystone || node.branch === 'apex') {
+      onComplete();
+      return;
+    }
+
+    const classId = (STATE.class || 'warrior') as ClassId;
+    const branchId = node.branch;
+
+    // Bloquer les interactions utilisateur pendant la durée de la séquence d'animation
+    window.isConstellationAnimating = true;
+
+    // Sélectionner les éléments du DOM de la branche complète
+    const nodeEls = Array.from({ length: 10 }, (_, idx) =>
+      document.getElementById(`node-${classId}-${branchId}-${idx + 1}`)
+    ).filter(Boolean) as HTMLElement[];
+
+    const lineEls = document.querySelectorAll(`.branch-line-${branchId}`) as NodeListOf<SVGLineElement>;
+    const culminationLine = document.querySelector(`.culmination-link-${branchId}`) as SVGLineElement | null;
+
+    // 1. La branche complétée s'illumine.
+    nodeEls.forEach((el) => el.classList.add('branch-light-up'));
+    lineEls.forEach((el) => el.classList.add('branch-line-highlight'));
+
+    // 2. Une impulsion voyage à travers toute la branche.
+    nodeEls.forEach((el, index) => {
+      setTimeout(() => {
+        el.classList.add('pulse-active');
+        setTimeout(() => el.classList.remove('pulse-active'), 500);
+      }, index * 80);
+    });
+
+    // 3. Le passif de fin de branche émet un fort éclat.
+    setTimeout(() => {
+      const passiveEl = document.getElementById(`node-${nodeId}`);
+      if (passiveEl) {
+        passiveEl.classList.add('passive-strong-glow');
+      }
+    }, 800);
+
+    // 4. La connexion vers l'Apex s'illumine brièvement.
+    setTimeout(() => {
+      if (culminationLine) {
+        culminationLine.classList.add('illuminate-pulse');
+      }
+    }, 1000);
+
+    // 5. La carte de passif se met en surbrillance automatiquement.
+    // 6. Les bonus de stats s'animent en séquence.
+    setTimeout(() => {
+      selectedNodeId = nodeId;
+      renderDetailPanel(node, classId);
+
+      const card = document.querySelector('.detail-passive-effect-card');
+      if (card) {
+        card.classList.add('card-highlight-active');
+      }
+
+      const pills = document.querySelectorAll('.detail-section-stat-bonus .effect-pill') as NodeListOf<HTMLElement>;
+      pills.forEach((pill, idx) => {
+        pill.classList.add('pill-hidden');
+        setTimeout(() => {
+          pill.classList.remove('pill-hidden');
+          pill.classList.add('pill-pop');
+        }, idx * 250);
+      });
+    }, 1100);
+
+    // 7. Le passif se stabilise dans son état débloqué.
+    setTimeout(() => {
+      nodeEls.forEach((el) => el.classList.remove('branch-light-up'));
+      lineEls.forEach((el) => el.classList.remove('branch-line-highlight'));
+      if (culminationLine) {
+        culminationLine.classList.remove('illuminate-pulse');
+      }
+      const passiveEl = document.getElementById(`node-${nodeId}`);
+      if (passiveEl) {
+        passiveEl.classList.remove('passive-strong-glow');
+      }
+
+      window.isConstellationAnimating = false;
+      onComplete();
+    }, 2500);
+  },
+
+  playApexUnlockAnimation(nodeId: string, onComplete: () => void): void {
+    const node = getNodeById(nodeId);
+    if (!node || node.branch !== 'apex') {
+      onComplete();
+      return;
+    }
+
+    const classId = (STATE.class || 'warrior') as ClassId;
+
+    // 1. Bloquer les interactions utilisateur pendant la durée de la séquence d'animation
+    window.isConstellationAnimating = true;
+
+    // Smoothly pan and zoom to the center (0, 0, 1.0) before starting the ignition sequences
+    const inner = document.getElementById('constellation-inner');
+    if (inner) {
+      inner.style.transition = 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)';
+    }
+    panX = 0;
+    panY = 0;
+    zoomScale = 1.0;
+    updateViewportTransform();
+
+    setTimeout(() => {
+      // Clean up transition so subsequent user manual dragging is not laggy
+      if (inner) {
+        inner.style.transition = '';
+      }
+
+      // 2. Récupérer les éléments
+      const apexEl = document.getElementById('node-apex');
+      const svg = document.getElementById('constellation-svg');
+      const nodes = document.querySelectorAll('.tree-node') as NodeListOf<HTMLElement>;
+      const lines = document.querySelectorAll('.branch-line, .culmination-link') as NodeListOf<SVGLineElement>;
+      
+      // Créer une onde de choc sur le viewport
+      const viewport = document.querySelector('.constellation-canvas');
+      const shockwave = document.createElement('div');
+      shockwave.className = 'apex-shockwave-pulse';
+      if (viewport) {
+        viewport.appendChild(shockwave);
+      }
+
+      // Effet sonore (levelup x2 pour un effet plus lourd)
+      if (AudioSys.sfx?.levelup) {
+        AudioSys.sfx.levelup();
+        setTimeout(() => {
+          if (AudioSys.sfx?.levelup) AudioSys.sfx.levelup();
+        }, 350);
+      }
+
+      // Ajouter l'état d'éveil d'Apex au conteneur principal
+      if (viewport) viewport.classList.add('apex-awakening-active');
+
+      // 3. Animation séquentielle:
+      // Étape 1 : Le cœur de l'Apex se met à tourner et briller de mille feux (couleurs arc-en-ciel)
+      if (apexEl) {
+        apexEl.className = 'center-star apex-multicolor apex-unlocked apex-awakening-node-core';
+      }
+
+      // Étape 2 : Propagation radiale vers toutes les branches. Toutes les branches s'allument à tour de rôle en vagues depuis le centre vers l'extérieur (ou de l'extérieur vers le centre).
+      // Faisons une vague depuis l'extérieur vers le centre (l'Apex absorbe toute l'énergie de la constellation !).
+      for (let tier = 1; tier <= 10; tier++) {
+        setTimeout(() => {
+          nodes.forEach(el => {
+            const badge = el.querySelector('.node-tier-badge');
+            if (badge && badge.textContent === String(tier)) {
+              el.classList.add('apex-awakening-node');
+              el.classList.add('pulse-active');
+              setTimeout(() => el.classList.remove('pulse-active'), 600);
+            }
+          });
+          
+          // Illuminer les lignes correspondantes
+          lines.forEach(line => {
+            line.classList.add('apex-awakening-line');
+          });
+        }, (10 - tier) * 150); // De l'extérieur (tier 1) vers l'intérieur (tier 10)
+      }
+
+      // Étape 3 : Libération d'énergie finale (shockwave s'étend, l'Apex explose de lumière)
+      setTimeout(() => {
+        shockwave.classList.add('trigger');
+        if (apexEl) {
+          apexEl.classList.add('apex-unlock-explosion');
+        }
+        
+        // Flash de l'écran en blanc/arc-en-ciel
+        const flash = document.createElement('div');
+        flash.className = 'apex-screen-flash';
+        if (viewport) viewport.appendChild(flash);
+        
+        setTimeout(() => {
+          if (flash) flash.remove();
+        }, 800);
+        
+      }, 1600);
+
+      // Étape 4 : Mise en avant du panel de détails et stabilisation
+      setTimeout(() => {
+        selectedNodeId = nodeId;
+        renderDetailPanel(node, classId);
+
+        const card = document.querySelector('.detail-section-apex-effect');
+        if (card) {
+          card.classList.add('apex-card-awoken');
+        }
+      }, 2000);
+
+      // Étape 5 : Fin de l'animation, nettoyage et onComplete
+      setTimeout(() => {
+        if (viewport) viewport.classList.remove('apex-awakening-active');
+        if (apexEl) {
+          apexEl.className = 'center-star apex-multicolor apex-unlocked';
+        }
+        nodes.forEach(el => el.classList.remove('apex-awakening-node'));
+        lines.forEach(el => el.classList.remove('apex-awakening-line'));
+        if (shockwave) shockwave.remove();
+
+        window.isConstellationAnimating = false;
+        onComplete();
+      }, 4500);
+
+    }, 800);
+  }
 };

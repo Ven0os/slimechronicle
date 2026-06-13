@@ -15,7 +15,7 @@ export const CONFIG = {
         warrior: ['<i class="fas fa-gavel"></i>', '<i class="fas fa-bullhorn"></i>', '<i class="fas fa-shield-halved"></i>'], 
         mage: ['<i class="fas fa-wand-magic-sparkles"></i>', '<i class="fas fa-snowflake"></i>', '<i class="fas fa-users-viewfinder"></i>'], 
         sentinel: ['<i class="fas fa-sun"></i>', '<i class="fas fa-wind"></i>', '<i class="fas fa-hands-holding-circle"></i>'], 
-        blade: ['<i class="fas fa-scythe"></i>', '<i class="fas fa-person-running"></i>', '<i class="fas fa-water"></i>'],
+        blade: ['<i class="fas fa-khanda"></i>', '<i class="fas fa-person-running"></i>', '<i class="fas fa-water"></i>'],
         pacifier: ['<i class="fas fa-heart-pulse"></i>', '<i class="fas fa-eye"></i>', '<i class="fas fa-crosshairs"></i>'],
         eclipse: ['<i class="fas fa-meteor"></i>', '<i class="fas fa-magnet"></i>', '<i class="fas fa-circle-notch"></i>'],
         chronoregulator: ['<i class="fas fa-gem"></i>', '<i class="fas fa-atom"></i>', '<i class="fas fa-rotate"></i>']

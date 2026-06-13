@@ -312,22 +312,39 @@
     radial-gradient(1px 1px at 80% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 100%),
     radial-gradient(1px 1px at 35% 85%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
     #050508;
-  overflow: visible;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
 }
 
-.constellation-svg {
-  position: absolute;
+.constellation-canvas.grabbing {
+  cursor: grabbing;
+}
+
+.constellation-inner {
+  position: relative;
   width: 98%;
-  max-width: 760px;
+  max-width: 860px;
   aspect-ratio: 1;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.constellation-inner .constellation-svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
   pointer-events: none;
 }
 
-.constellation-nodes-layer {
+.constellation-inner .constellation-nodes-layer {
   position: absolute;
-  width: 98%;
-  max-width: 760px;
-  aspect-ratio: 1;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
 }
 
 .constellation-nodes-layer .tree-node {
@@ -336,8 +353,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 22px;
+  height: 22px;
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
@@ -353,8 +370,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   transform: translate(-50%, -50%) rotate(-45deg);
   display: flex;
   align-items: center;
@@ -365,7 +382,7 @@
 
 .constellation-nodes-layer .node-icon-wrap i {
   display: block;
-  font-size: 1.05rem;
+  font-size: 0.8rem;
   line-height: 1;
   width: 1em;
   height: 1em;
@@ -417,46 +434,47 @@
 
 .node-tier-badge {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 11px;
-  height: 11px;
-  font-size: 7px;
+  top: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  font-size: 5.5px;
   font-weight: bold;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid #666;
-  border-radius: 2px;
+  background: rgba(10, 10, 15, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transform: rotate(-45deg);
-  color: #bbb;
-  z-index: 2;
+  color: #fff;
+  z-index: 10;
   pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .tree-node.keystone .node-tier-badge {
-  top: 1px;
-  left: 1px;
-  width: 10px;
-  height: 10px;
-  font-size: 6px;
-  z-index: 3;
+  top: -5px;
+  left: -5px;
+  width: 8px;
+  height: 8px;
+  font-size: 5.5px;
+  z-index: 10;
 }
 
 .node-hover-name {
   position: absolute;
-  bottom: -26px;
+  bottom: -20px;
   left: 50%;
   transform: translateX(-50%) rotate(-45deg);
   white-space: nowrap;
-  font-size: 9px;
+  font-size: 7.5px;
   font-family: 'Cinzel', serif;
   color: #eee;
   background: rgba(0, 0, 0, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 3px;
-  padding: 2px 6px;
+  padding: 2px 5px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease;
@@ -469,8 +487,8 @@
 }
 
 .tree-node.keystone {
-  width: 44px !important;
-  height: 44px !important;
+  width: 28px !important;
+  height: 28px !important;
   border-width: 2px;
   overflow: visible !important;
   z-index: 6;
@@ -482,14 +500,14 @@
   inset: -6px;
   z-index: 1;
   pointer-events: none;
-  border: 2px solid rgba(255, 215, 0, 0.95);
+  border: 1.5px solid rgba(255, 215, 0, 0.9);
+  border-radius: 50%;
   box-shadow:
-    0 0 10px rgba(255, 215, 0, 1),
-    0 0 20px rgba(255, 200, 0, 0.9),
-    0 0 36px rgba(255, 175, 0, 0.6),
-    0 0 52px rgba(255, 150, 0, 0.35),
-    inset 0 0 18px rgba(255, 215, 0, 0.4);
-  background: rgba(255, 200, 0, 0.06);
+    0 0 12px rgba(255, 215, 0, 1),
+    0 0 24px rgba(255, 190, 0, 0.8),
+    0 0 40px rgba(255, 160, 0, 0.5),
+    inset 0 0 12px rgba(255, 215, 0, 0.45);
+  background: rgba(255, 200, 0, 0.04);
 }
 
 /* Reflet doré ANIMÉ autour du losange */
@@ -498,21 +516,22 @@
   inset: -11px;
   z-index: 0;
   pointer-events: none;
+  border-radius: 50%;
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
     transparent 60deg,
-    rgba(255, 240, 180, 0.2) 78deg,
-    rgba(255, 215, 0, 1) 100deg,
+    rgba(255, 240, 180, 0.25) 78deg,
+    rgba(255, 215, 0, 0.95) 100deg,
     #fff8dc 115deg,
-    rgba(255, 215, 0, 1) 130deg,
-    rgba(255, 240, 180, 0.2) 148deg,
+    rgba(255, 215, 0, 0.95) 130deg,
+    rgba(255, 240, 180, 0.25) 148deg,
     transparent 168deg,
     transparent 360deg
   );
-  animation: keystoneDiamondSpin 2.6s linear infinite;
-  opacity: 1;
-  filter: blur(1px) drop-shadow(0 0 12px rgba(255, 215, 0, 1));
+  animation: keystoneDiamondSpin 3s linear infinite;
+  opacity: 0.9;
+  filter: blur(2.5px) drop-shadow(0 0 10px rgba(255, 215, 0, 0.95));
 }
 
 .constellation-nodes-layer .tree-node.keystone .node-icon-wrap i {
@@ -1506,5 +1525,378 @@
   .constellation-detail-panel {
     border: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
+
+/* --- Branch-End Passive Unlock Animation CSS --- */
+
+/* 1. Branch Light Up */
+.tree-node.branch-light-up {
+  filter: drop-shadow(0 0 12px var(--constellation-theme)) !important;
+  border-color: var(--constellation-theme) !important;
+  transition: all 0.4s ease;
+}
+
+.branch-line.branch-line-highlight {
+  stroke: var(--constellation-theme) !important;
+  stroke-opacity: 0.95 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 4px var(--constellation-theme));
+  transition: all 0.4s ease;
+}
+
+/* 2. Pulse traveling through the branch */
+.tree-node.pulse-active {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.4) !important;
+  filter: drop-shadow(0 0 20px var(--constellation-theme)) brightness(1.5) !important;
+  z-index: 10 !important;
+}
+
+/* 3. Branch-End Passive strong glow */
+.tree-node.passive-strong-glow .keystone-glow-static {
+  inset: -14px !important;
+  border-color: var(--constellation-theme) !important;
+  box-shadow:
+    0 0 20px var(--constellation-theme),
+    0 0 40px var(--constellation-theme),
+    0 0 70px var(--constellation-theme),
+    inset 0 0 30px var(--constellation-theme) !important;
+  background: color-mix(in srgb, var(--constellation-theme) 20%, transparent) !important;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 4. Connection toward Apex briefly illuminates */
+.culmination-link.illuminate-pulse {
+  stroke: var(--constellation-theme) !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 8px var(--constellation-theme)) !important;
+  transition: all 0.3s ease;
+}
+
+/* 5. Passive card highlights automatically */
+.detail-passive-effect-card.card-highlight-active {
+  animation: cardHighlightAnim 1.2s ease-in-out;
+}
+
+@keyframes cardHighlightAnim {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+  }
+  30% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px var(--constellation-theme);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+/* 6. Stat bonuses animate in sequence */
+.detail-section-stat-bonus .effect-pill.pill-hidden {
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+.detail-section-stat-bonus .effect-pill.pill-pop {
+  animation: pillPopAnim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes pillPopAnim {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Glowing & Flowing Constellation Connections CSS --- */
+
+.branch-line {
+  stroke-linecap: round;
+  transition: all 0.35s ease;
+}
+
+/* Unlocked lines have a glowing flow */
+.branch-line.unlocked {
+  stroke: var(--constellation-theme) !important;
+  stroke-opacity: 0.85 !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 6px var(--constellation-theme)) !important;
+}
+
+/* Available lines have a dash array that pulses slowly */
+.branch-line.available {
+  stroke: var(--constellation-theme) !important;
+  stroke-opacity: 0.45 !important;
+  stroke-width: 1.8px !important;
+  stroke-dasharray: 6 5;
+  animation: availableLineBreathe 2s ease-in-out infinite;
+}
+
+/* Locked lines are faint and elegant */
+.branch-line.locked {
+  stroke: #1c1c26 !important;
+  stroke-opacity: 0.32 !important;
+  stroke-width: 1.2px !important;
+}
+
+/* Culmination link styles */
+.culmination-link {
+  stroke-linecap: round;
+  transition: all 0.35s ease;
+}
+
+.culmination-link.unlocked {
+  stroke-opacity: 0.9 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 8px var(--constellation-theme)) !important;
+}
+
+.culmination-link.available {
+  stroke-dasharray: 5 4;
+  stroke-width: 2px !important;
+  animation: availableLineBreathe 2s ease-in-out infinite;
+}
+
+.culmination-link.locked {
+  stroke: #1c1c26 !important;
+  stroke-opacity: 0.28 !important;
+  stroke-width: 1.2px !important;
+}
+
+@keyframes availableLineBreathe {
+  0%, 100% {
+    stroke-opacity: 0.25;
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0));
+  }
+  50% {
+    stroke-opacity: 0.7;
+    filter: drop-shadow(0 0 5px var(--constellation-theme));
+  }
+}
+
+/* Normal Node styling enhancements */
+.constellation-nodes-layer .tree-node.unlocked:not(.keystone) {
+  border-color: var(--constellation-theme) !important;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--constellation-theme) 40%, transparent),
+    inset 0 0 6px color-mix(in srgb, var(--constellation-theme) 30%, transparent) !important;
+  background: color-mix(in srgb, var(--constellation-theme) 12%, #181820) !important;
+}
+
+.constellation-nodes-layer .tree-node.available:not(.keystone) {
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  background: #1c1c24 !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.08) !important;
+  animation: normalAvailableBreathe 2s ease-in-out infinite;
+}
+
+.constellation-nodes-layer .tree-node.locked:not(.keystone) {
+  border-color: #2d2d3a !important;
+  background: #0f0f15 !important;
+  opacity: 0.45 !important;
+}
+
+/* --- SEGMENTATION DE BRANCHES ET BOUTON MAX --- */
+.sidebar-section-title {
+  font-family: 'Cinzel', serif;
+  color: #fff;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
+  margin: 16px 0 8px 0;
+  text-transform: uppercase;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-branches-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(10, 10, 15, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 16px;
+}
+
+.sidebar-branch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.sidebar-branch-row:last-child {
+  border-bottom: none;
+}
+
+.branch-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.branch-row-name {
+  color: #e0e0e8;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.branch-row-prog {
+  color: var(--constellation-theme);
+  font-size: 0.75rem;
+  opacity: 0.9;
+  font-family: monospace;
+}
+
+.branch-max-btn {
+  padding: 5px 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--constellation-theme) 70%, #fff), var(--constellation-theme));
+  border: none;
+  border-radius: 4px;
+  color: #0c0c14;
+  font-weight: bold;
+  font-size: 0.75rem;
+  font-family: 'Cinzel', serif;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+.branch-max-btn:hover:not(:disabled) {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px var(--constellation-theme);
+}
+
+.branch-max-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.branch-max-btn:disabled {
+  background: #252530;
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+/* --- APEX UNLOCK ANIMATION EFFECTS --- */
+.apex-shockwave-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+  border: 4px solid #fff;
+  box-shadow: 0 0 20px #fff, 0 0 40px var(--constellation-theme);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  transition: transform 1.5s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 1.5s ease, border-color 1.5s ease;
+}
+
+.apex-shockwave-pulse.trigger {
+  transform: translate(-50%, -50%) scale(120);
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(212, 175, 55, 0.3) 30%, rgba(255, 0, 85, 0) 75%);
+}
+
+.apex-screen-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 99;
+  animation: flashFade 0.8s forwards cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+@keyframes flashFade {
+  0% {
+    opacity: 0.85;
+    background: #fff;
+  }
+  50% {
+    background: color-mix(in srgb, var(--constellation-theme) 40%, #fff);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.apex-awakening-node-core {
+  animation: apexCoreSpin 4.5s cubic-bezier(0.25, 1, 0.5, 1) infinite !important;
+}
+
+@keyframes apexCoreSpin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1.1);
+    filter: brightness(1.2) drop-shadow(0 0 10px var(--constellation-theme));
+  }
+  35% {
+    transform: translate(-50%, -50%) rotate(720deg) scale(1.25);
+    filter: brightness(1.8) drop-shadow(0 0 25px #fff) drop-shadow(0 0 45px var(--constellation-theme));
+  }
+  70% {
+    transform: translate(-50%, -50%) rotate(1440deg) scale(1.15);
+    filter: brightness(1.5) drop-shadow(0 0 20px #fff) drop-shadow(0 0 35px var(--constellation-theme));
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(1800deg) scale(1.0);
+  }
+}
+
+.tree-node.apex-awakening-node {
+  filter: brightness(1.6) drop-shadow(0 0 12px var(--constellation-theme)) !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 15px #fff, 0 0 25px var(--constellation-theme) !important;
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.25) !important;
+}
+
+.branch-line.apex-awakening-line,
+.culmination-link.apex-awakening-line {
+  stroke: #fff !important;
+  stroke-width: 3.5px !important;
+  stroke-opacity: 0.95 !important;
+  filter: drop-shadow(0 0 8px var(--constellation-theme));
+}
+
+.center-star.apex-unlock-explosion .apex-core {
+  box-shadow: 0 0 50px #fff, 0 0 100px var(--constellation-theme), 0 0 150px #ff6b9d !important;
+}
+
+.detail-section-apex-effect.apex-card-awoken {
+  animation: cardAwakeGlow 2.5s infinite alternate;
+  border-radius: 8px;
+}
+
+@keyframes cardAwakeGlow {
+  0% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 25px var(--constellation-theme), inset 0 0 15px rgba(255, 255, 255, 0.2);
+    border: 1px solid #fff;
   }
 }

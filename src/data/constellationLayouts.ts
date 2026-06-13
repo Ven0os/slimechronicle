@@ -79,7 +79,7 @@ export const CLASS_CONSTELLATION_LAYOUTS: Record<ClassId, ClassConstellationLayo
     branches: {
       transfusion: { angleDeg: 168, spread: 0.97, tierAngleStep: 0.2, radiusBias: 1.04 },
       jugement: { angleDeg: -68, spread: 1.06, tierAngleStep: 0.36, radiusBias: 1.0 },
-      frénésie: { angleDeg: 12, spread: 1.08, tierAngleStep: 0.3, radiusBias: 0.96 },
+      frénesie: { angleDeg: 12, spread: 1.08, tierAngleStep: 0.3, radiusBias: 0.96 },
       rituel: { angleDeg: 108, spread: 1.0, tierAngleStep: 0.42, radiusBias: 1.02 },
       pistol: { angleDeg: 48, spread: 0.94, tierAngleStep: 0.28, radiusBias: 0.9 },
     },

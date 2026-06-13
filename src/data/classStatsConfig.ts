@@ -135,7 +135,7 @@ export const CLASS_STATS_CONFIG: Record<ClassId, ClassStatsDef> = {
       shift: { ratio: 1.8, label: 'Verdict Sanguin' },
       e: { ratio: 0.9, label: 'Frénésie' },
     },
-    branchSkills: { transfusion: 'space', jugement: 'shift', 'frénésie': 'e', rituel: 'space' },
+    branchSkills: { transfusion: 'space', jugement: 'shift', frénesie: 'e', rituel: 'space' },
   },
   eclipse: {
     classId: 'eclipse',
