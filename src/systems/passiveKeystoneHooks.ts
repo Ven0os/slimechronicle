@@ -399,9 +399,9 @@ export const PassiveKeystoneHooks = {
 
   getStellarOverchargeMods() {
     if (!rank('stellarOvercharge')) {
-      return { enabled: false, maxChargeRatio: 1, baseChargeMs: 1000, overchargeMs: 1500 };
+      return { enabled: false };
     }
-    return { enabled: true, maxChargeRatio: 2.5, baseChargeMs: 1000, overchargeMs: 1500 };
+    return { enabled: true };
   },
 
   onSentinelBeamFired(player: { addBuff?: (n: string, d: number, i: string) => void; speed?: number }) {

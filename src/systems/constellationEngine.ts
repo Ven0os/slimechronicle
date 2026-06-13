@@ -197,6 +197,8 @@ export const ConstellationEngine = {
       if (node) applyNode(node, true);
     }
 
+    this.ensureKeystonePassive('stellarOvercharge', 'sentinel-surcharge-10');
+
     if (paradoxBackup._paradoxRewards) {
       const p = ensurePassives();
       p._paradoxKillCount = paradoxBackup._paradoxKillCount ?? 0;
@@ -283,6 +285,13 @@ export const ConstellationEngine = {
   getPassiveRank(key: string): number {
     const p = STATE.passives as PassiveBag | undefined;
     return (p?.[key] as number) || 0;
+  },
+
+  /** Ré-enregistre un passif de keystone si le nœud est débloqué mais STATE.passives a été perdu. */
+  ensureKeystonePassive(key: string, nodeId: string, rank = 1): void {
+    if (this.getPassiveRank(key) > 0) return;
+    if (!this.isNodeUnlocked(nodeId)) return;
+    registerPassive({ passive: key, passiveRank: rank });
   },
 
   isConvergenceUnlocked(classId?: ClassId): boolean {

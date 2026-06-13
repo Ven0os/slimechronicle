@@ -175,10 +175,16 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') {
     SafeZoneHub.startRecallChanneling();
   }
-  if (Globals.player && !Globals.player.dead) {
+    if (Globals.player && !Globals.player.dead) {
     if (e.code === 'Space') Globals.player.useSkill('space');
     if (e.code === 'ShiftLeft') Globals.player.useSkill('shift');
     if (e.code === 'KeyE') Globals.player.useSkill('e');
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' && Globals.player?.releaseStellarCharge) {
+    Globals.player.releaseStellarCharge();
   }
 });
 

@@ -153,10 +153,10 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   stellarOvercharge: {
     paragraphs: () => [
-      'Rayon Stellaire (Espace) : maintenir Espace charge au-delà du maximum normal.',
-      'Charge maximale : 250 % des dégâts de base du Rayon Stellaire.',
-      'Relâcher Espace : tir avec la charge actuelle.',
-      'Charge complète (250 %) : rayon d\'impact +20 %.',
+      'Rayon Stellaire : charge de 50 % à 250 % de dégâts.',
+      'Charge maximale après 3,25 s.',
+      'À 250 % : +20 % Portée.',
+      'Une jauge affiche l\'amplification actuelle en temps réel.',
     ],
   },
 

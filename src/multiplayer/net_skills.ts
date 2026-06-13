@@ -49,6 +49,14 @@ export const NetSkills = {
             return;
         }
 
+        if (data.action === 'skill' && data.class === 'sentinel' && data.key === 'space' && typeof data.chargeRatio === 'number') {
+            const player = getPlayerByPeerId(playerId);
+            if (player && typeof player.fireStellarBeam === 'function') {
+                player.fireStellarBeam(flatDir, data.chargeRatio);
+            }
+            return;
+        }
+
         if (data.class === 'warrior' && data.key === 'space') {
             const baseDmg = 30;
             Globals.enemies.forEach(e => {
@@ -80,6 +88,15 @@ export const NetSkills = {
                     if (data.action === 'attack-range') {
                         return;
                     }
+                }
+
+                if (data.class === 'sentinel' && data.action === 'skill' && data.key === 'space' && typeof data.chargeRatio === 'number') {
+                    runVisualOnly(() => {
+                        if (typeof remotePlayer.fireStellarBeam === 'function') {
+                            remotePlayer.fireStellarBeam(dir, data.chargeRatio);
+                        }
+                    });
+                    return;
                 }
 
                 if (data.action === 'attack-melee' || data.action === 'attack-range') {

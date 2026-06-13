@@ -3,6 +3,7 @@ import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { AudioSys } from '@/core/ressources';
 import { HUDEnchant } from '@/visual/ui/hud_enchant';
+import { ConstellationEngine } from '@/systems/constellationEngine';
 
 export const UICompendium = {
 
@@ -104,9 +105,7 @@ export const UICompendium = {
 
         const hpPct = (Globals.player.maxHp > 0) ? Globals.player.hp / Globals.player.maxHp : 1;
 
-        if (Globals.player.applyClassStats) Globals.player.applyClassStats(true);
-
-        STATE.passives = { etherSteps: [] };
+        ConstellationEngine.recalculate();
 
         if (STATE.collectedFragments) {
             STATE.collectedFragments.forEach(frag => {

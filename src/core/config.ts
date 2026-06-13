@@ -35,7 +35,7 @@ export const CONFIG = {
         },
         sentinel: {
             passive: { name: "Aura Solaire", desc: "Aura de soutien autour du lanceur.\nBonus offensifs aux alliés proches." },
-            space: { name: "Rayon Stellaire", desc: "Charge 1 s, puis laser en ligne.\nDégâts massifs." },
+            space: { name: "Rayon Stellaire", desc: "Incantation 1 s, puis laser en ligne.\nDégâts massifs.\nSurcharge Stellaire : charge 50 % à 250 % en 3,25 s." },
             shift: { name: "Champ de Lumière", desc: "Lance sacrée au sol.\nZone persistante : dégâts périodiques et soin du lanceur." },
             e: { name: "Égide Divine", desc: "Moulinet sacré.\nSoin important et bouclier." }
         },
