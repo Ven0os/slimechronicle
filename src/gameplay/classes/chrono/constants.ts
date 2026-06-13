@@ -37,6 +37,7 @@ export const CHRONO_ASCENDANT = {
 } as const;
 
 export const CHRONO_SKILLS = {
+  /** Prisme (compétence Espace) — clé interne `lens`. */
   lens: {
     baseDuration: 5,
     radius: 1.4,

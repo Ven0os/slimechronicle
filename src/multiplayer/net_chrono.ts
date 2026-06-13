@@ -1,7 +1,7 @@
 // @ts-nocheck
 /**
  * État Chronoregent autoritaire (hôte = serveur).
- * Lentilles, faisceau, ticks de dégâts — clients envoient des intents uniquement.
+ * Prismes, faisceau, ticks de dégâts — clients envoient des intents uniquement.
  */
 
 import { STATE } from '@/core/config';
@@ -13,6 +13,7 @@ import {
   isVisualOnlyMode,
 } from './net_combat';
 import { ConstellationEngine } from '@/systems/constellationEngine';
+import { tickChronoTemporalBurns } from '@/gameplay/classes/chrono/temporalBurn';
 
 /** @typedef {{ id: string, x: number, z: number, timer: number, maxTimer: number, version: number }} ChronoLensSnap */
 /** @typedef {{ isBeaming: number, aimX: number, aimZ: number, lenses: ChronoLensSnap[] }} ChronoPlayerSnap */
@@ -150,7 +151,7 @@ export const NetChrono = {
     }
   },
 
-  /** Client local → envoie intent lentille. */
+  /** Client local → envoie intent prisme (clé réseau interne : lens-place). */
   sendLensPlaceIntent(dir) {
     if (!STATE.multiplayer.active || isServerAuthority()) return null;
     const seq = (NetChrono._localLensSeq = (NetChrono._localLensSeq || 0) + 1);
@@ -300,7 +301,7 @@ export const NetChrono = {
     }
   },
 
-  /** Hôte : tick faisceau + lentilles pour tous les Chronoregent actifs. */
+  /** Hôte : tick faisceau + prismes pour tous les Chronoregent actifs. */
   tick(dt) {
     if (!isServerAuthority() || isVisualOnlyMode()) return;
 
@@ -348,6 +349,8 @@ export const NetChrono = {
         player.refreshBeamVisuals();
       }
     }
+
+    tickChronoTemporalBurns(dt);
   },
 
   /** Client : met à jour visuels faisceau distants. */

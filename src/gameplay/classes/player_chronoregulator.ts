@@ -15,6 +15,7 @@ import {
   createFractureDecayState,
   getFractureOverheatAt,
   getMaxFracture,
+  isChronoFractureApexActive,
   isFractureDecaying,
   isInOverloadReleaseWindow,
   isOverloadImminenceActive,
@@ -23,7 +24,8 @@ import {
 } from './chrono/fractureHelpers';
 import { updateChronoFractureUI } from './chrono/fractureUi';
 import { pulseChronoLensUI, updateChronoLensUI } from './chrono/lensUi';
-import { computeDamageToEnemy } from '../combat/damage_helpers';
+import { applyChronoTemporalBurn, tickChronoTemporalBurns } from './chrono/temporalBurn';
+import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { ChronoDephasingGrenade } from './chrono/grenadeProjectile';
 import { NetChrono } from '../../multiplayer/net_chrono';
 import { isServerAuthority, isVisualOnlyMode } from '../../multiplayer/net_combat';
@@ -60,8 +62,18 @@ export class Chronoregulator extends PlayerBase {
     this.castAnimType = null;
   }
 
+  syncChronoApexState() {
+    ConstellationEngine.ensureKeystonePassive('continuumMastery', 'chronoregulator-apex', 2);
+    this.fractureGauge = clampFracture(this.fractureGauge ?? 0);
+    this.overheatTriggered = false;
+    if (this.isLocalPlayer()) {
+      updateChronoFractureUI(this.fractureGauge, this.fractureSilence ?? 0, true);
+      updateChronoLensUI(this.lenses, true);
+    }
+  }
+
   createClassModel() {
-    const isApex = STATE.unlockedNodes?.includes('chronoregulator-apex') || false;
+    const isApex = isChronoFractureApexActive();
     this.isApexActive = isApex;
     
     const teal = CHRONO_COLOR();
@@ -1030,37 +1042,22 @@ export class Chronoregulator extends PlayerBase {
 
     const prismCrit = ConvergenceEffects.getPrismCritMods(prismDepth);
 
-    if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
-      const { dmg: preview } = computeDamageToEnemy(enemy, dmg, {
-        forceCrit: prismCrit.forceCrit,
-        critDmgMult: prismCrit.critDmgMult,
-        noCrit: !prismCrit.forceCrit,
-      });
-      createDamageText(Math.floor(preview), enemy.position, '#7df9ff');
-      Network.send({
-        type: 'request-damage',
-        enemyId: enemy.netId,
-        playerId: STATE.multiplayer.id,
-        baseDmg: dmg,
-        opts: {
-          forceCrit: prismCrit.forceCrit,
-          critDmgMult: prismCrit.critDmgMult,
-          noCrit: !prismCrit.forceCrit,
-        },
-        maxRange: 30,
-        pos: Globals.player ? { x: Globals.player.position.x, y: Globals.player.position.y, z: Globals.player.position.z } : null,
-      });
-      if (preview > 0) this.resetFractureActivity();
-      return preview;
+    const { dmg: dealt } = dealDamageToEnemy(enemy, dmg, {
+      pos: enemy.position,
+      forceCrit: prismCrit.forceCrit,
+      critDmgMult: prismCrit.critDmgMult,
+      skillKey,
+      isRanged: true,
+      critLabel: prismCrit.forceCrit ? 'PRISME!' : undefined,
+      critColor: prismCrit.forceCrit ? '#7df9ff' : undefined,
+    });
+
+    if (dealt > 0 && prismDepth > 0) {
+      applyChronoTemporalBurn(enemy, dealt);
     }
 
-    if (prismCrit.forceCrit) {
-      dmg *= STATE.stats.critDmg * prismCrit.critDmgMult;
-      createDamageText('PRISME!', enemy.position, '#7df9ff');
-    }
-    enemy.takeDamage(dmg);
-    if (dmg > 0) this.resetFractureActivity();
-    return dmg;
+    if (dealt > 0) this.resetFractureActivity();
+    return dealt;
   }
 
   isEnemyInstabilityMarked(enemy) {
@@ -1368,9 +1365,6 @@ export class Chronoregulator extends PlayerBase {
 
       const dealt = this.dealMagicDamage(enemy, tickDmg, { skillKey: 'primary', prismDepth: ray.prismDepth || 0 });
       this.recordBeamDamage(enemy, dealt);
-      if (ray.split && prismMods.burnOnSplit) {
-        PassiveKeystoneHooks.applyPrismLensBurn(enemy, tickDmg);
-      }
 
       if (this.isConverging) {
         this.convergenceHitCount += 1;
@@ -1824,8 +1818,8 @@ export class Chronoregulator extends PlayerBase {
     this.lenses.push(lens);
     this._lensMeshesById[lensId] = lens;
     spawnParticles(pos, CHRONO_COLOR(), 12);
-    createDamageText(refined ? 'PRISME' : 'LENTILLE', pos, '#7df9ff');
-    if (this.isLocalPlayer()) this.addBuff(refined ? 'Prisme' : 'Lentille', lensDuration, 'fa-gem');
+    createDamageText('PRISME', pos, '#7df9ff');
+    if (this.isLocalPlayer()) this.addBuff('Prisme', lensDuration, 'fa-gem');
   }
 
   skillMolecularDephasing() {
@@ -2020,13 +2014,18 @@ export class Chronoregulator extends PlayerBase {
     }
 
     // Apex unlock observer
-    const currentApex = STATE.unlockedNodes?.includes('chronoregulator-apex') || false;
+    const currentApex = isChronoFractureApexActive();
     if (currentApex !== this.isApexActive) {
       this.isApexActive = currentApex;
+      this.syncChronoApexState();
       this.rebuildClassModel();
     }
 
     super.update(dt);
+
+    if (this.isLocalPlayer() && !STATE.multiplayer.active) {
+      tickChronoTemporalBurns(dt);
+    }
 
     this.applyMovementSpeed();
     if (!this.isBeaming && !STATE.mouseDown && this.beamVisuals.length > 0) {

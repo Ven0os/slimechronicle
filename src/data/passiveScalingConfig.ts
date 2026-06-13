@@ -373,15 +373,17 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   extraPrismLens: {
     paragraphs: () => [
-      'Lentille de Focalisation : split en 4 rayons au lieu de 3.',
-      'Rayons prismatiques : dégâts −10 % par rayon.',
-      'Rayons prismatiques : infligent une brûlure temporelle.',
+      'Prisme (Espace) :\nGénère 4 rayons au lieu de 3.',
+      'Rayons prismatiques :\nDégâts -10% par rayon.',
+      'Tirer à travers un Prisme :\nApplique Brûlure Temporelle.',
+      'Brûlure Temporelle :\n10% des dégâts infligés par seconde pendant 3 s.',
+      'Maximum 3 cumuls.',
     ],
   },
 
   continuumBurst: {
     paragraphs: () => [
-      'Lentille (Espace) : cône +15 % · dégâts du rayon +8 %.',
+      'Prisme (Espace) : cône +15 % · dégâts du rayon +8 %.',
       'Convergence Temporelle (E) : durée +0,5 s.',
       'Convergence Temporelle (E) : rayon de résonance +0,5 m.',
     ],

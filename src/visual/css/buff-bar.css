@@ -379,7 +379,7 @@
   background: linear-gradient(90deg, #48c9b0, #7df9ff 60%, #ffd93d);
 }
 
-/* Prismes / Lentilles — Chronorégisseur */
+/* Prismes — Chronorégisseur (clés DOM/CSS internes : chrono-lens-*) */
 .chrono-lens-stacks {
   display: flex;
   flex-direction: column;

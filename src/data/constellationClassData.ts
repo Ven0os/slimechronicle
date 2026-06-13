@@ -808,7 +808,7 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
   chronoregulator: {
     classId: 'chronoregulator',
     title: 'Spirale de Fracture',
-    subtitle: 'Lentille, prisme, fracture, rayon et surcharge',
+    subtitle: 'Prisme, fracture, rayon et surcharge',
     themeColor: '#48c9b0',
     apex: {
       id: 'chronoregulator-apex',
@@ -838,7 +838,7 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         ),
         keystone: {
           name: 'Prisme Affiné',
-          desc: 'Passif : cône lentille élargi, rayon +8 %, Convergence +0,5 s.',
+          desc: 'Passif : cône prisme élargi, rayon +8 %, Convergence +0,5 s.',
           icon: 'fa-gem',
           passive: 'continuumBurst',
           stats: { atk: 8, maxHpFlat: 10, def: 6 },
@@ -848,19 +848,19 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         classId: 'chronoregulator',
         branchId: 'lentille',
         slot: 'mst',
-        label: 'Lentille',
+        label: 'Prisme',
         nodes: extendBranchPath(
           [
             n(1, 'Facette', '+4% Crit Chance', 'fa-gem', { crit: 0.04 }),
-            n(2, 'Réfraction', '+8% Lentille de Focalisation', 'fa-wave-square', { skillMods: { space: 0.08 } }),
-            n(3, 'Prisme Brut', '+5 ATK, −5% recharge Lentille', 'fa-eye', { atk: 5, skillCdMods: { space: -0.05 } }),
+            n(2, 'Réfraction', '+8% Prisme', 'fa-wave-square', { skillMods: { space: 0.08 } }),
+            n(3, 'Prisme Brut', '+5 ATK, −5% recharge Prisme', 'fa-eye', { atk: 5, skillCdMods: { space: -0.05 } }),
           ],
-          { focus: 'control', skill: { key: 'space', label: 'Lentille de Focalisation' } },
-          [n(9, 'Prisme Supplémentaire II', '−7% recharge Lentille', 'fa-gem', { skillCdMods: { space: -0.07 } })],
+          { focus: 'control', skill: { key: 'space', label: 'Prisme' } },
+          [n(9, 'Prisme Supplémentaire II', '−7% recharge Prisme', 'fa-gem', { skillCdMods: { space: -0.07 } })],
         ),
         keystone: {
           name: 'Prisme Supplémentaire',
-          desc: 'Passif : lentilles projettent 4 rayons brûlants.',
+          desc: 'Passif : les prismes projettent 4 rayons brûlants · Brûlure Temporelle via prisme.',
           icon: 'fa-gem',
           passive: 'extraPrismLens',
           stats: { atk: 8, maxHpFlat: 10, def: 6 },
@@ -896,10 +896,10 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         nodes: extendBranchPath(
           [
             n(1, 'Foulée', '+1.1 Vitesse sprint', 'fa-person-running', { speed: 1.1 }),
-            n(2, 'Accélération', '−8% recharge Lentille', 'fa-stopwatch', { skillCdMods: { space: -0.08 } }),
-            n(3, 'Flux', '+0.8 sprint, −6% Lentille', 'fa-wind', { speed: 0.8, skillCdMods: { space: -0.06 } }),
+            n(2, 'Accélération', '−8% recharge Prisme', 'fa-stopwatch', { skillCdMods: { space: -0.08 } }),
+            n(3, 'Flux', '+0.8 sprint, −6% Prisme', 'fa-wind', { speed: 0.8, skillCdMods: { space: -0.06 } }),
           ],
-          { focus: 'speed', skill: { key: 'space', label: 'Lentille' } },
+          { focus: 'speed', skill: { key: 'space', label: 'Prisme' } },
           [n(9, 'Conduction II', '−8% recharge compétences', 'fa-hourglass-half', { skillCdMods: { space: -0.08 } })],
         ),
         keystone: {
