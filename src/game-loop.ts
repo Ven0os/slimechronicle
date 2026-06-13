@@ -169,6 +169,7 @@ document.addEventListener(
 );
 
 window.addEventListener('keydown', (e) => {
+  if (STATE.cinematicActive) return;
   if (e.code === 'KeyF') {
     if (!WorldEvents.tryInteract()) GameLogic.tryInteractLocal();
   }
@@ -279,7 +280,10 @@ function animate(): void {
     }
   }
 
-  if (camTarget) {
+  if (Globals.cameraOverride) {
+    Globals.camera.position.copy(Globals.cameraOverride.position);
+    Globals.camera.lookAt(Globals.cameraOverride.lookAt);
+  } else if (camTarget) {
     Globals.camera.position.x = camTarget.position.x;
     Globals.camera.position.z = camTarget.position.z + 12;
     Globals.camera.position.y = camTarget.position.y + 14;

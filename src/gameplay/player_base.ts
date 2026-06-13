@@ -246,7 +246,7 @@ export class PlayerBase extends THREE.Group {
             this.position.add(this.knockback.clone().multiplyScalar(dt));
             this.knockback.multiplyScalar(0.9);
             this.resolveCollisions();
-        } else if (!STATE.isPaused && !this.isStunned && !UI.isMenuOpen()) { 
+        } else if (!STATE.isPaused && !this.isStunned && !UI.isMenuOpen() && !STATE.cinematicActive) { 
             const moveInput = new THREE.Vector3();
             if(Input.keys['KeyW']) moveInput.z -= 1;
             if(Input.keys['KeyS']) moveInput.z += 1;
@@ -308,7 +308,7 @@ export class PlayerBase extends THREE.Group {
         
         if(this.attackCooldown > 0) this.attackCooldown -= dt;
         
-        if(STATE.mouseDown && this.attackCooldown <= 0 && !STATE.isPaused && !this.isStunned && !UI.isMenuOpen()) {
+        if(STATE.mouseDown && this.attackCooldown <= 0 && !STATE.isPaused && !this.isStunned && !UI.isMenuOpen() && !STATE.cinematicActive) {
             this.performAttack();
         }
 
@@ -338,19 +338,19 @@ export class PlayerBase extends THREE.Group {
 
     handleInputs(dt) {
         if (!this.isLocalPlayer()) return;
-        if (STATE.mouseDown && this.attackCooldown <= 0 && !this.isCasting && !this.isStunned && !UI.isMenuOpen()) {
+        if (STATE.mouseDown && this.attackCooldown <= 0 && !this.isCasting && !this.isStunned && !UI.isMenuOpen() && !STATE.cinematicActive) {
             this.triggerAttack();
         }
     }
 
     performAttack() { 
-        if(this.isStunned || UI.isMenuOpen()) return; 
+        if(this.isStunned || UI.isMenuOpen() || STATE.cinematicActive) return; 
         this.triggerAttack(); 
     }
 
     useSkill(key) {
         if (this.dead) return;
-        if (this.isStunned) return; 
+        if (this.isStunned || STATE.cinematicActive) return; 
         if (UI.isMenuOpen()) return; 
         if (this.cooldowns[key] > 0) return;
         this.cooldowns[key] = this.maxCooldowns[key];
@@ -548,6 +548,18 @@ export class PlayerBase extends THREE.Group {
             }
         }
 
+        // Pendant le combat de boss, le joueur est confiné mathématiquement dans le cercle de l'arène
+        if (STATE.isBossFight) {
+            const dx = this.position.x - BOSS_ZONE.cx;
+            const dz = this.position.z - BOSS_ZONE.cz;
+            const dist = Math.hypot(dx, dz);
+            if (dist > BOSS_ZONE.radius - this.radius) {
+                const angle = Math.atan2(dz, dx);
+                this.position.x = BOSS_ZONE.cx + Math.cos(angle) * (BOSS_ZONE.radius - this.radius);
+                this.position.z = BOSS_ZONE.cz + Math.sin(angle) * (BOSS_ZONE.radius - this.radius);
+            }
+        }
+
         if (Globals.obstacles) {
             for (const obs of Globals.obstacles) {
                 const dist = this.position.distanceTo(obs.position);
@@ -653,6 +665,22 @@ export class PlayerBase extends THREE.Group {
         if (this.isLocalPlayer()) {
             const deathScreen = document.getElementById('death-screen');
             if(deathScreen) deathScreen.style.display = 'flex';
+
+            if (STATE.isBossFight) {
+                if (STATE.multiplayer.active) {
+                    if (STATE.multiplayer.isHost) {
+                        if (window.GameLogic && typeof window.GameLogic.triggerWipe === 'function') {
+                            window.GameLogic.triggerWipe();
+                        }
+                    } else {
+                        Network.send({ type: 'request-wipe' });
+                    }
+                } else {
+                    if (window.GameLogic && typeof window.GameLogic.triggerWipe === 'function') {
+                        window.GameLogic.triggerWipe();
+                    }
+                }
+            }
         }
     }
 
@@ -670,7 +698,7 @@ export class PlayerBase extends THREE.Group {
             if(deathScreen) deathScreen.style.display = 'none';
         }
         this.bodyGroup.traverse((child) => {
-            if (child.isMesh && child.material && child.userData.baseEmissive !== undefined) {
+            if (child.isMesh && child.material && child.material.emissive && child.userData.baseEmissive !== undefined) {
                 child.material.emissive.setHex(child.userData.baseEmissive);
             }
         });

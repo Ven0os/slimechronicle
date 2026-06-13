@@ -55,7 +55,7 @@ export class ShamanSkills {
 
     getNearbyAllies(range) {
         if (!Globals.enemies) return [];
-        return Globals.enemies.filter(e => e !== this.enemy && !e.dead && !e.isBoss && e.type !== 'royal_seal' && this.enemy.position.distanceTo(e.position) <= range);
+        return Globals.enemies.filter(e => e !== this.enemy && !e.dead && !e.isBoss && e.type !== 'royal_seal' && e.type !== 'boss_pillar' && this.enemy.position.distanceTo(e.position) <= range);
     }
 
     castHeal(targetAlly) {

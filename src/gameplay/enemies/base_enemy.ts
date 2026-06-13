@@ -199,7 +199,7 @@ export class BaseEnemy extends THREE.Group {
             mark.position.y = (this.radius || 1.0) * 2.8 + bob;
         }
 
-        if (!this.isBoss && !this.isPlayer && this.type !== 'royal_seal') {
+        if (!this.isBoss && !this.isPlayer && this.type !== 'royal_seal' && this.type !== 'boss_pillar') {
             pushOutOfSafeZone(this.position);
             if (!STATE.isBossFight && !STATE.bossSpawned) {
                 pushOutOfCircle(this.position, BOSS_ZONE.cx, BOSS_ZONE.cz, BOSS_ZONE.radius);
@@ -213,7 +213,7 @@ export class BaseEnemy extends THREE.Group {
                 }
                 updateMiniBossUi(this, dt, Globals.camera);
             } else {
-                if (!this.hudGroup && this.type !== 'royal_seal' && this.type !== 'void_altar') {
+                if (!this.hudGroup && this.type !== 'royal_seal' && this.type !== 'void_altar' && this.type !== 'boss_pillar') {
                     const customColor = this.type === 'corrupted' ? 0xd946ef : null;
                     this.setupHealthBar(customColor);
                 }
