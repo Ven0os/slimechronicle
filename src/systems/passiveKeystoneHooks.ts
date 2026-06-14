@@ -364,6 +364,14 @@ export const PassiveKeystoneHooks = {
     }
   },
 
+  onEclipseLunarAttackHit(
+    player: { cooldowns?: Record<string, number> },
+    enemy: { _lunarFragilityUntil?: number },
+  ) {
+    if (rank('celestialConvergence') < 2) return;
+    applyLunarFragility(enemy);
+  },
+
   applyVoidPull(center: THREE.Vector3, strength = 10) {
     if (!rank('voidPull')) return;
     Globals.enemies?.forEach((e) => {

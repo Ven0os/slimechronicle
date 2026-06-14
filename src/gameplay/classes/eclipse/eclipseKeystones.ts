@@ -4,10 +4,11 @@ import { ConstellationEngine } from '@/systems/constellationEngine';
 import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
 import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 import { canApplyGameplay, canDealDamageDirectly } from '@/multiplayer/net_authority';
-import { getLunarFragilityMult, isEclipseCataclysmWindow } from './eclipseRupture';
+import { getEclipseLanceDamageMult, isEclipseCataclysmWindow } from './eclipseRupture';
 
 /** Soleil Vorace — chance d'étincelle sur chaque tick de brûlure. */
 export const SOLAR_SPARK_CHANCE = 0.2;
+export const SOLAR_SPARK_MAX = 5;
 export const SOLAR_EXPLOSION_RATIO = 0.8;
 export const LUNAR_TIDE_HEAL_RATIO = 0.25;
 export const LANCE_RANGE = 3.5;
@@ -59,7 +60,7 @@ export function triggerSolarExplosion(
     toE.normalize();
     if (flatDir.dot(toE) < LANCE_CONE_THRESHOLD) return;
 
-    const damage = STATE.stats.atk * SOLAR_EXPLOSION_RATIO * getLunarFragilityMult(e);
+    const damage = STATE.stats.atk * SOLAR_EXPLOSION_RATIO * getEclipseLanceDamageMult(e);
     dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
     spawnParticles(e.position, 0xffaa00, 10);
   });
