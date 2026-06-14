@@ -187,6 +187,9 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'Space' && Globals.player?.releaseStellarCharge) {
     Globals.player.releaseStellarCharge();
   }
+  if (Globals.player?.releaseLanceCharge) {
+    Globals.player.releaseLanceCharge();
+  }
 });
 
 let lastTime = performance.now();

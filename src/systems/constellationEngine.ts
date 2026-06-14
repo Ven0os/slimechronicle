@@ -87,7 +87,6 @@ function registerPassive(effects: NodeEffects): void {
     p.etherSteps = Array.from({ length: count }, () => ({ rt_cooldown: 0 }));
   }
   if (key === 'warFervor' && !p.warFervorStacks) p.warFervorStacks = 0;
-  if (key === 'orbitalWeave' && !p.orbitalStacks) p.orbitalStacks = 0;
   if (key === 'lastBreath') p.lastBreathCd = 0;
   if (key === 'parryCharge' && p.storedParryDamage == null) {
     p.storedParryDamage = 0;
@@ -198,6 +197,8 @@ export const ConstellationEngine = {
     }
 
     this.ensureKeystonePassive('stellarOvercharge', 'sentinel-surcharge-10');
+    this.ensureKeystonePassive('ruptureAstrale', 'eclipse-orbite-10');
+    this.ensureKeystonePassive('solarFlare', 'eclipse-soleil-10');
 
     if (paradoxBackup._paradoxRewards) {
       const p = ensurePassives();
@@ -318,10 +319,6 @@ export const ConstellationEngine = {
     const player = Globals.player;
     if (!player) return;
 
-    if (!this.isApexPassiveActive('celestialConvergence', 'eclipse')) {
-      player._empoweredAttacksLeft = 0;
-      player._cataclysmHasteUntil = 0;
-    }
     if (!this.isApexPassiveActive('bloodPact', 'pacifier')) {
       player._convergenceShotIndex = 0;
     }
@@ -360,7 +357,6 @@ export const ConstellationEngine = {
 
     this.tickSolarInspiration(dt);
     this.tickSolarLightField(dt);
-    PassiveKeystoneHooks.tickOrbitalWeave();
     PassiveKeystoneHooks.tickParadoxClones(player);
     if (player.className === 'blade') PassiveKeystoneHooks.tickBloodFrenzy(player);
     PassiveKeystoneHooks.tickGuardianDefBonus(player);
@@ -402,9 +398,7 @@ export const ConstellationEngine = {
       }
     }
 
-    if (player.className === 'eclipse') {
-      PassiveKeystoneHooks.onEclipseSkillUsed(key);
-    }
+    if (player.className === 'blade') PassiveKeystoneHooks.tickBloodFrenzy(player);
 
     if (p.beamHaste && key === 'space' && player.className === 'sentinel') {
       player.addBuff?.('Hâte solaire', 2, 'fa-sun');
@@ -661,7 +655,6 @@ export const ConstellationEngine = {
     const p = ensurePassives();
 
     dmg *= this.getSolarInspirationAtkMult();
-    dmg *= PassiveKeystoneHooks.getOrbitalAtkMult();
     dmg *= this.getWarFervorMult();
 
     if (p._solarWellAnchored && this.hasSolarWellCurse()) {

@@ -13,6 +13,7 @@ import {
   isChronoFractureApexActive,
 } from '@/gameplay/classes/chrono/fractureHelpers';
 import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
+import { openEclipseCataclysmWindow } from '@/gameplay/classes/eclipse/eclipseRupture';
 
 /** Passif Apex unique par classe — doit correspondre au nœud `{class}-apex`. */
 export const APEX_PASSIVE_BY_CLASS: Record<string, string> = {
@@ -223,38 +224,25 @@ export const ConvergenceEffects = {
     }
   },
 
-  // ——— Éclipse : Fenêtre Cataclysme ———
-  onEclipseCataclysm(player: {
-    position: THREE.Vector3;
-    _empoweredAttacksLeft?: number;
-    _cataclysmHasteUntil?: number;
-    attackSpeedMod?: number;
-  }) {
-    if (rank('celestialConvergence') < 2 || !player) return;
-    player._empoweredAttacksLeft = 6;
-    player._cataclysmHasteUntil = Date.now() + 5000;
+  // ——— Éclipse : fenêtre Cataclysme (combo mêlée) ———
+  onEclipseCataclysm(player: { _cataclysmWindowUntil?: number; position?: THREE.Vector3 }) {
+    if (!player) return;
+    openEclipseCataclysmWindow(player);
     createDamageText('FENÊTRE CATACLYSME', player.position, '#ffffff');
     createSkillVisual('shockwave', player.position, 5, 0xffffff);
   },
 
-  getEclipseAttackSpeedMult(player: { _cataclysmHasteUntil?: number }): number {
-    if (!player?._cataclysmHasteUntil || Date.now() > player._cataclysmHasteUntil) return 1;
-    return rank('celestialConvergence') >= 2 ? 1.5 : 1;
+  getEclipseAttackSpeedMult(): number {
+    return 1;
   },
 
-  consumeEmpoweredAttack(player: { _empoweredAttacksLeft?: number }): boolean {
-    if (rank('celestialConvergence') < 2 || !player || (player._empoweredAttacksLeft || 0) <= 0) return false;
-    if (STATE.multiplayer.active && !STATE.multiplayer.isHost) return false;
-    player._empoweredAttacksLeft -= 1;
-    return true;
+  consumeEmpoweredAttack(): boolean {
+    return false;
   },
 
-  applyCataclysmVulnerability(enemy: { _cataclysmVuln?: boolean; isMiniBoss?: boolean }) {
-    if (!enemy || rank('celestialConvergence') < 2 || enemy.isMiniBoss) return;
-    enemy._cataclysmVuln = true;
-  },
+  applyCataclysmVulnerability() {},
 
-  getCataclysmVulnMult(enemy: { _cataclysmVuln?: boolean }): number {
-    return enemy?._cataclysmVuln && rank('celestialConvergence') >= 2 ? 1.25 : 1;
+  getCataclysmVulnMult(): number {
+    return 1;
   },
 };

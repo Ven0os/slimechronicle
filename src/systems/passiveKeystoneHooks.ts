@@ -11,6 +11,8 @@ import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 import { canApplyGameplay, canDealDamageDirectly } from '@/multiplayer/net_authority';
 import { Projectile } from '@/gameplay/entities';
 import { LENS_SPLIT_COUNT_DEFAULT, LENS_SPLIT_COUNT_EXTRA_PRISM } from '@/gameplay/classes/chrono/beamHelpers';
+import { applyLunarFragility } from '@/gameplay/classes/eclipse/eclipseRupture';
+import { onEclipseBurnTick } from '@/gameplay/classes/eclipse/eclipseKeystones';
 
 function rank(key: string): number {
   const p = STATE.passives as Record<string, number> | undefined;
@@ -339,52 +341,42 @@ export const PassiveKeystoneHooks = {
   },
 
   getSolarFlareMods() {
-    if (!rank('solarFlare')) return { dotMult: 0.3, dotTicks: 1, extraBounces: 0 };
-    return { dotMult: 0.42, dotTicks: 3, extraBounces: 2 };
+    return { dotMult: 0.3, dotTicks: 1, extraBounces: 0 };
   },
 
   getDevouringSunMods() {
-    if (!rank('devouringSun')) {
-      return { spearRangeMult: 1, burnDmgMult: 1, burnTicks: 1, burnIntervalMs: 1000, burnStartMs: 500 };
-    }
-    return { spearRangeMult: 1.3, burnDmgMult: 1.4, burnTicks: 3, burnIntervalMs: 1000, burnStartMs: 500 };
+    return { spearRangeMult: 1, burnDmgMult: 1, burnTicks: 1, burnIntervalMs: 1000, burnStartMs: 500 };
   },
 
   getLunarSpikeMods() {
-    if (!rank('lunarSpike')) return { radius: 3.5, dmgMult: 1, slowFactor: 1 };
-    return { radius: 4.5, dmgMult: 1.12, slowFactor: 0.7 };
+    if (!rank('lunarSpike')) return { radius: 3.5, tideHeal: false };
+    return { radius: 3.5 * 1.25, tideHeal: true };
   },
 
-  getOrbitalAtkMult(): number {
-    if (!rank('orbitalWeave')) return 1;
-    const stacks = (passives().orbitalStacks as number) || 0;
-    return 1 + stacks * 0.04;
+  onEclipseBurnTick(player: { _solarSparks?: number; position?: THREE.Vector3 } | null | undefined) {
+    onEclipseBurnTick(player);
   },
 
-  onEclipseSkillUsed(key: string) {
-    const p = passives();
-    if (!rank('orbitalWeave')) return;
-    const last = p._orbitalLastSkill as string | undefined;
-    if (last && last !== key) {
-      p.orbitalStacks = Math.min(4, ((p.orbitalStacks as number) || 0) + 1);
-    } else if (!last) {
-      p.orbitalStacks = Math.min(4, ((p.orbitalStacks as number) || 0) + 1);
+  onRuptureAstraleEnemyHit(
+    player: { cooldowns?: Record<string, number> },
+    enemy: { _lunarFragilityUntil?: number },
+    underCataclysm: boolean,
+  ) {
+    if (rank('celestialConvergence') < 2) return;
+
+    if (player.cooldowns?.shift > 0) {
+      player.cooldowns.shift = Math.max(0, player.cooldowns.shift - 0.5);
     }
-    p._orbitalLastSkill = key;
-    p._orbitalDecayAt = Date.now() + 8000;
-  },
 
-  tickOrbitalWeave() {
-    const p = passives();
-    if (!p._orbitalDecayAt || Date.now() < (p._orbitalDecayAt as number)) return;
-    p.orbitalStacks = 0;
-    p._orbitalLastSkill = undefined;
+    if (underCataclysm) {
+      applyLunarFragility(enemy);
+    }
   },
 
   applyVoidPull(center: THREE.Vector3, strength = 10) {
     if (!rank('voidPull')) return;
     Globals.enemies?.forEach((e) => {
-      if (e.dead || e.position.distanceTo(center) > 12) return;
+      if (e.dead || e.isBoss || e.isMiniBoss || e.position.distanceTo(center) > 12) return;
       const dir = center.clone().sub(e.position);
       dir.y = 0;
       if (dir.lengthSq() < 0.01) return;

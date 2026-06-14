@@ -54,8 +54,8 @@ export const CONFIG = {
         eclipse: {
             passive: { name: "Balance Astrale", desc: "Alterne les balayages Solaires et Lunaires en mêlée.\nSoleil : DoT de feu · Lune : drain de vie." },
             space: { name: "Fulgurance Solaire", desc: "Dash rapide à travers les ennemis en infligeant des dégâts de feu.\nImmunité pendant la course." },
-            shift: { name: "Pic de Lune", desc: "Écrase l'arme au sol.\nEmpale et ralentit les ennemis en mêlée." },
-            e: { name: "Cataclysme", desc: "Explosion massive.\nDégâts de zone · aspire les ennemis proches." }
+            shift: { name: "Pic de Lune", desc: "Écrase l'arme au sol.\nDégâts de zone.\n\nMarée Lunaire : rayon +25 %.\nSous Cataclysme : soigne 25 % des dégâts · aspire les ennemis." },
+            e: { name: "Cataclysme", desc: "Explosion massive.\nOuvre une fenêtre de combo mêlée (8 s).\nDégâts de zone · aspire (passif Trou Noir)." }
         },
         chronoregulator: {
             passive: { name: "Surcharge Chronologique", desc: "Maintenez le clic pour canaliser le rayon.\nFracture monte jusqu'à 100 %.\n\nRelâchez entre 85–95 % : explosion de rupture.\nCompétences : −30 Fracture." },
