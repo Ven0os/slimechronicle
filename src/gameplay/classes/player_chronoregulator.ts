@@ -14,6 +14,7 @@ import {
   createFractureDecayState,
   getFractureOverheatAt,
   getMaxFracture,
+  isChronoFractureApexActive,
   isFractureDecaying,
   isInOverloadReleaseWindow,
   isOverloadImminenceActive,
@@ -22,6 +23,7 @@ import {
 } from './chrono/fractureHelpers';
 import { updateChronoFractureUI } from './chrono/fractureUi';
 import { pulseChronoLensUI, updateChronoLensUI } from './chrono/lensUi';
+import { applyChronoTemporalBurn, tickChronoTemporalBurns } from './chrono/temporalBurn';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { ChronoDephasingGrenade } from './chrono/grenadeProjectile';
 import { NetChrono } from '../../multiplayer/net_chrono';
@@ -59,8 +61,18 @@ export class Chronoregulator extends PlayerBase {
     this.castAnimType = null;
   }
 
+  syncChronoApexState() {
+    ConstellationEngine.ensureKeystonePassive('continuumMastery', 'chronoregulator-apex', 2);
+    this.fractureGauge = clampFracture(this.fractureGauge ?? 0);
+    this.overheatTriggered = false;
+    if (this.isLocalPlayer()) {
+      updateChronoFractureUI(this.fractureGauge, this.fractureSilence ?? 0, true);
+      updateChronoLensUI(this.lenses, true);
+    }
+  }
+
   createClassModel() {
-    const isApex = STATE.unlockedNodes?.includes('chronoregulator-apex') || false;
+    const isApex = isChronoFractureApexActive();
     this.isApexActive = isApex;
     
     const teal = CHRONO_COLOR();
@@ -1030,12 +1042,21 @@ export class Chronoregulator extends PlayerBase {
     dmg = ConstellationEngine.modifyDamageDealt(dmg, { skill, skillKey });
     if (enemy._temporalVuln?.timer > 0) dmg *= enemy._temporalVuln.mult || 1.2;
 
+    const prismCrit = ConvergenceEffects.getPrismCritMods(prismDepth);
+
     const { dmg: dealt } = dealDamageToEnemy(enemy, dmg, {
+      pos: enemy.position,
+      forceCrit: prismCrit.forceCrit,
+      critDmgMult: prismCrit.critDmgMult,
       skillKey,
       isRanged: true,
-      maxRange: 30,
-      pos: enemy.position,
+      critLabel: prismCrit.forceCrit ? 'PRISME!' : undefined,
+      critColor: prismCrit.forceCrit ? '#7df9ff' : undefined,
     });
+
+    if (dealt > 0 && prismDepth > 0) {
+      applyChronoTemporalBurn(enemy, dealt);
+    }
 
     if (dealt > 0) this.resetFractureActivity();
     return dealt;
@@ -1362,9 +1383,6 @@ export class Chronoregulator extends PlayerBase {
         beamRay: true,
       });
       this.recordBeamDamage(enemy, dealt);
-      if (ray.split && prismMods.burnOnSplit) {
-        PassiveKeystoneHooks.applyPrismLensBurn(enemy, tickDmg);
-      }
 
       if (this.isConverging) {
         this.convergenceHitCount += 1;
@@ -2014,13 +2032,18 @@ export class Chronoregulator extends PlayerBase {
     }
 
     // Apex unlock observer
-    const currentApex = STATE.unlockedNodes?.includes('chronoregulator-apex') || false;
+    const currentApex = isChronoFractureApexActive();
     if (currentApex !== this.isApexActive) {
       this.isApexActive = currentApex;
+      this.syncChronoApexState();
       this.rebuildClassModel();
     }
 
     super.update(dt);
+
+    if (this.isLocalPlayer() && !STATE.multiplayer.active) {
+      tickChronoTemporalBurns(dt);
+    }
 
     this.applyMovementSpeed();
     if (!this.isBeaming && !STATE.mouseDown && this.beamVisuals.length > 0) {

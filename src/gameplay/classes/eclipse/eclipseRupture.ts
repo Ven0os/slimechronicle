@@ -9,11 +9,16 @@ import { canApplyGameplay, canDealDamageDirectly } from '@/multiplayer/net_autho
 export const RUPTURE_ASTRALE_NODE_ID = 'eclipse-orbite-10';
 export const ECLIPSE_CATACLYSM_WINDOW_MS = 8000;
 export const RUPTURE_STACK_MAX = 4;
-export const RUPTURE_LANCE_DMG_RATIO = 0.8;
-export const CATACLYSM_RUPTURE_DMG_MULT = 1.5;
+export const RUPTURE_FIRST_DMG_RATIO = 0.9;
+export const RUPTURE_SECOND_DMG_RATIO = 0.8;
+export const RUPTURE_SECOND_DELAY_MS = 250;
+export const DUAL_DEBUFF_HP_BONUS = 0.1;
 export const LUNAR_FRAGILITY_MS = 4000;
 export const LUNAR_FRAGILITY_DMG_MULT = 1.1;
 export const RUPTURE_ENERGY_GAIN = 15;
+
+/** @deprecated Utiliser RUPTURE_FIRST_DMG_RATIO */
+export const RUPTURE_LANCE_DMG_RATIO = RUPTURE_FIRST_DMG_RATIO;
 
 export function hasRuptureAstrale(): boolean {
   const rank = ConstellationEngine.getPassiveRank('ruptureAstrale');
@@ -21,6 +26,10 @@ export function hasRuptureAstrale(): boolean {
   if (!ConstellationEngine.isNodeUnlocked(RUPTURE_ASTRALE_NODE_ID)) return false;
   ConstellationEngine.ensureKeystonePassive('ruptureAstrale', RUPTURE_ASTRALE_NODE_ID);
   return ConstellationEngine.getPassiveRank('ruptureAstrale') > 0;
+}
+
+export function hasDualiteCeleste(): boolean {
+  return ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse');
 }
 
 export function isEclipseCataclysmWindow(player: { _cataclysmWindowUntil?: number } | null | undefined): boolean {
@@ -35,19 +44,55 @@ export function canEclipseDisplaceEnemy(enemy: { dead?: boolean; isBoss?: boolea
   return !!enemy && !enemy.dead && !enemy.isBoss && !enemy.isMiniBoss;
 }
 
-export function getLunarFragilityMult(enemy: { _lunarFragilityUntil?: number } | null | undefined): number {
-  if (!enemy?._lunarFragilityUntil || Date.now() >= enemy._lunarFragilityUntil) return 1;
+export function hasLunarFragility(enemy: { _lunarFragilityUntil?: number } | null | undefined): boolean {
+  return !!(enemy?._lunarFragilityUntil && Date.now() < enemy._lunarFragilityUntil);
+}
+
+export function hasSolarBurn(enemy: { _solarBurnUntil?: number } | null | undefined): boolean {
+  return !!(enemy?._solarBurnUntil && Date.now() < enemy._solarBurnUntil);
+}
+
+export function hasDualSolarLunarDebuff(enemy: { _lunarFragilityUntil?: number; _solarBurnUntil?: number } | null | undefined): boolean {
+  return hasLunarFragility(enemy) && hasSolarBurn(enemy);
+}
+
+export function getSolarBurnDurationMs(): number {
+  const sunMods = PassiveKeystoneHooks.getDevouringSunMods();
+  if (sunMods.burnTicks <= 0) return 0;
+  return sunMods.burnStartMs + Math.max(0, sunMods.burnTicks - 1) * sunMods.burnIntervalMs + 400;
+}
+
+export function applySolarBurn(enemy: { _solarBurnUntil?: number }): void {
+  const duration = getSolarBurnDurationMs();
+  if (duration <= 0) return;
+  const until = Date.now() + duration;
+  enemy._solarBurnUntil = Math.max(enemy._solarBurnUntil || 0, until);
+}
+
+/** +10 % dégâts lance si Dualité Céleste et cible a Brûlure Solaire + Fragilité Lunaire. */
+export function getEclipseLanceDamageMult(enemy: { _lunarFragilityUntil?: number; _solarBurnUntil?: number } | null | undefined): number {
+  if (!hasDualiteCeleste() || !hasDualSolarLunarDebuff(enemy)) return 1;
   return LUNAR_FRAGILITY_DMG_MULT;
+}
+
+/** @deprecated Préférer getEclipseLanceDamageMult pour les attaques de lance. */
+export function getLunarFragilityMult(enemy: { _lunarFragilityUntil?: number } | null | undefined): number {
+  return getEclipseLanceDamageMult(enemy);
+}
+
+export function isEclipseAscension(player: { eclipse?: { active?: boolean } } | null | undefined): boolean {
+  return !!player?.eclipse?.active;
 }
 
 export function applyLunarFragility(enemy: { _lunarFragilityUntil?: number }): void {
   enemy._lunarFragilityUntil = Date.now() + LUNAR_FRAGILITY_MS;
 }
 
-function applySolarHitEffects(
-  enemy: { dead?: boolean; position?: THREE.Vector3 },
+export function applySolarHitEffects(
+  enemy: { dead?: boolean; position?: THREE.Vector3; _solarBurnUntil?: number },
   player: { _solarSparks?: number; position?: THREE.Vector3 } | null | undefined,
 ): void {
+  applySolarBurn(enemy);
   const sunMods = PassiveKeystoneHooks.getDevouringSunMods();
   const burnDmg = STATE.stats.atk * 0.2 * sunMods.burnDmgMult;
   for (let t = 0; t < sunMods.burnTicks; t++) {
@@ -62,7 +107,7 @@ function applySolarHitEffects(
   }
 }
 
-function applyLunarHitEffects(
+export function applyLunarHitEffects(
   player: { isLocalPlayer?: () => boolean; heal?: (n: number) => void; position?: THREE.Vector3 },
   empMult = 1,
 ): void {
@@ -72,16 +117,69 @@ function applyLunarHitEffects(
   }
 }
 
-export function triggerRuptureAstrale(
-  player: {
-    position: THREE.Vector3;
-    eclipse?: { sun: number; moon: number };
-    isLocalPlayer?: () => boolean;
-    heal?: (n: number) => void;
-    cooldowns?: Record<string, number>;
-  },
-  dir: THREE.Vector3,
+type RupturePlayer = {
+  position: THREE.Vector3;
+  eclipse?: { sun: number; moon: number; active?: boolean };
+  isLocalPlayer?: () => boolean;
+  heal?: (n: number) => void;
+  cooldowns?: Record<string, number>;
+};
+
+type RuptureEnemy = {
+  dead?: boolean;
+  position?: THREE.Vector3;
+  hp?: number;
+  netId?: string;
+  isBoss?: boolean;
+  isMiniBoss?: boolean;
+  _lunarFragilityUntil?: number;
+  _solarBurnUntil?: number;
+};
+
+function resolveRuptureEnemy(enemy: RuptureEnemy, enemyId?: string): RuptureEnemy | null {
+  if (enemyId) {
+    const found = Globals.enemies?.find((e) => e.netId === enemyId);
+    if (found) return found;
+  }
+  return enemy;
+}
+
+function scheduleRuptureSecondImpact(
+  player: RupturePlayer,
+  enemy: RuptureEnemy,
+  underAscension: boolean,
 ): void {
+  const enemyId = enemy.netId;
+  const dualAtFirst = hasDualSolarLunarDebuff(enemy);
+
+  setTimeout(() => {
+    if (!canDealDamageDirectly()) return;
+
+    const e = resolveRuptureEnemy(enemy, enemyId);
+    if (!e || e.dead) return;
+
+    if (!underAscension && !dualAtFirst) return;
+
+    const baseDmg = STATE.stats.atk * RUPTURE_SECOND_DMG_RATIO;
+    dealDamageToEnemy(e, baseDmg, { pos: e.position, skillKey: 'primary' });
+
+    if (hasDualSolarLunarDebuff(e)) {
+      const currentHp = Math.max(0, e.hp ?? 0);
+      const hpBonus = currentHp * DUAL_DEBUFF_HP_BONUS;
+      if (hpBonus > 0) {
+        dealDamageToEnemy(e, hpBonus, { pos: e.position, noCrit: true, skillKey: 'primary' });
+        createDamageText('RUPTURE ÉCLIPSANTE', e.position, '#e8daef');
+      }
+      applySolarHitEffects(e, player);
+      applyLunarHitEffects(player);
+    }
+
+    PassiveKeystoneHooks.onRuptureAstraleEnemyHit(player, e, isEclipseCataclysmWindow(player));
+    spawnParticles(e.position, 0xaa00ff, 6);
+  }, RUPTURE_SECOND_DELAY_MS);
+}
+
+export function triggerRuptureAstrale(player: RupturePlayer, dir: THREE.Vector3): void {
   if (!hasRuptureAstrale() || !canDealDamageDirectly()) return;
 
   const sunMods = PassiveKeystoneHooks.getDevouringSunMods();
@@ -93,7 +191,7 @@ export function triggerRuptureAstrale(
   flatDir.normalize();
 
   const cataclysm = isEclipseCataclysmWindow(player);
-  const dmgRatio = RUPTURE_LANCE_DMG_RATIO * (cataclysm ? CATACLYSM_RUPTURE_DMG_MULT : 1);
+  const ascension = isEclipseAscension(player);
   let hitCount = 0;
 
   Globals.enemies?.forEach((e) => {
@@ -105,11 +203,12 @@ export function triggerRuptureAstrale(
     toE.normalize();
     if (flatDir.dot(toE) < threshold) return;
 
-    const damage = STATE.stats.atk * dmgRatio * getLunarFragilityMult(e);
+    const damage = STATE.stats.atk * RUPTURE_FIRST_DMG_RATIO;
     dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
     applySolarHitEffects(e, player);
     applyLunarHitEffects(player);
     PassiveKeystoneHooks.onRuptureAstraleEnemyHit(player, e, cataclysm);
+    scheduleRuptureSecondImpact(player, e, ascension);
     spawnParticles(e.position, 0xaa00ff, 8);
     hitCount++;
   });
@@ -124,17 +223,7 @@ export function triggerRuptureAstrale(
 }
 
 /** Incrémente les stacks de lance ; à 4 déclenche la rupture et repasse à 0. */
-export function incrementRuptureLanceStack(
-  player: {
-    _ruptureStacks?: number;
-    position: THREE.Vector3;
-    eclipse?: { sun: number; moon: number };
-    isLocalPlayer?: () => boolean;
-    heal?: (n: number) => void;
-    cooldowns?: Record<string, number>;
-  },
-  dir: THREE.Vector3,
-): void {
+export function incrementRuptureLanceStack(player: RupturePlayer, dir: THREE.Vector3): void {
   if (!hasRuptureAstrale()) return;
 
   const next = (player._ruptureStacks || 0) + 1;

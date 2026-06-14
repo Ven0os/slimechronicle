@@ -152,6 +152,9 @@ export const ConstellationEngine = {
       Globals.player.overheatTriggered = false;
       const p = ensurePassives();
       p.continuumMastery = 2;
+      if (typeof Globals.player.syncChronoApexState === 'function') {
+        Globals.player.syncChronoApexState();
+      }
     }
     ConvergenceEffects.applyPacifierConvergenceStats();
     ConvergenceEffects.reapplyParadoxRewards();
@@ -199,6 +202,7 @@ export const ConstellationEngine = {
     this.ensureKeystonePassive('stellarOvercharge', 'sentinel-surcharge-10');
     this.ensureKeystonePassive('ruptureAstrale', 'eclipse-orbite-10');
     this.ensureKeystonePassive('solarFlare', 'eclipse-soleil-10');
+    this.ensureKeystonePassive('continuumMastery', 'chronoregulator-apex', 2);
 
     if (paradoxBackup._paradoxRewards) {
       const p = ensurePassives();
@@ -322,8 +326,12 @@ export const ConstellationEngine = {
     if (!this.isApexPassiveActive('bloodPact', 'pacifier')) {
       player._convergenceShotIndex = 0;
     }
-    if (player.className === 'chronoregulator' && player.fractureGauge != null) {
-      player.fractureGauge = clampFracture(player.fractureGauge);
+    if (player.className === 'chronoregulator') {
+      if (this.isApexPassiveActive('continuumMastery', 'chronoregulator') && typeof player.syncChronoApexState === 'function') {
+        player.syncChronoApexState();
+      } else if (player.fractureGauge != null) {
+        player.fractureGauge = clampFracture(player.fractureGauge);
+      }
     }
     if (!this.isApexPassiveActive('eternalThirst', 'blade')) {
       ConvergenceEffects.resetBladeThirstCrit();

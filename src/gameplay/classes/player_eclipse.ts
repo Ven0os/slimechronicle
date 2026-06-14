@@ -14,7 +14,9 @@ import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { canApplyGameplay, canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
 import {
   applyPicDeLuneDisplacement,
-  getLunarFragilityMult,
+  applySolarBurn,
+  getEclipseLanceDamageMult,
+  hasDualiteCeleste,
   incrementRuptureLanceStack,
   isEclipseCataclysmWindow,
 } from './eclipse/eclipseRupture';
@@ -732,22 +734,23 @@ export class Eclipse extends PlayerBase {
         }
 
         if (this.isLocalPlayer() && this.eclipse.active) {
-            this.ascensionTime = (this.ascensionTime || 0) + dt;
-            if (this.ascensionTime >= 5.0) {
-                if (!this._ascensionHpLossTriggered) {
-                    this._ascensionHpLossTriggered = true;
-                    createDamageText("SURCHARGE", this.position, '#ff3300');
-                    createSkillVisual('shockwave', this.position, 4.0, 0xff3300);
-                    spawnParticles(this.position, 0xff3300, 25);
+            if (!hasDualiteCeleste()) {
+                this.ascensionTime = (this.ascensionTime || 0) + dt;
+                if (this.ascensionTime >= 5.0) {
+                    if (!this._ascensionHpLossTriggered) {
+                        this._ascensionHpLossTriggered = true;
+                        createDamageText("SURCHARGE", this.position, '#ff3300');
+                        createSkillVisual('shockwave', this.position, 4.0, 0xff3300);
+                        spawnParticles(this.position, 0xff3300, 25);
+                    }
+                    const hpLoss = 3 * dt;
+                    this.hp = Math.max(0, this.hp - hpLoss);
+                    if (this.hp <= 0 && !this.dead) {
+                        this.hp = 0;
+                        this.die();
+                    }
+                    UI.updateHUD();
                 }
-                // Perdre 3 de vie par seconde
-                const hpLoss = 3 * dt;
-                this.hp = Math.max(0, this.hp - hpLoss);
-                if (this.hp <= 0 && !this.dead) {
-                    this.hp = 0;
-                    this.die();
-                }
-                UI.updateHUD();
             }
         } else if (!this.eclipse.active) {
             this.ascensionTime = 0;
@@ -1279,7 +1282,7 @@ export class Eclipse extends PlayerBase {
                     toE.normalize();
                     if (dir.dot(toE) >= threshold) {
                         hitAnyEnemy = true;
-                        const fragMult = getLunarFragilityMult(e);
+                        const fragMult = getEclipseLanceDamageMult(e);
                         if (fireSun) {
                             const damage = STATE.stats.atk * fragMult * fulguranceMult;
                             dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
@@ -1287,6 +1290,7 @@ export class Eclipse extends PlayerBase {
                             spawnParticles(e.position, 0xffaa00, particleCount);
 
                             const burnDmg = STATE.stats.atk * 0.2 * sunMods.burnDmgMult;
+                            applySolarBurn(e);
                             for (let t = 0; t < sunMods.burnTicks; t++) {
                                 const delay = sunMods.burnStartMs + t * sunMods.burnIntervalMs;
                                 setTimeout(() => {
@@ -1301,6 +1305,7 @@ export class Eclipse extends PlayerBase {
                         if (fireMoon) {
                             const damage = STATE.stats.atk * 1.2 * fragMult * fulguranceMult;
                             dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
+                            PassiveKeystoneHooks.onEclipseLunarAttackHit(this, e);
                             const particleCount = chargedCataclysm ? 12 : 5;
                             spawnParticles(e.position, 0xaa00ff, particleCount);
                         }

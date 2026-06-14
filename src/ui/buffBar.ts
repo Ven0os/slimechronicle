@@ -190,8 +190,8 @@ export const BuffBar = {
         && Globals.player?.className === 'eclipse') {
       entries.push({
         id: 'apex-eclipse-synergie',
-        name: 'Convergence Éclipsée',
-        desc: 'Rupture Astrale : −0,5 s Pic de Lune · Fragilité Lunaire.',
+        name: 'Dualité Céleste',
+        desc: 'Rupture · Lance · Ascension · Cataclysme.',
         icon: 'fa-circle-half-stroke',
         color: '#af7ac5',
         type: 'passive',

@@ -24,11 +24,114 @@ export interface PassiveDetailDef {
 
 }
 
-
-
 const pct = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`;
 
+const CELESTIAL_CONVERGENCE_PARAGRAPHS = () => [
+  `RUPTURE ASTRALE :
+Chaque ennemi touché réduit de 0,5 s la recharge restante de Pic de Lune.
+Déclenche un second impact 0,25 s après le premier.
+Premier impact :
+90 % dégâts.
+Second impact :
+80 % dégâts.
+Si la cible possède simultanément :
+• Brûlure Solaire
+• Fragilité Lunaire
+Le second impact :
+• Inflige des dégâts supplémentaires équivalents à 10 % des PV actuels de la cible au moment de l'impact.
+• Réapplique les effets Solaires.
+• Réapplique les effets Lunaires.`,
+  `ATTAQUES DE LANCE :
+Infligent +10 % dégâts aux cibles affectées simultanément par :
+• Brûlure Solaire
+• Fragilité Lunaire`,
+  `ASCENSION :
+• Le second impact de Rupture Astrale est garanti.
+• Ascension n'inflige plus de dégâts au joueur.`,
+  `CATACLYSME :
+• Applique Fragilité Lunaire pendant 4 s.`,
+];
 
+const BLOOD_PACT_PARAGRAPHS = () => [
+  `DÉGÂTS CRITIQUES :
++45 % Crit Damage permanent.`,
+  `MÉGA-CRITIQUE :
+Chaque 3e projectile devient Méga-Critique.
+Multiplicateur critique : ×1,5.
+Le compteur jusqu'au prochain Méga-Crit est visible sur le HUD.`,
+  `SPECTRES MULTICOLORES :
+Le Pacte n'ajoute plus de projectiles spectraux multicolores.
+Les bonus Crit Damage et Méga-Critique s'appliquent à tous vos projectiles.`,
+];
+
+const CONTINUUM_MASTERY_PARAGRAPHS = () => [
+  `PRISMES AFFINÉS :
+Maximum 3 prismes simultanés.
+Durée initiale : 8,5 s (5 s + 3,5 s Apex).
+Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.
+Rayons dupliqués : −20 % dégâts par profondeur de prisme.`,
+  `FRACTURE :
+Plafond Apex : 150 % (au lieu de 100 %).
+Rayon de distorsion : +0,42 % dégâts et +0,05 % taille par point de Fracture.
+À 150 % Fracture : jusqu'à +63 % dégâts et +7,5 % taille.`,
+  `SURCHARGE & SURCHAUFFE :
+Surcharge imminente : à partir de 145 % Fracture (plafond − 5 %).
+Surchauffe : à 150 % Fracture.`,
+  `BRÛLURE TEMPORELLE :
+Requiert le passif Prisme Supplémentaire.
+Prisme : 4 rayons au lieu de 3.
+Rayons routés par un prisme : Brûlure Temporelle.
+10 % des dégâts infligés par seconde pendant 3 s.
+Maximum 3 cumuls.`,
+];
+
+const SOLAR_INSPIRATION_PARAGRAPHS = () => [
+  `AURA INSPIRATION SOLAIRE :
+Rayon : 14 m.
+Alliés : +15 % ATK et +1 % HP/s.
+Vous : +30 % ATK.`,
+  `PUITS SOLAIRE :
+Champ de Lumière devient Puits Solaire.
+Ennemis dans la zone : −35 % vitesse et +25 % dégâts subis.`,
+  `ANCRAGE DANS LE PUITS :
+Condition : vous restez dans le Puits Solaire.
+• +35 % dégâts infligés.
+• +12 % dégâts reçus.
+• Soin : 2 % HP/s.`,
+  `RAYON STELLAIRE (CHARGE) :
+La jauge de charge du Rayon Stellaire appartient au passif de branche Surcharge Stellaire.
+Elle s'affiche uniquement en maintenant Espace avec ce passif actif.
+Elle est indépendante de l'Apex Hélios Incarné.`,
+];
+
+const RUNIC_COLOSSUS_PARAGRAPHS = () => [
+  `PARADE :
+Chaque blocage renvoie 30 % des dégâts bloqués.`,
+  `RENVOI DE DÉGÂTS :
+Bonus : +5 % de votre DEF à chaque renvoi.
+Formule : (dégâts bloqués × 30 %) + (DEF × 5 %).
+Déclenchement : à chaque blocage réussi en Parade.`,
+];
+
+const ETERNAL_THIRST_PARAGRAPHS = () => [
+  `HP MANQUANTS :
++0,3 % Crit Chance et +0,3 % Crit Damage par % de HP manquant.`,
+  `MAXIMUM À 0 HP :
+Jusqu'à +30 % Crit Chance et +30 % Crit Damage.`,
+  `MISE À JOUR :
+Les bonus se recalculent en temps réel selon vos PV actuels.
+Ne dépend pas des éliminations sous 50 % HP.`,
+];
+
+const PARADOX_OVERLOAD_PARAGRAPHS = () => [
+  `RÉCOMPENSE PARADOXALE :
+Tous les 5 éliminations déclenchent un gain permanent.`,
+  `STATS POSSIBLES :
+ATK · HP max · Vitesse · Crit Chance · Crit Damage · DEF · Régén · Vol de vie`,
+  `GAIN PAR PROC :
++0,01 % à +0,09 % sur la stat tirée.
+Les cumuls persistent jusqu'à la fin de la partie.`,
+];
 
 export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
@@ -74,15 +177,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   runicColossus: {
-
-    paragraphs: () => [
-
-      'En Parade, renvoie 30 % des dégâts bloqués.',
-
-      'Bonus de renvoi : +5 % de la DEF.\nDéclenchement à chaque blocage réussi.',
-
-    ],
-
+    paragraphs: RUNIC_COLOSSUS_PARAGRAPHS,
   },
 
   warFervor: {
@@ -106,17 +201,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   paradoxOverload: {
-
-    paragraphs: () => [
-
-      'Tous les 5 éliminations : bonus de stat permanent.',
-
-      'Stat aléatoire parmi ATK, HP, vitesse, Crit Chance, DEF…\n+0,01 % à +0,09 % par gain.',
-
-      'Cumul persistant sur la partie.',
-
-    ],
-
+    paragraphs: PARADOX_OVERLOAD_PARAGRAPHS,
   },
 
   deepStasis: {
@@ -193,17 +278,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   solarInspiration: {
-
-    paragraphs: () => [
-
-      'Aura 14 m : alliés +15 % ATK et +1 % HP/s.\nVous : +30 % ATK.',
-
-      'Champ de Lumière devient Puits Solaire.\nEnnemis : −35 % vitesse · +25 % dégâts subis.',
-
-      'Ancré dans le puits : +35 % dégâts infligés.\n+12 % dégâts reçus · soin 2 % HP/s.',
-
-    ],
-
+    paragraphs: SOLAR_INSPIRATION_PARAGRAPHS,
   },
 
   bloodFrenzy: {
@@ -239,15 +314,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   eternalThirst: {
-
-    paragraphs: () => [
-
-      'Par % de HP manquant : +0,3 % Crit Chance et +0,3 % Crit Damage.',
-
-      'À 0 HP : jusqu\'à +30 % Crit Chance et +30 % Crit Damage.',
-
-    ],
-
+    paragraphs: ETERNAL_THIRST_PARAGRAPHS,
   },
 
   lastBreath: {
@@ -306,15 +373,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   bloodPact: {
-
-    paragraphs: () => [
-
-      '+45 % Crit Damage.',
-
-      'Chaque 3e projectile : Méga-Critique.\nMultiplicateur crit × 1,5.',
-
-    ],
-
+    paragraphs: BLOOD_PACT_PARAGRAPHS,
   },
 
   devouringSun: {
@@ -347,11 +406,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   ruptureAstrale: {
     paragraphs: () => [
       'Tous les 4 coups de lance :',
-      'Déclenche une Rupture Astrale infligeant 80 % des dégâts de lance.',
-      'La Rupture applique les effets Solaires et Lunaires actifs.',
-      'Génère davantage d\'énergie de Cataclysme.',
-      'Sous Cataclysme :',
-      'Dégâts de Rupture +50 %.',
+      'Déclenche une Rupture Astrale.',
+      'Premier impact : 90 % dégâts.',
+      'Second impact (0,25 s) : 80 % dégâts.',
+      'Applique les effets Solaires et Lunaires actifs · génère de l\'énergie Cataclysme.',
+      'Si Brûlure Solaire + Fragilité Lunaire : second impact inflige +10 % PV actuels et réapplique les effets.',
     ],
   },
 
@@ -364,28 +423,16 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   celestialConvergence: {
-
-    paragraphs: () => [
-
-      'Rupture Astrale :',
-
-      'Chaque ennemi touché réduit le temps de recharge restant de Pic de Lune de 0,5 s.',
-
-      'Sous Cataclysme :',
-
-      'Applique Fragilité Lunaire pendant 4 s.',
-
-      'Les attaques de lance infligent +10 % dégâts aux cibles affectées.',
-
-    ],
-
+    paragraphs: CELESTIAL_CONVERGENCE_PARAGRAPHS,
   },
 
   extraPrismLens: {
     paragraphs: () => [
-      'Prisme : split en 4 rayons au lieu de 3.',
-      'Rayons prismatiques : dégâts −10 % par rayon.',
-      'Rayons prismatiques : infligent une brûlure temporelle.',
+      'Prisme (Espace) :\nGénère 4 rayons au lieu de 3.',
+      'Rayons prismatiques :\nDégâts -10% par rayon.',
+      'Tirer à travers un Prisme :\nApplique Brûlure Temporelle.',
+      'Brûlure Temporelle :\n10% des dégâts infligés par seconde pendant 3 s.',
+      'Maximum 3 cumuls.',
     ],
   },
 
@@ -422,19 +469,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
   },
 
   continuumMastery: {
-
-    paragraphs: () => [
-
-      'Prismes Affinés : maximum 3.\nDurée initiale 5 s + 3,5 s Apex = 8,5 s par prisme.',
-
-      'Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.\nChaque prisme −20 % dégâts · duplication de rayons.',
-
-      'Fracture max : 150 % (au lieu de 100 %).',
-
-      'Rayon de distorsion : +0,42 % dégâts et +0,05 % taille par point de Fracture.\nJusqu\'à +63 % dégâts et +7,5 % taille à 150 % Fracture.',
-
-    ],
-
+    paragraphs: CONTINUUM_MASTERY_PARAGRAPHS,
   },
 
 };
@@ -477,9 +512,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   runicColossus: {
-    paragraphs: () => [
-      'Parade : chaque blocage renvoie 30 % des dégâts bloqués +5 % de votre DEF.',
-    ],
+    paragraphs: RUNIC_COLOSSUS_PARAGRAPHS,
   },
 
   warFervor: {
@@ -495,10 +528,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   paradoxOverload: {
-    paragraphs: () => [
-      'Tous les 5 kills : bonus permanent aléatoire parmi ATK, HP, vitesse, Crit Chance ou DEF (+0,01 % à +0,09 %).',
-      'Cumul : persiste jusqu\'à la fin de la partie.',
-    ],
+    paragraphs: PARADOX_OVERLOAD_PARAGRAPHS,
   },
 
   deepStasis: {
@@ -561,11 +591,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   solarInspiration: {
-    paragraphs: () => [
-      'Aura 14 m : alliés +15 % ATK et +1 % HP/s ; vous +30 % ATK.',
-      'Puits Solaire : Champ de Lumière ralentit les ennemis (−35 % vitesse) et leur fait subir +25 % dégâts.',
-      'Ancrage : dans le puits, +35 % dégâts infligés, soin 2 % HP/s et +12 % dégâts reçus.',
-    ],
+    paragraphs: SOLAR_INSPIRATION_PARAGRAPHS,
   },
 
   bloodFrenzy: {
@@ -596,9 +622,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   eternalThirst: {
-    paragraphs: () => [
-      'HP manquants : +0,3 % Crit Chance et +0,3 % Crit Damage par %, jusqu\'à +30 % / +30 % à 0 HP.',
-    ],
+    paragraphs: ETERNAL_THIRST_PARAGRAPHS,
   },
 
   lastBreath: {
@@ -643,9 +667,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   bloodPact: {
-    paragraphs: () => [
-      'Pacte : +45 % Crit Damage ; chaque 3e projectile devient Méga-Critique (crit ×1,5).',
-    ],
+    paragraphs: BLOOD_PACT_PARAGRAPHS,
   },
 
   devouringSun: {
@@ -672,9 +694,10 @@ Object.assign(PASSIVE_DETAILS, {
 
   ruptureAstrale: {
     paragraphs: () => [
-      'Tous les 4 coups de lance : déclenche une Rupture Astrale (80 % dégâts de lance).',
+      'Tous les 4 coups de lance : déclenche une Rupture Astrale.',
+      'Premier impact : 90 % dégâts · second impact (0,25 s) : 80 % dégâts.',
       'Applique les effets Solaires et Lunaires actifs · génère de l\'énergie Cataclysme.',
-      'Sous Cataclysme : dégâts de Rupture +50 %.',
+      'Brûlure + Fragilité : second impact +10 % PV actuels et réapplication des effets.',
     ],
   },
 
@@ -685,11 +708,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   celestialConvergence: {
-    paragraphs: () => [
-      'Rupture Astrale : chaque ennemi touché −0,5 s sur la recharge restante de Pic de Lune.',
-      'Sous Cataclysme : applique Fragilité Lunaire (4 s).',
-      'Les attaques de lance infligent +10 % dégâts aux cibles affectées.',
-    ],
+    paragraphs: CELESTIAL_CONVERGENCE_PARAGRAPHS,
   },
 
   extraPrismLens: {
@@ -726,12 +745,7 @@ Object.assign(PASSIVE_DETAILS, {
   },
 
   continuumMastery: {
-    paragraphs: () => [
-      'Prismes Affinés : maximum 3 ; nouveau prisme 8,5 s (5 s + 3,5 s Apex).',
-      'Pose de prisme : prolonge tous les prismes actifs de +3,5 s.',
-      'Rayons via prisme : chaque prisme applique −20 % dégâts et duplique les rayons.',
-      'Fracture Apex : max 150 %, rayon de distorsion +0,42 % dégâts et +0,05 % taille par point (jusqu\'à +63 % / +7,5 %).',
-    ],
+    paragraphs: CONTINUUM_MASTERY_PARAGRAPHS,
   },
 });
 
@@ -768,52 +782,98 @@ export function getPassiveMechanics(passiveKey: string, rank = 1, classId?: Clas
   return getPassiveParagraphs(passiveKey, rank, classId).flatMap((p) => p.split('\n'));
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'");
+}
+
 function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (ch) => ({
+  return decodeHtmlEntities(text).replace(/[&<>"]/g, (ch) => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
-    "'": '&#39;',
   }[ch] as string));
 }
 
+const PASSIVE_VALUE_PATTERN = /([+−-]?\d+(?:[,.]\d+)?\s*(?:%|s|m|HP|ATK|DEF|Fracture|ticks?|stacks?)?|[×x]\s*\d+(?:[,.]\d+)?)/gi;
+
 function highlightPassiveValues(text: string): string {
-  return escapeHtml(text).replace(
-    /([+−-]?\d+(?:[,.]\d+)?\s*(?:%|s|m|HP|ATK|DEF|Fracture|ticks?|stacks?)?|[×x]\s*\d+(?:[,.]\d+)?)/gi,
-    '<strong class="detail-passive-value">$1</strong>',
-  );
+  const normalized = decodeHtmlEntities(text);
+  const parts: string[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+  const regex = new RegExp(PASSIVE_VALUE_PATTERN.source, PASSIVE_VALUE_PATTERN.flags);
+  while ((match = regex.exec(normalized)) !== null) {
+    parts.push(escapeHtml(normalized.slice(last, match.index)));
+    parts.push(`<strong class="detail-passive-value">${escapeHtml(match[0])}</strong>`);
+    last = match.index + match[0].length;
+  }
+  parts.push(escapeHtml(normalized.slice(last)));
+  return parts.join('');
 }
 
-function splitPassiveMechanicBlock(block: string): { label: string; body: string } {
+function splitPassiveMechanicBlock(block: string): { label: string; bodyLines: string[] } {
   const lines = block
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  if (!lines.length) return { label: '', body: '' };
+  if (!lines.length) return { label: '', bodyLines: [] };
 
   const first = lines[0];
   const colonIdx = first.indexOf(':');
-  const hasLabel = colonIdx > 0 && colonIdx <= 38;
-  if (!hasLabel) return { label: '', body: lines.join(' ') };
+  const hasLabel = colonIdx > 0 && colonIdx <= 42;
+  if (!hasLabel) return { label: '', bodyLines: lines };
 
   const label = first.slice(0, colonIdx).trim();
   const firstBody = first.slice(colonIdx + 1).trim();
   const bodyLines = firstBody ? [firstBody, ...lines.slice(1)] : lines.slice(1);
-  return { label, body: bodyLines.join(' ') };
+  return { label, bodyLines };
+}
+
+function formatPassiveBodyLine(line: string): string {
+  if (line.startsWith('• ')) {
+    return `<li class="detail-passive-bullet">${highlightPassiveValues(line.slice(2))}</li>`;
+  }
+  return `<p class="detail-passive-line-p">${highlightPassiveValues(line)}</p>`;
 }
 
 function formatPassiveMechanicBlock(block: string): string {
-  const { label, body } = splitPassiveMechanicBlock(block);
-  if (!label && !body) return '';
+  const { label, bodyLines } = splitPassiveMechanicBlock(block);
+  if (!label && !bodyLines.length) return '';
 
-  return `<div class="detail-passive-row">
-    <span class="detail-passive-dot" aria-hidden="true"></span>
-    <span class="detail-passive-copy">
-      ${label ? `<span class="detail-passive-label">${escapeHtml(label)}</span>` : ''}
-      ${body ? `<span class="detail-passive-line">${highlightPassiveValues(body)}</span>` : ''}
-    </span>
-  </div>`;
+  const chunks: string[] = [];
+  let listOpen = false;
+  const closeList = () => {
+    if (listOpen) {
+      chunks.push('</ul>');
+      listOpen = false;
+    }
+  };
+
+  for (const line of bodyLines) {
+    if (line.startsWith('• ')) {
+      if (!listOpen) {
+        chunks.push('<ul class="detail-passive-list">');
+        listOpen = true;
+      }
+      chunks.push(formatPassiveBodyLine(line));
+      continue;
+    }
+    closeList();
+    chunks.push(formatPassiveBodyLine(line));
+  }
+  closeList();
+
+  return `<section class="detail-passive-section">
+    ${label ? `<h4 class="detail-passive-section-title">${escapeHtml(label)}</h4>` : ''}
+    <div class="detail-passive-section-body">${chunks.join('')}</div>
+  </section>`;
 }
 
 export function formatPassiveDetailHtml(passiveKey: string, rank = 1, classId?: ClassId): string {
