@@ -59,7 +59,7 @@ export const CONFIG = {
         },
         chronoregulator: {
             passive: { name: "Surcharge Chronologique", desc: "Maintenez le clic pour canaliser le rayon.\nFracture monte jusqu'à 100 %.\n\nRelâchez entre 85–95 % : explosion de rupture.\nCompétences : −30 Fracture." },
-            space: { name: "Lentille de Focalisation", desc: "Prisme au sol.\nLe rayon se divise en cône · Fracture ×0,5 à travers la lentille." },
+            space: { name: "Prisme", desc: "Prisme au sol.\nLe rayon se divise en cône · Fracture ×0,5 à travers le prisme." },
             shift: { name: "Déphasage Moléculaire", desc: "Grenade en arc : explosion de zone.\nInstabilité chronologique 4 s.\n\nCible marquée : Fracture ÷4 au rayon." },
             e: { name: "Convergence Temporelle", desc: "Durée 6 s · +10 % vitesse.\nRayon sans Fracture ni surchauffe.\n\nAttire les cibles marquées.\nRéactive E pour l'explosion finale.\n\nRecharge : 17 s." }
         }

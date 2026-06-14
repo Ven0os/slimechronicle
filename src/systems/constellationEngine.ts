@@ -675,10 +675,6 @@ export const ConstellationEngine = {
       if (p.executioner && context.marked) dmg *= 1.35;
     }
 
-    if (Globals.player?.className === 'chronoregulator' && Globals.player.fractureGauge != null) {
-      dmg *= ConvergenceEffects.getFractureDamageMult(Globals.player.fractureGauge);
-    }
-
     return dmg;
   },
 

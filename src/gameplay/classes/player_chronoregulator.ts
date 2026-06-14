@@ -3,7 +3,6 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, createSkillVisual, createTelegraph, spawnParticles } from '../../visual/effects';
-import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
@@ -23,7 +22,7 @@ import {
 } from './chrono/fractureHelpers';
 import { updateChronoFractureUI } from './chrono/fractureUi';
 import { pulseChronoLensUI, updateChronoLensUI } from './chrono/lensUi';
-import { computeDamageToEnemy } from '../combat/damage_helpers';
+import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { ChronoDephasingGrenade } from './chrono/grenadeProjectile';
 import { NetChrono } from '../../multiplayer/net_chrono';
 import { isServerAuthority, isVisualOnlyMode } from '../../multiplayer/net_combat';
@@ -960,7 +959,7 @@ export class Chronoregulator extends PlayerBase {
     const hitOrigin = this.getBeamHitOrigin();
     const dir = this.getAimDir();
     if (this.isBeaming && Globals.enemies) {
-      const { length, enemy } = getBeamHitInfo(hitOrigin, dir, Globals.enemies);
+      const { length, enemy } = getBeamHitInfo(hitOrigin, dir, Globals.enemies, this.getBeamFractureSizeMult());
       if (enemy) return enemy.position.clone();
       return hitOrigin.clone().add(dir.clone().multiplyScalar(Math.max(2, length * 0.55)));
     }
@@ -1022,45 +1021,24 @@ export class Chronoregulator extends PlayerBase {
     this.resetFractureActivity();
   }
 
-  dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0 } = {}) {
+  dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0, beamRay = false } = {}) {
     if (!enemy || enemy.dead) return 0;
     let dmg = baseDmg * ConvergenceEffects.getPrismBeamDmgMult(prismDepth);
+    if (beamRay) {
+      dmg *= ConvergenceEffects.getFractureDamageMult(this.fractureGauge || 0);
+    }
     dmg = ConstellationEngine.modifyDamageDealt(dmg, { skill, skillKey });
     if (enemy._temporalVuln?.timer > 0) dmg *= enemy._temporalVuln.mult || 1.2;
 
-    const prismCrit = ConvergenceEffects.getPrismCritMods(prismDepth);
+    const { dmg: dealt } = dealDamageToEnemy(enemy, dmg, {
+      skillKey,
+      isRanged: true,
+      maxRange: 30,
+      pos: enemy.position,
+    });
 
-    if (STATE.multiplayer.active && !STATE.multiplayer.isHost) {
-      const { dmg: preview } = computeDamageToEnemy(enemy, dmg, {
-        forceCrit: prismCrit.forceCrit,
-        critDmgMult: prismCrit.critDmgMult,
-        noCrit: !prismCrit.forceCrit,
-      });
-      createDamageText(Math.floor(preview), enemy.position, '#7df9ff');
-      Network.send({
-        type: 'request-damage',
-        enemyId: enemy.netId,
-        playerId: STATE.multiplayer.id,
-        baseDmg: dmg,
-        opts: {
-          forceCrit: prismCrit.forceCrit,
-          critDmgMult: prismCrit.critDmgMult,
-          noCrit: !prismCrit.forceCrit,
-        },
-        maxRange: 30,
-        pos: Globals.player ? { x: Globals.player.position.x, y: Globals.player.position.y, z: Globals.player.position.z } : null,
-      });
-      if (preview > 0) this.resetFractureActivity();
-      return preview;
-    }
-
-    if (prismCrit.forceCrit) {
-      dmg *= STATE.stats.critDmg * prismCrit.critDmgMult;
-      createDamageText('PRISME!', enemy.position, '#7df9ff');
-    }
-    enemy.takeDamage(dmg);
-    if (dmg > 0) this.resetFractureActivity();
-    return dmg;
+    if (dealt > 0) this.resetFractureActivity();
+    return dealt;
   }
 
   isEnemyInstabilityMarked(enemy) {
@@ -1139,6 +1117,15 @@ export class Chronoregulator extends PlayerBase {
   getAscendantMult() {
     const cap = this.getAscendantMax();
     return 1 + Math.min(cap, (this.beamFocusTime / CHRONO_ASCENDANT.ramp) * cap);
+  }
+
+  getBeamFractureSizeMult() {
+    return ConvergenceEffects.getFractureBeamSizeMult(this.fractureGauge || 0);
+  }
+
+  getBeamFractureVisualSizeMult() {
+    const gameplayScale = this.getBeamFractureSizeMult();
+    return 1 + (gameplayScale - 1) * 5;
   }
 
   getActiveLens(origin, dir) {
@@ -1281,17 +1268,19 @@ export class Chronoregulator extends PlayerBase {
     const coneAmp = STATE.passives?.continuumBurst ? 1.15 : 1;
     const refined = ConvergenceEffects.hasRefinedPrisms();
     const routes = resolveBeamRoutes(staffOrigin, mainDir, this.lenses, coneAmp, refined, prismMods.splitCount);
+    const fractureSizeMult = this.getBeamFractureSizeMult();
+    const fractureVisualSizeMult = this.getBeamFractureVisualSizeMult();
 
     for (const seg of routes.trunk) {
       if (seg.from.distanceTo(seg.to) > 0.15) {
-        this.placeBeamSegment(seg.from, seg.to, false);
+        this.placeBeamSegment(seg.from, seg.to, false, fractureVisualSizeMult);
       }
     }
 
     for (const ray of routes.rays) {
-      const { length } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
+      const { length } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies, fractureSizeMult);
       const end = ray.origin.clone().add(ray.dir.clone().multiplyScalar(Math.max(1, length)));
-      this.placeBeamSegment(ray.origin, end, ray.split);
+      this.placeBeamSegment(ray.origin, end, ray.split, fractureVisualSizeMult);
     }
   }
 
@@ -1344,13 +1333,14 @@ export class Chronoregulator extends PlayerBase {
     const tickDt = this.getBeamTickInterval();
     const ascMult = this.getAscendantMult();
     const baseDmg = STATE.stats.atk * CHRONO_BEAM.tickDmg * ascMult * this.getBeamTickDmgMult();
+    const fractureSizeMult = this.getBeamFractureSizeMult();
 
     let hitAny = false;
     let focusEnemy = null;
     const damagedThisTick = new Set();
 
     for (const ray of rays) {
-      const { enemy } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
+      const { enemy } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies, fractureSizeMult);
       if (!enemy) continue;
 
       const eid = this.getEnemyId(enemy);
@@ -1366,7 +1356,11 @@ export class Chronoregulator extends PlayerBase {
         tickDmg *= 1 + CHRONO_SKILLS.dephasing.beamMarkedBonus;
       }
 
-      const dealt = this.dealMagicDamage(enemy, tickDmg, { skillKey: 'primary', prismDepth: ray.prismDepth || 0 });
+      const dealt = this.dealMagicDamage(enemy, tickDmg, {
+        skillKey: 'primary',
+        prismDepth: ray.prismDepth || 0,
+        beamRay: true,
+      });
       this.recordBeamDamage(enemy, dealt);
       if (ray.split && prismMods.burnOnSplit) {
         PassiveKeystoneHooks.applyPrismLensBurn(enemy, tickDmg);
@@ -1824,8 +1818,8 @@ export class Chronoregulator extends PlayerBase {
     this.lenses.push(lens);
     this._lensMeshesById[lensId] = lens;
     spawnParticles(pos, CHRONO_COLOR(), 12);
-    createDamageText(refined ? 'PRISME' : 'LENTILLE', pos, '#7df9ff');
-    if (this.isLocalPlayer()) this.addBuff(refined ? 'Prisme' : 'Lentille', lensDuration, 'fa-gem');
+    createDamageText('PRISME', pos, '#7df9ff');
+    if (this.isLocalPlayer()) this.addBuff('Prisme', lensDuration, 'fa-gem');
   }
 
   skillMolecularDephasing() {

@@ -62,12 +62,12 @@ export const PASSIVE_CATALOG: Record<string, PassiveDisplayMeta> = {
   cataclysmHaste: { key: 'cataclysmHaste', name: 'Cataclysme Chargé', desc: 'Cataclysme se charge plus vite.', icon: 'fa-circle-notch', color: '#6c3483', category: 'offense' },
   voidPull: { key: 'voidPull', name: 'Trou Noir', desc: 'Cataclysme attire les ennemis.', icon: 'fa-circle-dot', color: '#2c3e50', category: 'offense' },
   celestialConvergence: { key: 'celestialConvergence', name: 'Dualité Céleste', desc: '6 attaques renforcées · +50 % hâte · vulnérabilité.', icon: 'fa-circle-half-stroke', color: '#af7ac5', category: 'synergy' },
-  extraPrismLens: { key: 'extraPrismLens', name: 'Prisme Supplémentaire', desc: 'Les Lentilles génèrent 4 rayons au lieu de 3. Dégâts des rayons : −10 % mais inflige brûlure.', icon: 'fa-gem', color: '#48c9b0', category: 'offense' },
-  continuumBurst: { key: 'continuumBurst', name: 'Prisme Affiné', desc: 'Cône lentille +15%. Rayon +8% dégâts. Convergence +0,5 s et +0,5 rayon résonance.', icon: 'fa-gem', color: '#48c9b0', category: 'offense' },
+  extraPrismLens: { key: 'extraPrismLens', name: 'Prisme Supplémentaire', desc: 'Les Prismes génèrent 4 rayons au lieu de 3. Dégâts des rayons : −10 % mais inflige brûlure.', icon: 'fa-gem', color: '#48c9b0', category: 'offense' },
+  continuumBurst: { key: 'continuumBurst', name: 'Prisme Affiné', desc: 'Cône du prisme +15%. Rayon +8% dégâts. Convergence +0,5 s et +0,5 rayon résonance.', icon: 'fa-gem', color: '#48c9b0', category: 'offense' },
   ruptureSurge: { key: 'ruptureSurge', name: 'Déchirure Amplifiée', desc: 'Explosion de rupture volontaire +35%. Rayon +8% dégâts.', icon: 'fa-burst', color: '#ffd93d', category: 'offense' },
   anachronismeAmp: { key: 'anachronismeAmp', name: 'Conduction Fractale', desc: 'Compétences coûtent 25 Fracture au lieu de 30.', icon: 'fa-hourglass-half', color: '#bb8fce', category: 'utility' },
   freezeFieldAmp: { key: 'freezeFieldAmp', name: 'Déphasage Renforcé', desc: 'Déphasage : portée +2, Instabilité +2s.', icon: 'fa-atom', color: '#f39c12', category: 'utility' },
-  continuumMastery: { key: 'continuumMastery', name: 'Architecte de la Fracture', desc: 'Fracture 150 % · prismes 5s+3,5s · +3,5s aux actifs.', icon: 'fa-infinity', color: '#ffd93d', category: 'synergy' },
+  continuumMastery: { key: 'continuumMastery', name: 'Architecte de la Fracture', desc: 'Fracture 150 % · rayon renforcé et élargi · prismes 5s+3,5s.', icon: 'fa-infinity', color: '#ffd93d', category: 'synergy' },
 };
 
 export function getPassiveMeta(key: string): PassiveDisplayMeta | undefined {

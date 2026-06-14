@@ -373,7 +373,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   extraPrismLens: {
     paragraphs: () => [
-      'Lentille de Focalisation : split en 4 rayons au lieu de 3.',
+      'Prisme : split en 4 rayons au lieu de 3.',
       'Rayons prismatiques : dégâts −10 % par rayon.',
       'Rayons prismatiques : infligent une brûlure temporelle.',
     ],
@@ -381,7 +381,7 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   continuumBurst: {
     paragraphs: () => [
-      'Lentille (Espace) : cône +15 % · dégâts du rayon +8 %.',
+      'Prisme (Espace) : cône +15 % · dégâts du rayon +8 %.',
       'Convergence Temporelle (E) : durée +0,5 s.',
       'Convergence Temporelle (E) : rayon de résonance +0,5 m.',
     ],
@@ -419,9 +419,9 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
       'Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.\nChaque prisme −20 % dégâts · duplication de rayons.',
 
-      'Rayon via prisme : +100 % Crit Chance.\n−25 % Crit Damage.',
+      'Fracture max : 150 % (au lieu de 100 %).',
 
-      'Fracture max : 150 % (au lieu de 100 %).\n+0,33 % dégâts infligés par point de Fracture (jusqu\'à +49,5 % à 150 %).',
+      'Rayon de distorsion : +0,42 % dégâts et +0,05 % taille par point de Fracture.\nJusqu\'à +63 % dégâts et +7,5 % taille à 150 % Fracture.',
 
     ],
 
@@ -462,12 +462,47 @@ export function getPassiveMechanics(passiveKey: string, rank = 1, classId?: Clas
   return getPassiveParagraphs(passiveKey, rank, classId).flatMap((p) => p.split('\n'));
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch] as string));
+}
+
+function highlightPassiveValues(text: string): string {
+  return escapeHtml(text).replace(
+    /([+−-]?\d+(?:[,.]\d+)?\s*(?:%|s|m|HP|ATK|DEF|Fracture|ticks?|stacks?)?|[×x]\s*\d+(?:[,.]\d+)?)/gi,
+    '<strong class="detail-passive-value">$1</strong>',
+  );
+}
+
+function formatPassiveMechanicLine(line: string): string {
+  const clean = line.trim();
+  if (!clean) return '';
+  const colonIdx = clean.indexOf(':');
+  const hasLabel = colonIdx > 0 && colonIdx <= 34;
+  const label = hasLabel ? clean.slice(0, colonIdx).trim() : '';
+  const body = hasLabel ? clean.slice(colonIdx + 1).trim() : clean;
+
+  return `<div class="detail-passive-row">
+    <span class="detail-passive-dot" aria-hidden="true"></span>
+    <span class="detail-passive-copy">
+      ${label ? `<span class="detail-passive-label">${escapeHtml(label)}</span>` : ''}
+      <span class="detail-passive-line">${highlightPassiveValues(body)}</span>
+    </span>
+  </div>`;
+}
+
 export function formatPassiveDetailHtml(passiveKey: string, rank = 1, classId?: ClassId): string {
   const paragraphs = getPassiveParagraphs(passiveKey, rank, classId);
   if (!paragraphs.length) return '';
-  return `<div class="detail-passive-prose">${paragraphs.map((block) => {
-    const inner = block.split('\n').map((line) => `<span class="detail-passive-line">${line}</span>`).join('<br>');
-    return `<p class="detail-passive-paragraph">${inner}</p>`;
+  const proseClass = rank >= 2 ? 'detail-passive-prose detail-passive-prose-apex' : 'detail-passive-prose';
+  return `<div class="${proseClass}">${paragraphs.map((block) => {
+    const inner = block.split('\n').map(formatPassiveMechanicLine).join('');
+    return `<div class="detail-passive-paragraph">${inner}</div>`;
   }).join('')}</div>`;
 }
 

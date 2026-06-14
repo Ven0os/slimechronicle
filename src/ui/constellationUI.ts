@@ -20,6 +20,12 @@ import { ConstellationEngine } from '@/systems/constellationEngine';
 import { AudioSys } from '@/core/ressources';
 
 const SLOT_CLASS = { atk: 'branch-atk', hp: 'branch-hp', spd: 'branch-spd', mst: 'branch-mst' };
+const PASSIVE_CATEGORY_LABEL = {
+  offense: 'Offense',
+  defense: 'Défense',
+  utility: 'Utilitaire',
+  synergy: 'Synergie',
+};
 
 /** Canvas large pour constellation éparpillée */
 const CANVAS = { size: 720, cx: 360, cy: 360 };
@@ -496,11 +502,13 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
           ? formatPassiveDetailHtml(passiveKey, passiveRank)
           : `<p class="detail-passive-fallback">${node.desc}</p>`;
         const passiveTitle = passiveMeta?.name || node.name;
+        const passiveCategory = passiveMeta ? PASSIVE_CATEGORY_LABEL[passiveMeta.category] : 'Passif';
         return `<div class="detail-section detail-section-passive-effect${apexClass}">
           <div class="detail-passive-effect-card" style="--passive-accent:${accent}">
             <div class="detail-passive-effect-glow"></div>
             <div class="${iconClass.trim()}"><i class="fas ${icon}" aria-hidden="true"></i></div>
             <div class="detail-passive-effect-body">
+              <div class="detail-passive-effect-kicker">${rewardKind === 'apex' ? 'Apex' : 'Passif'} · ${passiveCategory}</div>
               <div class="detail-passive-effect-name">${passiveTitle}</div>
               ${detailHtml}
             </div>
@@ -509,7 +517,7 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
       })();
 
   panel.innerHTML = `
-    <div class="detail-card status-${status}">
+    <div class="detail-card status-${status} reward-${rewardKind}">
       <div class="detail-card-header">
         <span class="detail-node-icon"><i class="fas ${node.icon}"></i></span>
         <div>
@@ -808,7 +816,7 @@ export const ConstellationUI = {
 
     const nodesLayer = mount.querySelector('#constellation-nodes');
 
-    for (const branch of data.branches) {
+    data.branches.forEach((branch, branchIndex) => {
       branch.nodes.forEach((node) => {
         const pos = layout.get(node.id)!;
         const pct = toPercent(pos.x, pos.y);
@@ -818,8 +826,10 @@ export const ConstellationUI = {
         el.className = `tree-node ${nodeStatus(node.id)} ${node.keystone ? 'keystone node-passive-reward' : 'node-stat-reward'}${culmination}${branch.id === getClassLayout(classId).primaryBranch && node.keystone ? ' node-culmination-primary' : ''}`;
         el.id = `node-${node.id}`;
         el.dataset.nodeId = node.id;
+        el.dataset.nodeBranch = branch.id;
         el.style.left = pct.left;
         el.style.top = pct.top;
+        el.style.setProperty('--node-delay', `${branchIndex * 70 + node.tier * 22}ms`);
         const keystoneGlow = node.keystone
           ? `<span class="keystone-glow-static" aria-hidden="true"></span>
              <span class="keystone-glow-animated" aria-hidden="true"></span>`
@@ -835,7 +845,7 @@ export const ConstellationUI = {
         bindNode(el, node, onUnlock);
         nodesLayer.appendChild(el);
       });
-    }
+    });
 
     const apexEl = mount.querySelector('#node-apex');
     bindNode(apexEl, data.apex, onUnlock);
@@ -923,6 +933,27 @@ export const ConstellationUI = {
           window.SkillTree.maxAllocateBranch(classId, branchId);
         }
       });
+    });
+
+    const setBranchFocus = (branchId: string | null) => {
+      mount.classList.toggle('branch-focus-active', !!branchId);
+      mount.querySelectorAll('.branch-focus').forEach((el) => el.classList.remove('branch-focus'));
+      mount.querySelectorAll('.sidebar-branch-row.is-focused').forEach((el) => el.classList.remove('is-focused'));
+      if (!branchId) return;
+
+      const branchSelector = CSS.escape(branchId);
+      mount.querySelector(`.sidebar-branch-row[data-branch-id="${branchSelector}"]`)?.classList.add('is-focused');
+      mount.querySelectorAll(`[data-node-branch="${branchId}"], .branch-line-${branchSelector}, .culmination-link-${branchSelector}`)
+        .forEach((el) => el.classList.add('branch-focus'));
+    };
+
+    mount.querySelectorAll('.sidebar-branch-row').forEach((row) => {
+      const branchId = row.getAttribute('data-branch-id');
+      if (!branchId) return;
+      row.addEventListener('mouseenter', () => setBranchFocus(branchId));
+      row.addEventListener('mouseleave', () => setBranchFocus(null));
+      row.addEventListener('focusin', () => setBranchFocus(branchId));
+      row.addEventListener('focusout', () => setBranchFocus(null));
     });
 
     renderDetailPanel(null, classId);
@@ -1116,7 +1147,7 @@ export const ConstellationUI = {
         AudioSys.sfx.levelup();
         setTimeout(() => {
           if (AudioSys.sfx?.levelup) AudioSys.sfx.levelup();
-        }, 350);
+        }, 520);
       }
 
       // Ajouter l'état d'éveil d'Apex au conteneur principal
@@ -1130,6 +1161,13 @@ export const ConstellationUI = {
 
       // Étape 2 : Propagation radiale vers toutes les branches. Toutes les branches s'allument à tour de rôle en vagues depuis le centre vers l'extérieur (ou de l'extérieur vers le centre).
       // Faisons une vague depuis l'extérieur vers le centre (l'Apex absorbe toute l'énergie de la constellation !).
+      setTimeout(() => {
+        lines.forEach((line, index) => {
+          line.style.setProperty('--apex-line-delay', `${Math.min(index * 10, 280)}ms`);
+          line.classList.add('apex-awakening-line');
+        });
+      }, 180);
+
       for (let tier = 1; tier <= 10; tier++) {
         setTimeout(() => {
           nodes.forEach(el => {
@@ -1137,15 +1175,10 @@ export const ConstellationUI = {
             if (badge && badge.textContent === String(tier)) {
               el.classList.add('apex-awakening-node');
               el.classList.add('pulse-active');
-              setTimeout(() => el.classList.remove('pulse-active'), 600);
+              setTimeout(() => el.classList.remove('pulse-active'), 920);
             }
           });
-          
-          // Illuminer les lignes correspondantes
-          lines.forEach(line => {
-            line.classList.add('apex-awakening-line');
-          });
-        }, (10 - tier) * 150); // De l'extérieur (tier 1) vers l'intérieur (tier 10)
+        }, (10 - tier) * 115);
       }
 
       // Étape 3 : Libération d'énergie finale (shockwave s'étend, l'Apex explose de lumière)
@@ -1162,9 +1195,9 @@ export const ConstellationUI = {
         
         setTimeout(() => {
           if (flash) flash.remove();
-        }, 800);
+        }, 1100);
         
-      }, 1600);
+      }, 1700);
 
       // Étape 4 : Mise en avant du panel de détails et stabilisation
       setTimeout(() => {
@@ -1175,7 +1208,7 @@ export const ConstellationUI = {
         if (card) {
           card.classList.add('apex-card-awoken');
         }
-      }, 2000);
+      }, 2300);
 
       // Étape 5 : Fin de l'animation, nettoyage et onComplete
       setTimeout(() => {
@@ -1184,12 +1217,15 @@ export const ConstellationUI = {
           apexEl.className = 'center-star apex-multicolor apex-unlocked';
         }
         nodes.forEach(el => el.classList.remove('apex-awakening-node'));
-        lines.forEach(el => el.classList.remove('apex-awakening-line'));
+        lines.forEach(el => {
+          el.classList.remove('apex-awakening-line');
+          el.style.removeProperty('--apex-line-delay');
+        });
         if (shockwave) shockwave.remove();
 
         window.isConstellationAnimating = false;
         onComplete();
-      }, 4500);
+      }, 5200);
 
     }, 800);
   }

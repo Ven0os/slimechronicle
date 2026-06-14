@@ -6,6 +6,7 @@ import { Globals } from '@/core/globals';
 import { getPlayerDefense } from '@/gameplay/combat/defense';
 import { CHRONO_FRACTURE, CHRONO_SKILLS } from '@/gameplay/classes/chrono/constants';
 import {
+  getFractureBeamSizeMult as computeFractureBeamSizeMult,
   getFractureDamageMult as computeFractureDamageMult,
   getFractureOverheatAt,
   getMaxFracture as resolveMaxFracture,
@@ -176,16 +177,13 @@ export const ConvergenceEffects = {
     return computeFractureDamageMult(fractureGauge);
   },
 
+  getFractureBeamSizeMult(fractureGauge: number): number {
+    return computeFractureBeamSizeMult(fractureGauge);
+  },
+
   getPrismBeamDmgMult(prismDepth: number): number {
     if (!this.hasRefinedPrisms() || prismDepth <= 0) return 1;
     return Math.pow(0.8, prismDepth);
-  },
-
-  getPrismCritMods(prismDepth: number): { forceCrit: boolean; critDmgMult: number } {
-    if (!this.hasRefinedPrisms() || prismDepth <= 0) {
-      return { forceCrit: false, critDmgMult: 1 };
-    }
-    return { forceCrit: true, critDmgMult: 0.75 };
   },
 
   getMaxRefinedPrisms(): number {

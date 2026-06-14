@@ -113,8 +113,14 @@ export function tickFractureDecay(
   return clampFracture(gauge - decayRate * dt);
 }
 
-/** +0,33 % dégâts par point de Fracture (Apex uniquement). */
+/** +0,42 % dégâts du rayon par point de Fracture (Apex uniquement). */
 export function getFractureDamageMult(gauge: number): number {
   if (!isChronoFractureApexActive()) return 1;
   return 1 + gauge * CHRONO_FRACTURE.apexDmgPerPoint;
+}
+
+/** +0,05 % taille du rayon par point de Fracture (Apex uniquement). */
+export function getFractureBeamSizeMult(gauge: number): number {
+  if (!isChronoFractureApexActive()) return 1;
+  return 1 + gauge * CHRONO_FRACTURE.apexBeamSizePerPoint;
 }

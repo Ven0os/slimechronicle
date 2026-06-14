@@ -164,7 +164,7 @@ export const CLASS_STATS_CONFIG: Record<ClassId, ClassStatsDef> = {
       rupture: { ratio: 2.4, label: 'Explosion de Rupture', scaling: [{ stat: 'atk', mult: 2.4, suffix: ' × Fracture%' }] },
       space: {
         ratio: 0,
-        label: 'Lentille de Focalisation',
+        label: 'Prisme',
       },
       shift: {
         ratio: 3.38,

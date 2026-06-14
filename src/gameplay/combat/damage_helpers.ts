@@ -133,7 +133,7 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
     } else if (isCrit) {
 
-        createDamageText('CRIT!', pos, '#ff0');
+        createDamageText(opts.critText || 'CRIT!', pos, opts.critColor || '#ff0');
 
         if (!enemy.isMiniBoss) {
 

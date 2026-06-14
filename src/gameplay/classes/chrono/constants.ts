@@ -14,8 +14,10 @@ export const CHRONO_FRACTURE = {
   max: 100,
   /** Plafond Fracture avec Apex Architecte de la Fracture. */
   apexMax: 150,
-  /** +0,33 % dégâts infligés par point de Fracture (Apex). */
-  apexDmgPerPoint: 0.0033,
+  /** +0,42 % dégâts du rayon par point de Fracture (Apex). */
+  apexDmgPerPoint: 0.0042,
+  /** +0,05 % taille du rayon par point de Fracture (Apex). */
+  apexBeamSizePerPoint: 0.0005,
   fillTime: 4.33,
   skillCost: 30,
   silence: 1.5,
