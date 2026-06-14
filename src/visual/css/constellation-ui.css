@@ -1,6 +1,9 @@
 /* --- Constellation UI avancée --- */
 .skill-ui-advanced {
   --constellation-theme: #d4af37;
+  --apex-rainbow: linear-gradient(90deg, #6bcbff 0%, #c77dff 22%, #ff6b9d 43%, #ffd93d 64%, #6bcb77 82%, #6bcbff 100%);
+  --apex-rainbow-size: 340% 100%;
+  --apex-rainbow-speed: 5.5s;
 }
 
 #view-tree.view-section {
@@ -74,11 +77,12 @@
 
 .constellation-layout {
   display: grid;
-  grid-template-columns: 240px 1fr 280px;
+  grid-template-columns: 240px minmax(520px, 1fr) minmax(330px, 360px);
   gap: 0;
   flex: 1;
   min-height: 0;
   --constellation-theme: #d4af37;
+  isolation: isolate;
 }
 
 .constellation-sidebar {
@@ -145,9 +149,9 @@
   z-index: -1;
   border-radius: 8px;
   padding: 1px;
-  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
-  background-size: 400% 100%;
-  animation: apexLabelFlow 5s linear infinite;
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -179,10 +183,12 @@
 
 .apex-progress-card.apex-ready-state .apex-progress-label,
 .apex-progress-card.apex-unlocked-state .apex-progress-label {
-  background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #c8c8c8 100%);
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .apex-progress-bar {
@@ -200,9 +206,9 @@
 
 .apex-progress-card.apex-ready-state .apex-progress-fill,
 .apex-progress-card.apex-unlocked-state .apex-progress-fill {
-  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
-  background-size: 300% 100%;
-  animation: apexLabelFlow 4s linear infinite;
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .apex-progress-text {
@@ -220,19 +226,21 @@
 }
 
 .apex-progress-card.apex-ready-state .apex-progress-status {
-  background: linear-gradient(90deg, #ffd93d, #6bcbff, #ff6b9d, #ffd93d);
-  background-size: 200% 100%;
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: apexLabelFlow 3s linear infinite;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .apex-progress-card.apex-unlocked-state .apex-progress-status {
-  background: linear-gradient(90deg, #fff, #ffd93d, #6bcbff);
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .sidebar-node-hint {
@@ -315,10 +323,51 @@
   overflow: hidden;
   cursor: grab;
   user-select: none;
+  isolation: isolate;
 }
 
 .constellation-canvas.grabbing {
   cursor: grabbing;
+}
+
+.constellation-canvas::before,
+.constellation-canvas::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.constellation-canvas::before {
+  background:
+    linear-gradient(120deg, transparent 10%, color-mix(in srgb, var(--constellation-theme) 12%, transparent) 45%, transparent 72%),
+    radial-gradient(ellipse 42% 28% at 50% 48%, color-mix(in srgb, var(--constellation-theme) 16%, transparent) 0%, transparent 68%);
+  opacity: 0.62;
+  filter: blur(18px);
+  animation: constellationNebulaDrift 18s ease-in-out infinite alternate;
+}
+
+.constellation-canvas::after {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 24% 74%, rgba(255, 255, 255, 0.22), transparent),
+    radial-gradient(1px 1px at 52% 16%, color-mix(in srgb, var(--constellation-theme) 55%, white), transparent),
+    radial-gradient(1px 1px at 82% 42%, rgba(255, 255, 255, 0.24), transparent),
+    radial-gradient(1px 1px at 68% 86%, rgba(255, 255, 255, 0.28), transparent);
+  background-size: 240px 240px;
+  opacity: 0.5;
+  animation: constellationStarDrift 26s linear infinite;
+}
+
+@keyframes constellationNebulaDrift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to { transform: translate3d(1.5%, 1%, 0) scale(1.04); }
+}
+
+@keyframes constellationStarDrift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-120px, 72px, 0); }
 }
 
 .constellation-inner {
@@ -328,6 +377,8 @@
   aspect-ratio: 1;
   transform-origin: center center;
   will-change: transform;
+  z-index: 1;
+  transition: filter 0.35s ease;
 }
 
 .constellation-inner .constellation-svg {
@@ -355,6 +406,7 @@
   justify-content: center;
   width: 22px;
   height: 22px;
+  border-radius: 5px;
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
@@ -363,6 +415,41 @@
     opacity 0.45s ease,
     filter 0.45s ease;
   will-change: transform;
+  animation: nodeConstellationIn 0.55s cubic-bezier(0.2, 1, 0.25, 1) both;
+  animation-delay: var(--node-delay, 0ms);
+}
+
+.constellation-nodes-layer .tree-node::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--constellation-theme) 55%, transparent);
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+  pointer-events: none;
+}
+
+.constellation-nodes-layer .tree-node.available::before,
+.constellation-nodes-layer .tree-node.selected::before,
+.constellation-nodes-layer .tree-node.branch-focus::before {
+  opacity: 0.9;
+  transform: scale(1);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--constellation-theme) 38%, transparent);
+}
+
+@keyframes nodeConstellationIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(45deg) scale(0.42);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(45deg) scale(1);
+    filter: blur(0);
+  }
 }
 
 /* Conteneur icône — centrage géométrique dans le losange */
@@ -634,6 +721,7 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) scale(1);
+  transform-origin: 50% 50%;
   width: 88px;
   height: 88px;
   border-radius: 50%;
@@ -645,6 +733,7 @@
   border: none;
   background: transparent;
   transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease;
+  will-change: transform, filter;
 }
 
 .center-star:hover {
@@ -675,6 +764,7 @@
 .center-star.apex-multicolor .apex-rainbow-ring {
   position: absolute;
   inset: -14px;
+  z-index: 0;
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
@@ -745,10 +835,11 @@
 .center-star.apex-multicolor.apex-ready .center-icon,
 .center-star.apex-multicolor.apex-ready .center-label {
   -webkit-text-fill-color: transparent;
-  background: linear-gradient(180deg, #ffffff 0%, #ffd93d 50%, #6bcbff 100%);
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
-  animation: apexIconShift 4s ease infinite;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .center-star.apex-multicolor:not(.apex-unlocked):not(.apex-ready) .apex-rainbow-ring {
@@ -773,6 +864,16 @@
     0 0 60px rgba(100, 200, 255, 0.25),
     inset 0 0 20px rgba(255, 255, 255, 0.12);
   animation: apexCoreShine 2.5s ease-in-out infinite;
+}
+
+.center-star.apex-unlocked .center-icon,
+.center-star.apex-unlocked .center-label {
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .center-star .center-icon {
@@ -839,16 +940,6 @@
   }
 }
 
-@keyframes apexIconShift {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
 @keyframes apexLabelFlow {
   0% {
     background-position: 0% 50%;
@@ -863,6 +954,25 @@
   border-left: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(0, 0, 0, 0.2);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.constellation-detail-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.constellation-detail-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.constellation-detail-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+.constellation-detail-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.34);
 }
 
 .detail-lore {
@@ -947,6 +1057,43 @@
   color: #888;
 }
 
+.detail-card.reward-apex .detail-node-icon {
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, rgba(7, 9, 15, 0.96), rgba(18, 12, 24, 0.92)) padding-box,
+    var(--apex-rainbow) border-box;
+  background-size: auto, var(--apex-rainbow-size);
+  box-shadow:
+    0 0 14px rgba(255, 107, 157, 0.18),
+    0 0 22px rgba(107, 203, 255, 0.14),
+    inset 0 0 12px rgba(255, 255, 255, 0.05);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
+}
+
+.detail-card.reward-apex .detail-node-icon i,
+.detail-card.reward-apex .detail-node-name {
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
+}
+
+.detail-card.reward-apex .detail-node-tier {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: #f4f7ff;
+  text-shadow: 0 0 8px rgba(107, 203, 255, 0.16);
+}
+
+.detail-card.reward-apex .detail-node-icon i {
+  filter: drop-shadow(0 0 7px rgba(107, 203, 255, 0.36));
+}
+
 .detail-section {
   margin-bottom: 14px;
 }
@@ -974,11 +1121,27 @@
 }
 
 .detail-passive-effect-name {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #fff3c4;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+  margin-bottom: 10px;
+}
+
+.detail-passive-effect-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 6px;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--passive-accent) 42%, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--passive-accent) 12%, rgba(0, 0, 0, 0.35));
+  color: color-mix(in srgb, var(--passive-accent) 72%, #fff);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
 }
 
 .detail-passive-mechanics {
@@ -990,18 +1153,61 @@
 .detail-passive-prose {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .detail-passive-paragraph {
   margin: 0;
-  font-size: 0.74rem;
-  color: #d8d0b8;
-  line-height: 1.55;
+  display: grid;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.detail-passive-row {
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.detail-passive-dot {
+  width: 5px;
+  height: 5px;
+  margin-top: 0.45rem;
+  border-radius: 50%;
+  background: var(--passive-accent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--passive-accent) 65%, transparent);
+}
+
+.detail-passive-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail-passive-label {
+  color: color-mix(in srgb, var(--passive-accent) 75%, #fff);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 .detail-passive-line {
-  display: inline;
+  display: block;
+  color: #e3ddce;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.detail-passive-value {
+  color: color-mix(in srgb, var(--passive-accent) 78%, #fff);
+  font-weight: 800;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--passive-accent) 24%, transparent);
 }
 
 .detail-passive-mechanics {
@@ -1025,13 +1231,13 @@
   border-radius: 8px;
   background: linear-gradient(
     135deg,
-    rgba(255, 215, 0, 0.14) 0%,
-    rgba(212, 175, 55, 0.08) 35%,
+    color-mix(in srgb, var(--passive-accent) 17%, transparent) 0%,
+    color-mix(in srgb, var(--passive-accent) 8%, transparent) 38%,
     rgba(18, 16, 10, 0.92) 100%
   );
-  border: 1px solid rgba(212, 175, 55, 0.42);
+  border: 1px solid color-mix(in srgb, var(--passive-accent) 46%, rgba(255, 255, 255, 0.12));
   box-shadow:
-    0 0 18px rgba(212, 175, 55, 0.12),
+    0 0 22px color-mix(in srgb, var(--passive-accent) 14%, transparent),
     inset 0 1px 0 rgba(255, 236, 160, 0.1);
   overflow: hidden;
 }
@@ -1043,7 +1249,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, #fff3b0, #ffd93d, #d4af37, #a67c00);
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--passive-accent) 82%, #fff), var(--passive-accent));
   border-radius: 8px 0 0 8px;
 }
 
@@ -1053,7 +1259,7 @@
   right: -20%;
   width: 55%;
   height: 120%;
-  background: radial-gradient(ellipse at center, rgba(255, 217, 61, 0.18) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--passive-accent) 18%, transparent) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -1067,14 +1273,14 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: linear-gradient(145deg, rgba(255, 217, 61, 0.22), rgba(0, 0, 0, 0.45));
-  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--passive-accent) 22%, transparent), rgba(0, 0, 0, 0.45));
+  border: 1px solid color-mix(in srgb, var(--passive-accent) 50%, rgba(255, 255, 255, 0.12));
   box-shadow: 0 0 12px color-mix(in srgb, var(--passive-accent) 35%, transparent);
 }
 
 .detail-passive-effect-icon i {
   font-size: 1rem;
-  background: linear-gradient(180deg, #fff8dc, #ffd93d, var(--passive-accent));
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--passive-accent) 74%, #fff), var(--passive-accent));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1121,76 +1327,148 @@
 
 .detail-section-apex-effect .detail-passive-effect-card {
   --passive-accent: #e8e8e8;
+  display: block;
+  padding: 12px;
   border: 1px solid transparent;
-  background-clip: padding-box;
-  background: linear-gradient(
-    135deg,
-    rgba(18, 16, 10, 0.96) 0%,
-    rgba(12, 12, 16, 0.98) 100%
-  );
+  background:
+    linear-gradient(135deg, rgba(16, 20, 24, 0.96) 0%, rgba(8, 9, 13, 0.98) 100%) padding-box,
+    var(--apex-rainbow) border-box;
+  background-size: auto, var(--apex-rainbow-size);
   box-shadow:
-    0 0 28px rgba(107, 203, 255, 0.12),
-    0 0 16px rgba(255, 107, 157, 0.08),
+    0 0 18px rgba(255, 107, 157, 0.1),
+    0 0 24px rgba(107, 203, 255, 0.11),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .detail-section-apex-effect .detail-passive-effect-card::before {
   width: 3px;
-  background: linear-gradient(180deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
-  background-size: 100% 200%;
-  animation: apexLabelFlow 5s linear infinite;
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .detail-section-apex-effect .detail-passive-effect-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: 8px;
-  padding: 1px;
-  background: linear-gradient(135deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
-  background-size: 400% 400%;
-  animation: apexLabelFlow 6s linear infinite;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  display: none;
 }
 
 .detail-section-apex-effect .detail-passive-effect-glow {
-  background: radial-gradient(ellipse at center, rgba(107, 203, 255, 0.1) 0%, transparent 70%);
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 107, 157, 0.12) 0%, transparent 52%),
+    radial-gradient(ellipse at 75% 80%, rgba(107, 203, 255, 0.12) 0%, transparent 58%);
 }
 
 .detail-section-apex-effect .detail-passive-effect-icon {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.5));
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.06);
+  float: left;
+  width: 32px;
+  height: 32px;
+  margin: 0 10px 6px 0;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(145deg, #121623, #06080f) padding-box,
+    var(--apex-rainbow) border-box;
+  background-size: auto, var(--apex-rainbow-size);
+  box-shadow:
+    0 0 12px rgba(107, 203, 255, 0.16),
+    inset 0 0 10px rgba(255, 255, 255, 0.05);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .detail-section-apex-effect .detail-passive-effect-icon i {
   font-size: 1rem;
-  background: linear-gradient(135deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77);
-  background-size: 200% 200%;
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: apexIconShift 4s ease infinite;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
   filter: drop-shadow(0 0 6px rgba(107, 203, 255, 0.35));
 }
 
-.detail-section-apex-effect .detail-passive-effect-name,
+.detail-section-apex-effect .detail-passive-effect-kicker,
 .detail-section-apex-effect .detail-passive-line-title,
-.detail-section-apex-effect .detail-passive-paragraph,
-.detail-section-apex-effect .detail-passive-line,
-.detail-section-apex-effect .detail-passive-fallback,
-.detail-section-apex-effect .detail-passive-line-text {
-  background: linear-gradient(180deg, #ffffff 0%, #ececec 45%, #d4d4d4 100%);
+.detail-section-apex-effect .detail-passive-fallback {
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
+}
+
+.detail-section-apex-effect .detail-passive-effect-name,
+.detail-section-apex-effect .detail-passive-label,
+.detail-section-apex-effect .detail-passive-value {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: #f7f9ff;
+  animation: none;
+}
+
+.detail-section-apex-effect .detail-passive-line,
+.detail-section-apex-effect .detail-passive-line-text {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: #edf5ff;
+}
+
+.detail-section-apex-effect .detail-passive-prose {
+  clear: both;
+  padding-top: 8px;
+}
+
+.detail-passive-prose-apex {
+  gap: 6px;
+}
+
+.detail-passive-prose-apex .detail-passive-paragraph {
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.detail-passive-prose-apex .detail-passive-row {
+  grid-template-columns: 7px 1fr;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.detail-passive-prose-apex .detail-passive-dot {
+  width: 4px;
+  height: 4px;
+  margin-top: 0.42rem;
+  background: #ffe067;
+  box-shadow: 0 0 8px rgba(255, 224, 103, 0.75);
+  animation: none;
+}
+
+.detail-passive-prose-apex .detail-passive-label {
+  color: #f8f2d8;
+  font-size: 0.61rem;
+  letter-spacing: 0.45px;
+}
+
+.detail-passive-prose-apex .detail-passive-line {
+  color: #edf2fb;
+  font-size: 0.71rem;
+  line-height: 1.34;
+}
+
+.detail-passive-prose-apex .detail-passive-value {
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 224, 103, 0.22);
 }
 
 .detail-section-apex-effect .detail-passive-effect-line:not(:last-child) {
@@ -1343,11 +1621,13 @@
   position: relative;
   z-index: 1;
   display: inline-block;
-  background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 55%, #cccccc 100%);
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
   -webkit-background-clip: text;
   background-clip: text;
-  color: #ffffff;
+  color: transparent;
   -webkit-text-fill-color: transparent;
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
 }
 
 .badge-apex::before {
@@ -1365,9 +1645,9 @@
   inset: 0;
   z-index: -1;
   border-radius: 4px;
-  background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcbff, #c77dff, #6bcb77, #ff6b9d);
-  background-size: 400% 100%;
-  animation: apexLabelFlow 4s linear infinite;
+  background: var(--apex-rainbow);
+  background-size: var(--apex-rainbow-size);
+  animation: apexLabelFlow var(--apex-rainbow-speed) linear infinite;
   opacity: 0.9;
 }
 
@@ -1547,9 +1827,13 @@
 
 /* 2. Pulse traveling through the branch */
 .tree-node.pulse-active {
-  transform: translate(-50%, -50%) rotate(45deg) scale(1.4) !important;
-  filter: drop-shadow(0 0 20px var(--constellation-theme)) brightness(1.5) !important;
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.18) !important;
+  filter: drop-shadow(0 0 18px var(--constellation-theme)) brightness(1.35) !important;
   z-index: 10 !important;
+  transition:
+    transform 0.72s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.72s ease,
+    box-shadow 0.72s ease !important;
 }
 
 /* 3. Branch-End Passive strong glow */
@@ -1632,6 +1916,8 @@
   stroke-opacity: 0.85 !important;
   stroke-width: 2.5px !important;
   filter: drop-shadow(0 0 6px var(--constellation-theme)) !important;
+  stroke-dasharray: 12 9;
+  animation: unlockedLineFlow 4s linear infinite;
 }
 
 /* Available lines have a dash array that pulses slowly */
@@ -1640,7 +1926,7 @@
   stroke-opacity: 0.45 !important;
   stroke-width: 1.8px !important;
   stroke-dasharray: 6 5;
-  animation: availableLineBreathe 2s ease-in-out infinite;
+  animation: availableLineBreathe 2s ease-in-out infinite, unlockedLineFlow 5s linear infinite;
 }
 
 /* Locked lines are faint and elegant */
@@ -1660,12 +1946,14 @@
   stroke-opacity: 0.9 !important;
   stroke-width: 3px !important;
   filter: drop-shadow(0 0 8px var(--constellation-theme)) !important;
+  stroke-dasharray: 14 10;
+  animation: unlockedLineFlow 4.6s linear infinite;
 }
 
 .culmination-link.available {
   stroke-dasharray: 5 4;
   stroke-width: 2px !important;
-  animation: availableLineBreathe 2s ease-in-out infinite;
+  animation: availableLineBreathe 2s ease-in-out infinite, unlockedLineFlow 5.5s linear infinite;
 }
 
 .culmination-link.locked {
@@ -1683,6 +1971,34 @@
     stroke-opacity: 0.7;
     filter: drop-shadow(0 0 5px var(--constellation-theme));
   }
+}
+
+@keyframes unlockedLineFlow {
+  to { stroke-dashoffset: -42; }
+}
+
+.constellation-layout.branch-focus-active .tree-node:not(.branch-focus):not(.selected),
+.constellation-layout.branch-focus-active .center-star:not(.selected) {
+  opacity: 0.24 !important;
+  filter: grayscale(0.6) brightness(0.72);
+}
+
+.constellation-layout.branch-focus-active .branch-line:not(.branch-focus),
+.constellation-layout.branch-focus-active .culmination-link:not(.branch-focus) {
+  stroke-opacity: 0.1 !important;
+  filter: none !important;
+}
+
+.tree-node.branch-focus {
+  z-index: 14 !important;
+  filter: brightness(1.2) drop-shadow(0 0 12px var(--constellation-theme));
+}
+
+.branch-line.branch-focus,
+.culmination-link.branch-focus {
+  stroke-opacity: 0.95 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 8px var(--constellation-theme)) !important;
 }
 
 /* Normal Node styling enhancements */
@@ -1705,6 +2021,19 @@
   border-color: #2d2d3a !important;
   background: #0f0f15 !important;
   opacity: 0.45 !important;
+}
+
+@keyframes normalAvailableBreathe {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(255, 255, 255, 0.08),
+      0 0 0 color-mix(in srgb, var(--constellation-theme) 0%, transparent) !important;
+  }
+  50% {
+    box-shadow:
+      0 0 10px rgba(255, 255, 255, 0.16),
+      0 0 18px color-mix(in srgb, var(--constellation-theme) 26%, transparent) !important;
+  }
 }
 
 /* --- SEGMENTATION DE BRANCHES ET BOUTON MAX --- */
@@ -1737,11 +2066,26 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 0;
+  padding: 7px 8px;
+  border-radius: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: default;
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
 }
 .sidebar-branch-row:last-child {
   border-bottom: none;
+}
+
+.sidebar-branch-row:hover,
+.sidebar-branch-row.is-focused {
+  background: color-mix(in srgb, var(--constellation-theme) 10%, rgba(255, 255, 255, 0.03));
+  box-shadow:
+    inset 2px 0 0 var(--constellation-theme),
+    0 0 14px color-mix(in srgb, var(--constellation-theme) 10%, transparent);
+  transform: translateX(2px);
 }
 
 .branch-row-info {
@@ -1754,6 +2098,12 @@
   color: #e0e0e8;
   font-size: 0.9rem;
   font-weight: 500;
+  transition: color 0.25s ease;
+}
+
+.sidebar-branch-row:hover .branch-row-name,
+.sidebar-branch-row.is-focused .branch-row-name {
+  color: #fff;
 }
 
 .branch-row-prog {
@@ -1776,6 +2126,8 @@
   letter-spacing: 0.5px;
   transition: all 0.2s ease;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 2;
 }
 
 .branch-max-btn:hover:not(:disabled) {
@@ -1801,102 +2153,294 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: transparent;
-  border: 4px solid #fff;
-  box-shadow: 0 0 20px #fff, 0 0 40px var(--constellation-theme);
-  transform: translate(-50%, -50%) scale(1);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.28),
+    0 0 34px rgba(107, 203, 255, 0.25),
+    0 0 52px rgba(199, 125, 255, 0.18);
+  transform: translate(-50%, -50%) scale(0.2);
   opacity: 0;
   pointer-events: none;
   z-index: 10;
-  transition: transform 1.5s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 1.5s ease, border-color 1.5s ease;
+  mix-blend-mode: screen;
 }
 
 .apex-shockwave-pulse.trigger {
-  transform: translate(-50%, -50%) scale(120);
-  opacity: 1;
-  border-color: rgba(255, 255, 255, 0);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(212, 175, 55, 0.3) 30%, rgba(255, 0, 85, 0) 75%);
+  background:
+    radial-gradient(circle, transparent 34%, rgba(255, 255, 255, 0.42) 39%, rgba(107, 203, 255, 0.22) 52%, transparent 72%),
+    conic-gradient(from 180deg, rgba(107, 203, 255, 0.04), rgba(199, 125, 255, 0.32), rgba(255, 107, 157, 0.26), rgba(255, 217, 61, 0.16), rgba(107, 203, 119, 0.22), rgba(107, 203, 255, 0.04));
+  animation: apexShockwaveExpand 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes apexShockwaveExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
+    opacity: 0;
+    filter: blur(0);
+  }
+  12% {
+    opacity: 0.78;
+  }
+  42% {
+    opacity: 0.36;
+    filter: blur(0.4px);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(72) rotate(84deg);
+    opacity: 0;
+    filter: blur(1.2px);
+  }
 }
 
 .apex-screen-flash {
   position: absolute;
   inset: 0;
-  background: #fff;
-  opacity: 0.85;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.44) 0%, rgba(107, 203, 255, 0.18) 18%, transparent 48%),
+    conic-gradient(from 90deg at 50% 50%, rgba(107, 203, 255, 0.1), rgba(199, 125, 255, 0.32), rgba(255, 107, 157, 0.22), rgba(255, 217, 61, 0.15), rgba(107, 203, 119, 0.24), rgba(107, 203, 255, 0.1));
+  background-size: auto, var(--apex-rainbow-size);
+  opacity: 0.42;
   pointer-events: none;
   z-index: 99;
-  animation: flashFade 0.8s forwards cubic-bezier(0.19, 1, 0.22, 1);
+  mix-blend-mode: screen;
+  animation: flashFade 1.35s forwards cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes flashFade {
   0% {
-    opacity: 0.85;
-    background: #fff;
+    opacity: 0;
+    transform: scale(0.96);
+    background-position: 0% 50%;
   }
-  50% {
-    background: color-mix(in srgb, var(--constellation-theme) 40%, #fff);
+  20% {
+    opacity: 0.42;
+  }
+  54% {
+    opacity: 0.22;
   }
   100% {
+    transform: scale(1.04);
     opacity: 0;
+    background-position: 220% 50%;
   }
 }
 
 .apex-awakening-node-core {
-  animation: apexCoreSpin 4.5s cubic-bezier(0.25, 1, 0.5, 1) infinite !important;
+  transform-origin: 50% 50%;
+  animation: apexCoreSpin 3.6s cubic-bezier(0.2, 0.8, 0.2, 1) both !important;
+  will-change: transform, filter;
+}
+
+.center-star.apex-awakening-node-core::before,
+.center-star.apex-awakening-node-core::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.center-star.apex-awakening-node-core::before {
+  inset: -72px;
+  z-index: 0;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.26) 0%, rgba(107, 203, 255, 0.17) 18%, rgba(199, 125, 255, 0.14) 38%, transparent 70%);
+  filter: blur(6px);
+  opacity: 0;
+  animation: apexLightBloom 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.center-star.apex-awakening-node-core::after {
+  inset: -34px;
+  z-index: 1;
+  background:
+    conic-gradient(from 0deg, transparent 0deg, rgba(107, 203, 255, 0.95) 36deg, rgba(255, 255, 255, 0.74) 48deg, rgba(255, 107, 157, 0.55) 66deg, transparent 98deg, transparent 360deg);
+  filter: blur(1px) drop-shadow(0 0 14px rgba(107, 203, 255, 0.62));
+  opacity: 0;
+  animation: apexLightSweep 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.center-star.apex-awakening-node-core .apex-rainbow-ring {
+  animation:
+    apexRainbowSpin 1.8s linear infinite,
+    apexRingIgnite 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.center-star.apex-awakening-node-core .apex-core {
+  animation: apexCoreIgnite 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 @keyframes apexCoreSpin {
   0% {
-    transform: translate(-50%, -50%) rotate(0deg) scale(1.1);
-    filter: brightness(1.2) drop-shadow(0 0 10px var(--constellation-theme));
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    filter: brightness(1.05) drop-shadow(0 0 10px rgba(107, 203, 255, 0.35));
   }
-  35% {
-    transform: translate(-50%, -50%) rotate(720deg) scale(1.25);
-    filter: brightness(1.8) drop-shadow(0 0 25px #fff) drop-shadow(0 0 45px var(--constellation-theme));
+  58% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1.16);
+    filter: brightness(1.62) drop-shadow(0 0 22px rgba(255, 255, 255, 0.76)) drop-shadow(0 0 42px rgba(107, 203, 255, 0.5));
   }
-  70% {
-    transform: translate(-50%, -50%) rotate(1440deg) scale(1.15);
-    filter: brightness(1.5) drop-shadow(0 0 20px #fff) drop-shadow(0 0 35px var(--constellation-theme));
+  78% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1.08);
+    filter: brightness(1.34) drop-shadow(0 0 16px rgba(255, 255, 255, 0.52)) drop-shadow(0 0 28px rgba(199, 125, 255, 0.36));
   }
   100% {
-    transform: translate(-50%, -50%) rotate(1800deg) scale(1.0);
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+    filter: brightness(1.12) drop-shadow(0 0 12px rgba(107, 203, 255, 0.34));
+  }
+}
+
+@keyframes apexLightBloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  22% {
+    opacity: 0.82;
+  }
+  72% {
+    opacity: 0.48;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes apexLightSweep {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg) scale(0.75);
+  }
+  16% {
+    opacity: 0.8;
+  }
+  64% {
+    opacity: 0.72;
+    transform: rotate(360deg) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(420deg) scale(1.22);
+  }
+}
+
+@keyframes apexRingIgnite {
+  0% {
+    opacity: 0.42;
+    filter: blur(2px) drop-shadow(0 0 8px rgba(107, 203, 255, 0.25));
+  }
+  42% {
+    opacity: 1;
+    filter: blur(0.4px) drop-shadow(0 0 18px rgba(107, 203, 255, 0.62));
+  }
+  100% {
+    opacity: 0.92;
+    filter: blur(0.5px) drop-shadow(0 0 12px rgba(255, 100, 200, 0.5));
+  }
+}
+
+@keyframes apexCoreIgnite {
+  0% {
+    box-shadow:
+      0 0 18px rgba(107, 203, 255, 0.18),
+      inset 0 0 14px rgba(255, 255, 255, 0.05);
+  }
+  45% {
+    border-color: rgba(255, 255, 255, 0.92);
+    box-shadow:
+      0 0 34px rgba(255, 255, 255, 0.55),
+      0 0 72px rgba(107, 203, 255, 0.38),
+      0 0 98px rgba(255, 107, 157, 0.24),
+      inset 0 0 20px rgba(255, 255, 255, 0.14);
+  }
+  100% {
+    border-color: rgba(255, 255, 255, 0.65);
+    box-shadow:
+      0 0 35px rgba(255, 150, 255, 0.45),
+      0 0 60px rgba(100, 200, 255, 0.25),
+      inset 0 0 20px rgba(255, 255, 255, 0.12);
   }
 }
 
 .tree-node.apex-awakening-node {
-  filter: brightness(1.6) drop-shadow(0 0 12px var(--constellation-theme)) !important;
+  filter: brightness(1.34) drop-shadow(0 0 11px var(--constellation-theme)) !important;
   border-color: #fff !important;
-  box-shadow: 0 0 15px #fff, 0 0 25px var(--constellation-theme) !important;
-  transform: translate(-50%, -50%) rotate(45deg) scale(1.25) !important;
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.7),
+    0 0 22px var(--constellation-theme) !important;
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.12) !important;
+  transition:
+    transform 0.86s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.86s ease,
+    box-shadow 0.86s ease,
+    border-color 0.86s ease !important;
 }
 
 .branch-line.apex-awakening-line,
 .culmination-link.apex-awakening-line {
   stroke: #fff !important;
-  stroke-width: 3.5px !important;
-  stroke-opacity: 0.95 !important;
-  filter: drop-shadow(0 0 8px var(--constellation-theme));
+  stroke-width: 3px !important;
+  stroke-opacity: 0.82 !important;
+  filter: drop-shadow(0 0 7px var(--constellation-theme));
+  transition:
+    stroke 0.85s ease var(--apex-line-delay, 0ms),
+    stroke-width 0.85s ease var(--apex-line-delay, 0ms),
+    stroke-opacity 0.85s ease var(--apex-line-delay, 0ms),
+    filter 0.85s ease var(--apex-line-delay, 0ms) !important;
 }
 
 .center-star.apex-unlock-explosion .apex-core {
-  box-shadow: 0 0 50px #fff, 0 0 100px var(--constellation-theme), 0 0 150px #ff6b9d !important;
+  box-shadow:
+    0 0 34px rgba(255, 255, 255, 0.86),
+    0 0 76px var(--constellation-theme),
+    0 0 115px rgba(255, 107, 157, 0.55) !important;
 }
 
 .detail-section-apex-effect.apex-card-awoken {
-  animation: cardAwakeGlow 2.5s infinite alternate;
   border-radius: 8px;
+}
+
+.detail-section-apex-effect.apex-card-awoken .detail-passive-effect-card {
+  animation: cardAwakeGlow 2.8s ease-in-out infinite alternate;
 }
 
 @keyframes cardAwakeGlow {
   0% {
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 0 12px rgba(107, 203, 255, 0.12),
+      0 0 18px rgba(199, 125, 255, 0.09),
+      inset 0 0 10px rgba(255, 255, 255, 0.04);
   }
   100% {
-    box-shadow: 0 0 25px var(--constellation-theme), inset 0 0 15px rgba(255, 255, 255, 0.2);
-    border: 1px solid #fff;
+    box-shadow:
+      0 0 18px rgba(255, 107, 157, 0.18),
+      0 0 28px rgba(107, 203, 255, 0.18),
+      0 0 38px rgba(255, 217, 61, 0.08),
+      inset 0 0 14px rgba(255, 255, 255, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-canvas::before,
+  .constellation-canvas::after,
+  .constellation-nodes-layer .tree-node,
+  .branch-line,
+  .culmination-link,
+  .keystone-glow-animated,
+  .center-star .apex-rainbow-ring,
+  .center-star .apex-sparkle-field,
+  .apex-progress-fill,
+  .effect-pills-animated .effect-pill {
+    animation: none !important;
+  }
+
+  .constellation-nodes-layer .tree-node,
+  .constellation-inner,
+  .branch-line,
+  .culmination-link {
+    transition-duration: 0.01ms !important;
   }
 }

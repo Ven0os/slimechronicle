@@ -65,7 +65,7 @@ export function updateChronoFractureUI(
     } else if (imminence) {
       hint.textContent = 'Relâchez pour désurcharger (−10 %)';
     } else if (apexActive && fractureValue >= CHRONO_FRACTURE.max && fractureValue < getOverloadImminenceThreshold(cap)) {
-      hint.textContent = `Surcharge Apex — jusqu'à ${cap}% (+0,33 % dmg / %)`;
+      hint.textContent = `Surcharge Apex — jusqu'à ${cap}% (rayon +0,42 % dmg, +0,05 % taille / %)`;
     } else if (isDecaying) {
       hint.textContent = 'Fracture en décroissance';
     } else {

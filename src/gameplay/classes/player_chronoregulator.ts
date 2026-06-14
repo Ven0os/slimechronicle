@@ -3,7 +3,6 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, createSkillVisual, createTelegraph, spawnParticles } from '../../visual/effects';
-import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
@@ -972,7 +971,7 @@ export class Chronoregulator extends PlayerBase {
     const hitOrigin = this.getBeamHitOrigin();
     const dir = this.getAimDir();
     if (this.isBeaming && Globals.enemies) {
-      const { length, enemy } = getBeamHitInfo(hitOrigin, dir, Globals.enemies);
+      const { length, enemy } = getBeamHitInfo(hitOrigin, dir, Globals.enemies, this.getBeamFractureSizeMult());
       if (enemy) return enemy.position.clone();
       return hitOrigin.clone().add(dir.clone().multiplyScalar(Math.max(2, length * 0.55)));
     }
@@ -1034,9 +1033,12 @@ export class Chronoregulator extends PlayerBase {
     this.resetFractureActivity();
   }
 
-  dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0 } = {}) {
+  dealMagicDamage(enemy, baseDmg, { skill = false, skillKey = 'primary', prismDepth = 0, beamRay = false } = {}) {
     if (!enemy || enemy.dead) return 0;
     let dmg = baseDmg * ConvergenceEffects.getPrismBeamDmgMult(prismDepth);
+    if (beamRay) {
+      dmg *= ConvergenceEffects.getFractureDamageMult(this.fractureGauge || 0);
+    }
     dmg = ConstellationEngine.modifyDamageDealt(dmg, { skill, skillKey });
     if (enemy._temporalVuln?.timer > 0) dmg *= enemy._temporalVuln.mult || 1.2;
 
@@ -1136,6 +1138,15 @@ export class Chronoregulator extends PlayerBase {
   getAscendantMult() {
     const cap = this.getAscendantMax();
     return 1 + Math.min(cap, (this.beamFocusTime / CHRONO_ASCENDANT.ramp) * cap);
+  }
+
+  getBeamFractureSizeMult() {
+    return ConvergenceEffects.getFractureBeamSizeMult(this.fractureGauge || 0);
+  }
+
+  getBeamFractureVisualSizeMult() {
+    const gameplayScale = this.getBeamFractureSizeMult();
+    return 1 + (gameplayScale - 1) * 5;
   }
 
   getActiveLens(origin, dir) {
@@ -1278,17 +1289,19 @@ export class Chronoregulator extends PlayerBase {
     const coneAmp = STATE.passives?.continuumBurst ? 1.15 : 1;
     const refined = ConvergenceEffects.hasRefinedPrisms();
     const routes = resolveBeamRoutes(staffOrigin, mainDir, this.lenses, coneAmp, refined, prismMods.splitCount);
+    const fractureSizeMult = this.getBeamFractureSizeMult();
+    const fractureVisualSizeMult = this.getBeamFractureVisualSizeMult();
 
     for (const seg of routes.trunk) {
       if (seg.from.distanceTo(seg.to) > 0.15) {
-        this.placeBeamSegment(seg.from, seg.to, false);
+        this.placeBeamSegment(seg.from, seg.to, false, fractureVisualSizeMult);
       }
     }
 
     for (const ray of routes.rays) {
-      const { length } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
+      const { length } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies, fractureSizeMult);
       const end = ray.origin.clone().add(ray.dir.clone().multiplyScalar(Math.max(1, length)));
-      this.placeBeamSegment(ray.origin, end, ray.split);
+      this.placeBeamSegment(ray.origin, end, ray.split, fractureVisualSizeMult);
     }
   }
 
@@ -1341,13 +1354,14 @@ export class Chronoregulator extends PlayerBase {
     const tickDt = this.getBeamTickInterval();
     const ascMult = this.getAscendantMult();
     const baseDmg = STATE.stats.atk * CHRONO_BEAM.tickDmg * ascMult * this.getBeamTickDmgMult();
+    const fractureSizeMult = this.getBeamFractureSizeMult();
 
     let hitAny = false;
     let focusEnemy = null;
     const damagedThisTick = new Set();
 
     for (const ray of rays) {
-      const { enemy } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies);
+      const { enemy } = getBeamHitInfo(ray.origin, ray.dir, Globals.enemies, fractureSizeMult);
       if (!enemy) continue;
 
       const eid = this.getEnemyId(enemy);
@@ -1363,7 +1377,11 @@ export class Chronoregulator extends PlayerBase {
         tickDmg *= 1 + CHRONO_SKILLS.dephasing.beamMarkedBonus;
       }
 
-      const dealt = this.dealMagicDamage(enemy, tickDmg, { skillKey: 'primary', prismDepth: ray.prismDepth || 0 });
+      const dealt = this.dealMagicDamage(enemy, tickDmg, {
+        skillKey: 'primary',
+        prismDepth: ray.prismDepth || 0,
+        beamRay: true,
+      });
       this.recordBeamDamage(enemy, dealt);
 
       if (this.isConverging) {

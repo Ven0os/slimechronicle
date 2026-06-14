@@ -815,7 +815,7 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
       branch: 'apex',
       tier: 5,
       name: 'Architecte de la Fracture',
-      desc: '3 prismes · Fracture 150 % · +0,33 % dmg/Fracture.',
+      desc: '3 prismes · Fracture 150 % · rayon +0,42 % dmg et +0,05 % taille/Fracture.',
       icon: 'fa-infinity',
       cost: 2,
       keystone: true,
@@ -838,7 +838,9 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         ),
         keystone: {
           name: 'Prisme Affiné',
+
           desc: 'Passif : cône prisme élargi, rayon +8 %, Convergence +0,5 s.',
+
           icon: 'fa-gem',
           passive: 'continuumBurst',
           stats: { atk: 8, maxHpFlat: 10, def: 6 },
@@ -860,7 +862,8 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         ),
         keystone: {
           name: 'Prisme Supplémentaire',
-          desc: 'Passif : les prismes projettent 4 rayons brûlants · Brûlure Temporelle via prisme.',
+          desc: 'Passif : prismes projettent 4 rayons brûlants.',
+
           icon: 'fa-gem',
           passive: 'extraPrismLens',
           stats: { atk: 8, maxHpFlat: 10, def: 6 },

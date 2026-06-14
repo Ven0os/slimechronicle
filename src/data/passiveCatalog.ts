@@ -67,7 +67,7 @@ export const PASSIVE_CATALOG: Record<string, PassiveDisplayMeta> = {
   ruptureSurge: { key: 'ruptureSurge', name: 'Déchirure Amplifiée', desc: 'Explosion de rupture volontaire +35%. Rayon +8% dégâts.', icon: 'fa-burst', color: '#ffd93d', category: 'offense' },
   anachronismeAmp: { key: 'anachronismeAmp', name: 'Conduction Fractale', desc: 'Compétences coûtent 25 Fracture au lieu de 30.', icon: 'fa-hourglass-half', color: '#bb8fce', category: 'utility' },
   freezeFieldAmp: { key: 'freezeFieldAmp', name: 'Déphasage Renforcé', desc: 'Déphasage : portée +2, Instabilité +2s.', icon: 'fa-atom', color: '#f39c12', category: 'utility' },
-  continuumMastery: { key: 'continuumMastery', name: 'Architecte de la Fracture', desc: 'Fracture 150 % · prismes 5s+3,5s · +3,5s aux actifs.', icon: 'fa-infinity', color: '#ffd93d', category: 'synergy' },
+  continuumMastery: { key: 'continuumMastery', name: 'Architecte de la Fracture', desc: 'Fracture 150 % · rayon renforcé et élargi · prismes 5s+3,5s.', icon: 'fa-infinity', color: '#ffd93d', category: 'synergy' },
 };
 
 export function getPassiveMeta(key: string): PassiveDisplayMeta | undefined {

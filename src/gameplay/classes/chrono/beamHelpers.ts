@@ -291,6 +291,7 @@ export function getBeamHitInfo(
   origin: THREE.Vector3,
   dir: THREE.Vector3,
   enemies: Array<{ dead?: boolean; position: THREE.Vector3; radius?: number }> | null,
+  widthScale = 1,
 ): { length: number; enemy: unknown | null } {
   let hitDist = CHRONO_BEAM.range;
   let hitEnemy = null;
@@ -306,7 +307,7 @@ export function getBeamHitInfo(
     const projLen = toEnemy.dot(dir);
     if (projLen < 0.05 || projLen > CHRONO_BEAM.range) continue;
     const perp = toEnemy.clone().sub(dir.clone().multiplyScalar(projLen));
-    const hitRadius = CHRONO_BEAM.width + (e.radius || 0.5) * 0.55;
+    const hitRadius = CHRONO_BEAM.width * Math.max(0.2, widthScale) + (e.radius || 0.5) * 0.55;
     if (perp.length() <= hitRadius && projLen < closestDist) {
       closestDist = projLen;
       hitEnemy = e;

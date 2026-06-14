@@ -761,7 +761,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       branch: 'apex',
       tier: 11,
       name: 'Architecte de la Fracture',
-      desc: '3 prismes · Fracture 150 % · +0,33 % dmg/Fracture.',
+      desc: '3 prismes · Fracture 150 % · rayon +0,42 % dmg et +0,05 % taille/Fracture.',
       icon: 'fa-infinity',
       cost: 2,
       keystone: true,
@@ -780,7 +780,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Énergie Pure', desc: '+8 ATK', icon: 'fa-gem', effects: { atk: 8 } },
         {
           name: 'Prisme Affiné',
-          desc: 'Passif : cône prisme élargi, rayon +8%, Convergence +0,5 s.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
+          desc: 'Passif : cône du prisme élargi, rayon +8%, Convergence +0,5 s.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
           icon: 'fa-gem',
           keystone: true,
           effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'continuumBurst' }
@@ -798,7 +798,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Cristal Focal', desc: '+5% Crit Chance', icon: 'fa-crosshairs', effects: { crit: 0.05 } },
         {
           name: 'Prisme Supplémentaire',
-          desc: 'Passif : les prismes projettent 4 rayons brûlants · Brûlure Temporelle via prisme.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
+          desc: 'Passif : prismes projettent 4 rayons brûlants.\n\nBONUS DE STATS\n+8 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
           icon: 'fa-gem',
           keystone: true,
           effects: { atk: 8, crit: 0.08, critDmg: 0.12, passive: 'extraPrismLens' }
