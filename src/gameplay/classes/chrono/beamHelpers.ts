@@ -25,7 +25,7 @@ export type BeamRouteResult = {
   rays: BeamRay[];
 };
 
-/** Nombre de rayons lentille sans / avec Prisme Supplémentaire. */
+/** Nombre de rayons prisme sans / avec Prisme Supplémentaire. */
 export const LENS_SPLIT_COUNT_DEFAULT = 3;
 export const LENS_SPLIT_COUNT_EXTRA_PRISM = 4;
 
@@ -169,7 +169,7 @@ function buildTerminalLensSplitRays(
 }
 
 /**
- * Résout le graphe de routage rayon/lentille de façon déterministe.
+ * Résout le graphe de routage rayon/prisme de façon déterministe.
  * lensSplitCount pilote tous les splits (base et Apex) — jamais de boucle fixe à 3.
  */
 export function resolveBeamRoutes(
@@ -197,7 +197,7 @@ export function resolveBeamRoutes(
   return resolveRefinedChainRoutes(hitOrigin, mainDir, entries, coneAmp, lensSplitCount);
 }
 
-/** Mode base : première lentille → lensSplitCount splits terminaux. */
+/** Mode base : premier prisme → lensSplitCount splits terminaux. */
 function resolveSingleLensRoutes(
   hitOrigin: THREE.Vector3,
   mainDir: THREE.Vector3,
@@ -224,10 +224,10 @@ function resolveSingleLensRoutes(
 }
 
 /**
- * Mode Apex (prismes affinés) : chaîne centrale + splits latéraux à chaque lentille.
- * Sans passif : 2 latéraux + 1 central final = 3 rayons (1 lentille).
+ * Mode Apex (prismes affinés) : chaîne centrale + splits latéraux à chaque prisme.
+ * Sans passif : 2 latéraux + 1 central final = 3 rayons (1 prisme).
  * Avec Prisme Supplémentaire : 4 latéraux (distribution −12/−3/+3/+12), pas de central
- * supplémentaire sur une seule lentille ; chaîne multi-lentilles conserve le central final.
+ * supplémentaire sur un seul prisme ; chaîne multi-prismes conserve le central final.
  */
 function resolveRefinedChainRoutes(
   hitOrigin: THREE.Vector3,

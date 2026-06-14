@@ -5,11 +5,17 @@ import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
 import { CHRONO_FRACTURE } from './constants';
 
+function isChronoApexNodeUnlocked(): boolean {
+  const nodes = STATE.unlockedNodes;
+  if (!Array.isArray(nodes)) return false;
+  return nodes.some((id) => id === 'chronoregulator-apex');
+}
+
 /** Apex Chronoregent actif : nœud débloqué OU passif continuumMastery ≥ 2. */
 export function isChronoFractureApexActive(): boolean {
-  const cls = Globals.player?.className || STATE.class;
+  const cls = Globals.player?.className ?? STATE.class;
   if (cls !== 'chronoregulator') return false;
-  if (STATE.unlockedNodes?.includes('chronoregulator-apex')) return true;
+  if (isChronoApexNodeUnlocked()) return true;
   return ((STATE.passives?.continuumMastery as number) ?? 0) >= 2;
 }
 

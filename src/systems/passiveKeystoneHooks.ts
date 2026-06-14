@@ -323,22 +323,13 @@ export const PassiveKeystoneHooks = {
 
   getExtraPrismLensMods(player?: { _netExtraPrismLens?: number; isLocalPlayer?: () => boolean } | null) {
     if (!passiveRankForPlayer(player, 'extraPrismLens')) {
-      return { splitCount: LENS_SPLIT_COUNT_DEFAULT, splitDmgMult: 1, burnOnSplit: false };
+      return { splitCount: LENS_SPLIT_COUNT_DEFAULT, splitDmgMult: 1 };
     }
-    return { splitCount: LENS_SPLIT_COUNT_EXTRA_PRISM, splitDmgMult: 0.9, burnOnSplit: true };
+    return { splitCount: LENS_SPLIT_COUNT_EXTRA_PRISM, splitDmgMult: 0.9 };
   },
 
-  applyPrismLensBurn(enemy: { dead?: boolean; position?: THREE.Vector3 }, tickDmg: number) {
-    if (!enemy || enemy.dead) return;
-    for (let t = 1; t <= 2; t++) {
-      setTimeout(() => {
-        if (!enemy.dead && canApplyGameplay()) {
-          dealDamageToEnemy(enemy, tickDmg * 0.35, { pos: enemy.position, noCrit: true, skillKey: 'primary' });
-          createDamageText('BRÛLURE', enemy.position, '#ff6600');
-        }
-      }, t * 500);
-    }
-  },
+  /** @deprecated Brûlure Temporelle gérée par chrono/temporalBurn.ts via dealMagicDamage. */
+  applyPrismLensBurn(_enemy: unknown, _tickDmg: number) {},
 
   getSolarFlareMods() {
     return { dotMult: 0.3, dotTicks: 1, extraBounces: 0 };

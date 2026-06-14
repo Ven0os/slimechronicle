@@ -383,9 +383,11 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   extraPrismLens: {
     paragraphs: () => [
-      'Prisme : split en 4 rayons au lieu de 3.',
-      'Rayons prismatiques : dégâts −10 % par rayon.',
-      'Rayons prismatiques : infligent une brûlure temporelle.',
+      'Prisme (Espace) :\nGénère 4 rayons au lieu de 3.',
+      'Rayons prismatiques :\nDégâts -10% par rayon.',
+      'Tirer à travers un Prisme :\nApplique Brûlure Temporelle.',
+      'Brûlure Temporelle :\n10% des dégâts infligés par seconde pendant 3 s.',
+      'Maximum 3 cumuls.',
     ],
   },
 

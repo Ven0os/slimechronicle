@@ -838,7 +838,9 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         ),
         keystone: {
           name: 'Prisme Affiné',
-          desc: 'Passif : cône du prisme élargi, rayon +8 %, Convergence +0,5 s.',
+
+          desc: 'Passif : cône prisme élargi, rayon +8 %, Convergence +0,5 s.',
+
           icon: 'fa-gem',
           passive: 'continuumBurst',
           stats: { atk: 8, maxHpFlat: 10, def: 6 },
@@ -861,6 +863,7 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         keystone: {
           name: 'Prisme Supplémentaire',
           desc: 'Passif : prismes projettent 4 rayons brûlants.',
+
           icon: 'fa-gem',
           passive: 'extraPrismLens',
           stats: { atk: 8, maxHpFlat: 10, def: 6 },
