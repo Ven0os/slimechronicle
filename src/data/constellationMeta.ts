@@ -116,11 +116,11 @@ export const CONSTELLATION_META: Record<ClassId, ClassMeta> = {
     lore: 'Soleil et Lune : stats puis passifs en bout de branche. L\'Apex fusionne les deux astres.',
     motto: 'Deux astres, une volonté.',
     branches: {
-      soleil: { desc: 'ATK et DoT — keystone : corona.', icon: 'fa-sun', focus: 'DoT' },
-      lune: { desc: 'Critiques lunaires — keystone : pleine lune.', icon: 'fa-moon', focus: 'Burst' },
-      orbite: { desc: 'Sprint et CD — keystone : tissage orbital.', icon: 'fa-yin-yang', focus: 'Synergie' },
+      soleil: { desc: 'ATK et dash — keystone : Couronne Éclipsée.', icon: 'fa-sun', focus: 'Combo' },
+      lune: { desc: 'Critiques lunaires — keystone : Marée Lunaire.', icon: 'fa-moon', focus: 'Soins' },
+      orbite: { desc: 'Sprint et CD — keystone : Rupture Astrale.', icon: 'fa-burst', focus: 'Combo' },
       vide: { desc: 'HP et DEF — keystone : trou noir.', icon: 'fa-circle-dot', focus: 'Contrôle' },
-      devoration: { desc: 'Lance solaire — fin de branche : Soleil Dévorant.', icon: 'fa-sun-plant-wilt', focus: 'Spécialisation' },
+      devoration: { desc: 'Lance solaire — fin de branche : Soleil Vorace.', icon: 'fa-sun-plant-wilt', focus: 'Détonation' },
     },
   },
   chronoregulator: {

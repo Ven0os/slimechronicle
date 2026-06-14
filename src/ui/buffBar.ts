@@ -154,18 +154,64 @@ export const BuffBar = {
       });
     }
 
-    if (p.orbitalWeave && (p.orbitalStacks || 0) > 0) {
-      const meta = getPassiveMeta('orbitalWeave');
+    if (Globals.player?.className === 'eclipse' && ConstellationEngine.getPassiveRank('ruptureAstrale') > 0) {
+      const stacks = Globals.player._ruptureStacks || 0;
+      if (stacks > 0) {
+        const meta = getPassiveMeta('ruptureAstrale');
+        entries.push({
+          id: 'stack-ruptureAstrale',
+          name: meta?.name || 'Rupture Astrale',
+          desc: 'Coups de lance avant la prochaine Rupture.',
+          icon: meta?.icon || 'fa-burst',
+          color: meta?.color || '#9b59b6',
+          type: 'stack',
+          stacks,
+          maxStacks: 3,
+        });
+      }
+    }
+
+    if (Globals.player?._cataclysmWindowUntil && Date.now() < Globals.player._cataclysmWindowUntil
+        && Globals.player?.className === 'eclipse') {
+      const left = Math.max(0, (Globals.player._cataclysmWindowUntil - Date.now()) / 1000);
       entries.push({
-        id: 'stack-orbitalWeave',
-        name: meta?.name || 'Tissage Orbital',
-        desc: meta?.desc || 'Stacks Soleil/Lune.',
-        icon: meta?.icon || 'fa-yin-yang',
-        color: meta?.color || '#9b59b6',
-        type: 'stack',
-        stacks: p.orbitalStacks,
-        maxStacks: 4,
+        id: 'eclipse-cataclysm-window',
+        name: 'Fenêtre Cataclysme',
+        desc: 'Pic de Lune aspire · Rupture renforcée.',
+        icon: 'fa-meteor',
+        color: '#ffffff',
+        type: 'buff',
+        timer: left,
+        maxTimer: 8,
       });
+    }
+
+    if (ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse')
+        && Globals.player?.className === 'eclipse') {
+      entries.push({
+        id: 'apex-eclipse-synergie',
+        name: 'Convergence Éclipsée',
+        desc: 'Rupture Astrale : −0,5 s Pic de Lune · Fragilité Lunaire.',
+        icon: 'fa-circle-half-stroke',
+        color: '#af7ac5',
+        type: 'passive',
+      });
+    }
+
+    if (Globals.player?.className === 'eclipse' && ConstellationEngine.getPassiveRank('devouringSun') > 0) {
+      const sparks = Globals.player._solarSparks || 0;
+      if (sparks > 0) {
+        entries.push({
+          id: 'stack-eclipse-sparks',
+          name: 'Étincelles Solaires',
+          desc: sparks >= 5 ? 'Explosion Solaire prête !' : `${sparks}/5 vers Explosion Solaire.`,
+          icon: 'fa-fire',
+          color: '#ff6600',
+          type: 'stack',
+          stacks: sparks,
+          maxStacks: 5,
+        });
+      }
     }
 
     if (p.etherSteps?.length) {
@@ -219,37 +265,6 @@ export const BuffBar = {
         type: 'stack',
         stacks: until === 1 ? 3 : until - 1,
         maxStacks: 3,
-      });
-    }
-
-    if ((player?._empoweredAttacksLeft || 0) > 0
-        && ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse')
-        && player?.className === 'eclipse') {
-      entries.push({
-        id: 'apex-eclipse-empowered',
-        name: 'Dualité Céleste',
-        desc: 'Attaques renforcées après Cataclysme (Soleil + Lune).',
-        icon: 'fa-sun',
-        color: '#ffcc00',
-        type: 'stack',
-        stacks: player._empoweredAttacksLeft,
-        maxStacks: 6,
-      });
-    }
-
-    if (player?._cataclysmHasteUntil && Date.now() < player._cataclysmHasteUntil
-        && ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse')
-        && player?.className === 'eclipse') {
-      const left = Math.max(0, (player._cataclysmHasteUntil - Date.now()) / 1000);
-      entries.push({
-        id: 'apex-eclipse-haste',
-        name: 'Hâte Cataclysme',
-        desc: '+50 % vitesse d\'attaque.',
-        icon: 'fa-bolt',
-        color: '#ffffff',
-        type: 'buff',
-        timer: left,
-        maxTimer: 5,
       });
     }
 

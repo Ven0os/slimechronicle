@@ -217,20 +217,14 @@ export const NetClassState = {
 
   onEclipseCataclysm(playerId: string, player: Record<string, unknown>) {
     const s = ensure(playerId);
-    const es = ensureEclipse(s);
-    es.empoweredLeft = 6;
-    es.cataclysmUntil = serverNowMs() + 5000;
     s.version += 1;
     if (player) {
-      player._empoweredAttacksLeft = 6;
-      player._cataclysmHasteUntil = es.cataclysmUntil;
+      ConvergenceEffects.onEclipseCataclysm(player);
     }
-    ConvergenceEffects.onEclipseCataclysm(player);
   },
 
-  getEclipseAttackSpeedMult(player: { _cataclysmHasteUntil?: number }): number {
-    if (!player?._cataclysmHasteUntil || serverNowMs() > player._cataclysmHasteUntil) return 1;
-    return ConstellationEngine.isApexPassiveActive('celestialConvergence', 'eclipse') ? 1.5 : 1;
+  getEclipseAttackSpeedMult(): number {
+    return 1;
   },
 
   /** Hôte : compteur kills paradoxe mage. */
@@ -371,23 +365,21 @@ export const NetClassState = {
     pos: THREE.Vector3,
     dir: THREE.Vector3,
   ) {
-    const empowered = this.consumeEmpoweredAttack(playerId);
-    const empMult = empowered ? 1.3 : 1;
     const s = ensure(playerId);
     const eState = ensureEclipse(s);
 
-    const fireSun = empowered || eState.nextIsSun === 1;
-    const fireMoon = empowered || eState.nextIsSun === 0;
+    const fireSun = eState.nextIsSun === 1;
+    const fireMoon = eState.nextIsSun === 0;
 
     if (fireSun) {
-      this.resolveMeleeHit(playerId, pos, dir, 3.5, STATE.stats.atk * empMult, 0.4);
+      this.resolveMeleeHit(playerId, pos, dir, 3.5, STATE.stats.atk, 0.4);
       eState.sun = Math.min(100, eState.sun + 10);
-      if (!empowered) eState.nextIsSun = 0;
+      eState.nextIsSun = 0;
     }
     if (fireMoon) {
-      this.resolveMeleeHit(playerId, pos, dir, 3.5, STATE.stats.atk * 1.2 * empMult, 0.4);
+      this.resolveMeleeHit(playerId, pos, dir, 3.5, STATE.stats.atk * 1.2, 0.4);
       eState.moon = Math.min(100, eState.moon + 10);
-      if (!empowered) eState.nextIsSun = 1;
+      eState.nextIsSun = 1;
     }
     s.version += 1;
     applyAuthToPlayer(player, s);

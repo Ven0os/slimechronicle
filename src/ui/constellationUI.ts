@@ -508,7 +508,7 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
             <div class="detail-passive-effect-glow"></div>
             <div class="${iconClass.trim()}"><i class="fas ${icon}" aria-hidden="true"></i></div>
             <div class="detail-passive-effect-body">
-              <div class="detail-passive-effect-kicker">${rewardKind === 'apex' ? 'Apex' : 'Passif'} · ${passiveCategory}</div>
+              <div class="detail-passive-effect-kicker">${rewardKind === 'apex' ? 'Synergie' : `Passif · ${passiveCategory}`}</div>
               <div class="detail-passive-effect-name">${passiveTitle}</div>
               ${detailHtml}
             </div>

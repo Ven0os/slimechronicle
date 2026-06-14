@@ -12,6 +12,29 @@ import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { canApplyGameplay, canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
+import {
+  applyPicDeLuneDisplacement,
+  getLunarFragilityMult,
+  incrementRuptureLanceStack,
+  isEclipseCataclysmWindow,
+} from './eclipse/eclipseRupture';
+import {
+  applyLunarTideHeal,
+  triggerSolarExplosion,
+} from './eclipse/eclipseKeystones';
+import {
+  calcLanceChargeRangeBonus,
+  consumeFulguranceDamageBonus,
+  hasEclipseCrown,
+  isValidChargedLanceRelease,
+  LANCE_CHARGE_MAX_SEC,
+  LANCE_CHARGE_MIN_SEC,
+  recordFulguranceTargets,
+} from './eclipse/eclipseLanceCharge';
+import {
+  hideEclipseLanceChargeUI,
+  updateEclipseLanceChargeUI,
+} from './eclipse/eclipseLanceChargeUi';
 
 export class Eclipse extends PlayerBase {
     // ... (Reste du code inchangé) ...
@@ -28,6 +51,13 @@ export class Eclipse extends PlayerBase {
         this.dashHitSet = new Set();
         this.eSkillCastTimer = 0;
         this.shiftSkillCastTimer = 0;
+        this._ruptureStacks = 0;
+        this._cataclysmWindowUntil = 0;
+        this._solarSparks = 0;
+        this.lastFulguranceTargetsHit = 0;
+        this.lanceCharging = false;
+        this.lanceChargeElapsed = 0;
+        this.lanceChargeDir = null;
         this.attackAnimTime = 0;
         this.dashComboCount = 0;
         this.dashShield = null;
@@ -650,8 +680,15 @@ export class Eclipse extends PlayerBase {
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
                 this.invulnerable = false;
+                recordFulguranceTargets(this, this.dashHitSet.size);
                 this.explodeDashShield();
             }
+        }
+
+        this.tickLanceCharge(dt);
+
+        if (this.isLocalPlayer()) {
+            updateEclipseLanceChargeUI(this.lanceChargeElapsed, this.lanceCharging);
         }
 
         super.update(dt);
@@ -1116,51 +1153,123 @@ export class Eclipse extends PlayerBase {
         this.addLocalVisual(ghostMesh, 0.3, (m, t) => m.material.opacity = t * 0.4);
     }
 
-    performAttack() {
-        if(this.isCasting) return; // Empêche d'attaquer si en train de cast
+    beginLanceCharge() {
+        if (this.lanceCharging || this.dead || this.isDashing) return;
+        if (this.isCasting && !this.lanceCharging) return;
+        if (!hasEclipseCrown()) return;
+        if (this.attackCooldown > 0) return;
 
-        this.faceMouse(); 
-        let haste = ConvergenceEffects.getEclipseAttackSpeedMult(this);
-        if (this.eclipse.active) {
-            haste *= 1.5;
+        this.faceMouse();
+        const dir = this.isLocalPlayer()
+            ? this.getTargetDir()
+            : new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+
+        this.lanceCharging = true;
+        this.lanceChargeElapsed = 0;
+        this.lanceChargeDir = dir.clone();
+        this.isCasting = true;
+        this.speed = 0;
+    }
+
+    tickLanceCharge(dt) {
+        if (!this.lanceCharging) return;
+
+        if (!STATE.mouseDown) {
+            this.releaseLanceCharge();
+            return;
         }
+
+        this.lanceChargeElapsed = Math.min(LANCE_CHARGE_MAX_SEC, this.lanceChargeElapsed + dt);
+        this.faceMouse();
+
+        if (isValidChargedLanceRelease(this.lanceChargeElapsed)) {
+            const ratio = (this.lanceChargeElapsed - LANCE_CHARGE_MIN_SEC)
+                / (LANCE_CHARGE_MAX_SEC - LANCE_CHARGE_MIN_SEC);
+            this.armR.rotation.x = -Math.PI / 2 - ratio * 0.45;
+            this.body.rotation.x = -0.25 * ratio;
+        }
+    }
+
+    releaseLanceCharge() {
+        if (!this.lanceCharging) return;
+
+        const dir = this.lanceChargeDir || this.getTargetDir();
+        const elapsed = this.lanceChargeElapsed;
+        const isCharged = isValidChargedLanceRelease(elapsed);
+
+        this.lanceCharging = false;
+        this.lanceChargeElapsed = 0;
+        this.lanceChargeDir = null;
+        this.isCasting = false;
+        this.speed = STATE.stats.speed;
+        this.armR.rotation.x = 0;
+        this.body.rotation.x = 0;
+
+        if (this.isLocalPlayer()) hideEclipseLanceChargeUI();
+
+        if (isCharged) {
+            this.executeLanceAttack(dir, elapsed, true);
+        } else {
+            this.executeLanceAttack(dir, 0, false);
+        }
+    }
+
+    performAttack() {
+        if (this.isCasting && !this.lanceCharging) return;
+
+        if (hasEclipseCrown()) {
+            if (!this.lanceCharging) this.beginLanceCharge();
+            return;
+        }
+
+        const dir = this.isLocalPlayer()
+            ? this.getTargetDir()
+            : new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+        this.executeLanceAttack(dir, 0, false);
+    }
+
+    executeLanceAttack(dir, chargeSec = 0, isCharged = false) {
+        if (this.isCasting) return;
+
+        this.faceMouse();
+        let haste = 1;
+        if (this.eclipse.active) haste *= 1.5;
         this.attackCooldown = (this.attackMaxCooldown * (STATE.stats.attackSpeedMod || 1)) / haste;
         this.isAttacking = true;
         this.attackAnimTime = 0;
-        AudioSys.sfx.warrior.swing(); 
+        AudioSys.sfx.warrior.swing();
 
-        setTimeout(() => { 
+        setTimeout(() => {
             this.isAttacking = false;
-        }, 300); // 300ms attack duration
+            this.armR.rotation.x = 0;
+            this.body.rotation.x = 0;
+        }, 300);
 
-        // Target direction is direct to the mouse for local player, mesh-facing for remote
-        const dir = this.isLocalPlayer() 
-            ? this.getTargetDir()
-            : new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
-        
         const targetAngle = Math.atan2(dir.x, dir.z);
 
         if (shouldSendSkillIntent()) {
             sendSkillIntent({ intent: 'eclipse-attack', dir, pos: this.position.clone() });
         } else if (STATE.multiplayer.active && this.isLocalPlayer()) {
-            Network.send({ type: 'net-action', action: 'attack-melee', id: STATE.multiplayer.id, pos: this.position, dir: dir, color: CONFIG.colors.eclipse, class: 'eclipse' });
+            Network.send({ type: 'net-action', action: 'attack-melee', id: STATE.multiplayer.id, pos: this.position, dir, color: CONFIG.colors.eclipse, class: 'eclipse' });
         }
 
-        const empowered = canDealDamageDirectly() && ConvergenceEffects.consumeEmpoweredAttack(this);
-        const empPreview = !canDealDamageDirectly() && (this._empoweredAttacksLeft || 0) > 0;
-        if (empowered || empPreview) createDamageText('DUALITÉ+', this.position, '#ffcc00');
+        const underCataclysm = isEclipseCataclysmWindow(this);
+        const chargedCataclysm = isCharged && underCataclysm;
+        const fireSun = chargedCataclysm || this.eclipse.nextIsSun;
+        const fireMoon = chargedCataclysm || !this.eclipse.nextIsSun;
 
-        const empMult = (empowered || empPreview) ? 1.3 : 1;
-
-        const fireSun = empowered || this.eclipse.nextIsSun;
-        const fireMoon = empowered || !this.eclipse.nextIsSun;
+        const rangeBonus = isCharged ? calcLanceChargeRangeBonus(chargeSec) : 0;
+        const fulguranceMult = isCharged ? consumeFulguranceDamageBonus(this) : 1;
 
         let hitAnyEnemy = false;
 
         if (canDealDamageDirectly()) {
+            triggerSolarExplosion(this, dir);
+
             const sunMods = PassiveKeystoneHooks.getDevouringSunMods();
-            const range = 3.5 * sunMods.spearRangeMult;
+            const range = 3.5 * sunMods.spearRangeMult * (1 + rangeBonus);
             const threshold = 0.4;
+
             Globals.enemies.forEach(e => {
                 if (e.dead) return;
                 const toE = e.position.clone().sub(this.position);
@@ -1170,75 +1279,82 @@ export class Eclipse extends PlayerBase {
                     toE.normalize();
                     if (dir.dot(toE) >= threshold) {
                         hitAnyEnemy = true;
+                        const fragMult = getLunarFragilityMult(e);
                         if (fireSun) {
-                            const damage = STATE.stats.atk * empMult;
+                            const damage = STATE.stats.atk * fragMult * fulguranceMult;
                             dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
-                            spawnParticles(e.position, 0xffaa00, 5);
-                            
-                            const burnDmg = STATE.stats.atk * 0.2 * empMult * sunMods.burnDmgMult;
+                            const particleCount = chargedCataclysm ? 12 : 5;
+                            spawnParticles(e.position, 0xffaa00, particleCount);
+
+                            const burnDmg = STATE.stats.atk * 0.2 * sunMods.burnDmgMult;
                             for (let t = 0; t < sunMods.burnTicks; t++) {
                                 const delay = sunMods.burnStartMs + t * sunMods.burnIntervalMs;
-                                setTimeout(() => { 
-                                    if(!e.dead && canApplyGameplay()) { 
-                                        dealDamageToEnemy(e, burnDmg, { pos: e.position, noCrit: true, skillKey: 'primary' }); 
-                                        createDamageText("FEU", e.position, '#ffa500'); 
-                                        ConvergenceEffects.applyCataclysmVulnerability(e); 
-                                    } 
+                                setTimeout(() => {
+                                    if (!e.dead && canApplyGameplay()) {
+                                        dealDamageToEnemy(e, burnDmg, { pos: e.position, noCrit: true, skillKey: 'primary' });
+                                        createDamageText('FEU', e.position, '#ffa500');
+                                        PassiveKeystoneHooks.onEclipseBurnTick(this);
+                                    }
                                 }, delay);
                             }
                         }
                         if (fireMoon) {
-                            const damage = STATE.stats.atk * 1.2 * empMult;
+                            const damage = STATE.stats.atk * 1.2 * fragMult * fulguranceMult;
                             dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
-                            spawnParticles(e.position, 0xaa00ff, 5);
+                            const particleCount = chargedCataclysm ? 12 : 5;
+                            spawnParticles(e.position, 0xaa00ff, particleCount);
                         }
                     }
                 }
             });
         }
 
-        // Elegant straight white thrust trail (representing a lance pierce)
-        const trailLength = 4.0;
+        if (chargedCataclysm && hitAnyEnemy) {
+            createDamageText('FRAPPE ÉCLIPTIQUE', this.position, '#ffcc00');
+            createSkillVisual('shockwave', this.position.clone().add(new THREE.Vector3(0, 0.3, 0)), 2.5, 0xffffff);
+        }
+
+        const trailLength = 4.0 * (1 + rangeBonus * 0.5);
         const geom = new THREE.ConeGeometry(0.14, trailLength, 12);
-        geom.rotateX(Math.PI / 2); // align pointing forward along +Z
-        geom.translate(0, 0, trailLength / 2); // shift origin to base of cone
-        
+        geom.rotateX(Math.PI / 2);
+        geom.translate(0, 0, trailLength / 2);
+
         const mat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
+            color: chargedCataclysm ? 0xffcc00 : 0xffffff,
             transparent: true,
             opacity: 0.8,
             blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
         });
-        
+
         const slashMesh = new THREE.Mesh(geom, mat);
-        // Positioned slightly up and forward to align with the weapon's thrust tip
         slashMesh.position.copy(this.position).add(new THREE.Vector3(0, 1.0, 0)).add(dir.clone().multiplyScalar(0.4));
         slashMesh.rotation.y = targetAngle;
-        
+
         Globals.scene.add(slashMesh);
-        
+
         this.addLocalVisual(slashMesh, 0.2, (m, t, maxT) => {
-            const p = t / maxT; // 0 to 1
+            const p = t / maxT;
             m.material.opacity = p * 0.8;
-            // Stretch the spear thrust forward
             m.scale.set(1 - (1 - p) * 0.5, 1 - (1 - p) * 0.5, 1 + (1 - p) * 0.6);
         });
 
-        spawnParticles(this.position.clone().add(dir.clone().multiplyScalar(1.5)), fireSun ? 0xffaa00 : 0xaa00ff, 8);
+        spawnParticles(this.position.clone().add(dir.clone().multiplyScalar(1.5)), fireSun ? 0xffaa00 : 0xaa00ff, isCharged ? 12 : 8);
 
         if (fireSun) {
             this.eclipse.sun = Math.min(100, this.eclipse.sun + 10);
-            if (!empowered) this.eclipse.nextIsSun = false;
+            if (!chargedCataclysm) this.eclipse.nextIsSun = false;
         }
         if (fireMoon) {
             if (this.isLocalPlayer() && hitAnyEnemy && Math.random() < 0.5) {
-                this.heal(STATE.stats.atk * 0.1 * empMult);
-                createDamageText("+HP", this.position, '#00ff00');
+                this.heal(STATE.stats.atk * 0.1);
+                createDamageText('+HP', this.position, '#00ff00');
             }
             this.eclipse.moon = Math.min(100, this.eclipse.moon + 10);
-            if (!empowered) this.eclipse.nextIsSun = true;
+            if (!chargedCataclysm) this.eclipse.nextIsSun = true;
         }
+
+        incrementRuptureLanceStack(this, dir);
     }
 
     create3DEclipseMark(e) {
@@ -1570,7 +1686,7 @@ export class Eclipse extends PlayerBase {
             const positionsToSpawn = [];
             const lunar = PassiveKeystoneHooks.getLunarSpikeMods();
             const dmg = ConstellationEngine.modifyDamageDealt(
-                STATE.stats.atk * 3.0 * lunar.dmgMult, 
+                STATE.stats.atk * 3.0, 
                 { skill: true, skillKey: 'shift' }
             );
 
@@ -1658,12 +1774,8 @@ export class Eclipse extends PlayerBase {
                             if (e.dead) return;
                             if (e.position.distanceTo(targetPos) <= lunar.radius) {
                                 dealDamageToEnemy(e, dmg, { pos: e.position, skillKey: 'shift' });
-                                if (e.launch) {
-                                    e.launch(15.0); // Send them high up into the air using our new vertical physics
-                                } else {
-                                    e.position.y += 2.0;
-                                }
-                                if (e.speed != null) e.speed *= lunar.slowFactor;
+                                applyPicDeLuneDisplacement(e, targetPos, this);
+                                applyLunarTideHeal(this, dmg);
                                 createDamageText("EMPALE!", e.position, '#aa00ff');
                                 spawnParticles(e.position, 0xaa00ff, 10);
                             }
@@ -1750,10 +1862,11 @@ export class Eclipse extends PlayerBase {
                 // Dégâts de zone
                 Globals.enemies.forEach(e => {
                     if(e.position.distanceTo(targetPos) < 15) {
-                        const vuln = ConvergenceEffects.getCataclysmVulnMult(e);
-                        const baseDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.8 * dmgMultiplier * vuln * (1 + PassiveKeystoneHooks.getCataclysmChargeBonus()), { skill: true, skillKey: 'e' });
+                        const baseDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.8 * dmgMultiplier * (1 + PassiveKeystoneHooks.getCataclysmChargeBonus()), { skill: true, skillKey: 'e' });
                         dealDamageToEnemy(e, baseDmg, { pos: e.position });
-                        e.pushBack(targetPos, 8); // knockback de zone
+                        if (!e.isBoss && !e.isMiniBoss) {
+                            e.pushBack(targetPos, 8);
+                        }
                         
                         // Mark the enemy!
                         e._eclipseMarked = true;
@@ -1794,6 +1907,7 @@ export class Eclipse extends PlayerBase {
                         }
                     }
                 });
+                incrementRuptureLanceStack(this, dir);
             }, 100);
         }
     }

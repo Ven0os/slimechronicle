@@ -650,8 +650,8 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       id: 'eclipse-apex',
       branch: 'apex',
       tier: 11,
-      name: 'Dualité Céleste',
-      desc: '6 attaques renforcées · +50 % hâte · vulnérabilité.',
+      name: 'Convergence Éclipsée',
+      desc: 'Rupture Astrale : −0,5 s Pic de Lune · Fragilité Lunaire sous Cataclysme.',
       icon: 'fa-circle-half-stroke',
       cost: 2,
       keystone: true,
@@ -669,11 +669,11 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Chaleur Céleste', desc: '+10% Fulgurance Solaire', icon: 'fa-sun-plant-wilt', effects: { skillMods: { space: 0.10 } } },
         { name: 'Fournaise Solaire', desc: '+6 ATK', icon: 'fa-meteor', effects: { atk: 6 } },
         {
-          name: 'Corona',
-          desc: 'Passif : Fulgurance Solaire dash et brûlure multi-ticks.\n\nBONUS DE STATS\n+8 ATK\n+6% Crit Chance\n+10% Dégâts Crit',
-          icon: 'fa-sun-plant-wilt',
+          name: 'Couronne Éclipsée',
+          desc: 'Passif : charge des attaques de lance · bonus Fulgurance.\n\nBONUS DE STATS\n+16 ATK\n+2 DEF\n+22 HP',
+          icon: 'fa-crown',
           keystone: true,
-          effects: { atk: 8, crit: 0.06, critDmg: 0.10, passive: 'solarFlare' }
+          effects: { atk: 16, def: 2, maxHpFlat: 22, passive: 'solarFlare' }
         }
       ]),
       branch10('eclipse', 'devoration', 'atk', 'Dévoration', [
@@ -687,11 +687,11 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Éclat Pur', desc: '+8% Fulgurance Solaire', icon: 'fa-burst', effects: { skillMods: { space: 0.08 } } },
         { name: 'Brasier Astral', desc: '+6 ATK', icon: 'fa-sun', effects: { atk: 6 } },
         {
-          name: 'Soleil Dévorant',
-          desc: 'Passif : lance et Brûlure Solaire renforcées.\n\nBONUS DE STATS\n+12 ATK\n+8% Crit Chance\n+12% Dégâts Crit',
+          name: 'Soleil Vorace',
+          desc: 'Passif : brûlures → Étincelles Solaires → Explosion Solaire (80 % lance).\n\nBONUS DE STATS\n+10 ATK\n+10 HP\n+8 DEF',
           icon: 'fa-sun-plant-wilt',
           keystone: true,
-          effects: { atk: 12, crit: 0.08, critDmg: 0.12, passive: 'devouringSun' }
+          effects: { atk: 10, maxHpFlat: 10, def: 8, passive: 'devouringSun' }
         }
       ]),
       branch10('eclipse', 'lune', 'mst', 'Lune', [
@@ -705,11 +705,11 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Givre Lunaire', desc: '+8% Crit Damage', icon: 'fa-icicles', effects: { critDmg: 0.08 } },
         { name: 'Lame d\'Argent', desc: '+10% Crit Damage', icon: 'fa-circle', effects: { critDmg: 0.10 } },
         {
-          name: 'Pleine Lune',
-          desc: 'Passif : Pic de Lune élargi et ralentissement renforcé.\n\nBONUS DE STATS\n+10% Crit Chance\n+12% Dégâts Crit\n+6 ATK',
+          name: 'Marée Lunaire',
+          desc: 'Passif : Pic de Lune rayon +25 % · soin 25 % des dégâts sous Cataclysme.\n\nBONUS DE STATS\n+10 ATK\n+8 DEF\n+20 HP',
           icon: 'fa-circle',
           keystone: true,
-          effects: { crit: 0.10, critDmg: 0.12, atk: 6, passive: 'lunarSpike' }
+          effects: { atk: 10, def: 8, maxHpFlat: 20, passive: 'lunarSpike' }
         }
       ]),
       branch10('eclipse', 'orbite', 'spd', 'Orbite', [
@@ -723,11 +723,11 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
         { name: 'Recharge d\'Ascension', desc: '-5% CD Cataclysme', icon: 'fa-bolt', effects: { skillCdMods: { e: -0.05 } } },
         { name: 'Équinoxe Stellaire', desc: '+1.0 Vitesse sprint', icon: 'fa-arrows-spin', effects: { speed: 1.0 } },
         {
-          name: 'Tissage Orbital',
-          desc: 'Passif : stacks Soleil/Lune alternés et vitesse en Ascension.\n\nBONUS DE STATS\n+1.0 Vitesse sprint\n+8 ATK\n+6% Crit Chance',
-          icon: 'fa-arrows-spin',
+          name: 'Rupture Astrale',
+          desc: 'Passif : tous les 4 coups de lance déclenchent une Rupture Astrale.\n\nBONUS DE STATS\n+10 ATK\n+8 DEF\n+20 HP',
+          icon: 'fa-burst',
           keystone: true,
-          effects: { speed: 1.0, atk: 8, crit: 0.06, passive: 'orbitalWeave' }
+          effects: { atk: 10, def: 8, maxHpFlat: 20, passive: 'ruptureAstrale' }
         }
       ]),
       branch10('eclipse', 'vide', 'hp', 'Vide', [
