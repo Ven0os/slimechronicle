@@ -10,7 +10,7 @@ import { canApplyGameplay, canDealDamageDirectly } from '@/multiplayer/net_autho
 export const RUPTURE_ASTRALE_NODE_ID = 'eclipse-orbite-10';
 export const ECLIPSE_CATACLYSM_WINDOW_MS = 8000;
 export const RUPTURE_STACK_MAX = 4;
-export const RUPTURE_FIRST_DMG_RATIO = 0.9;
+export const RUPTURE_FIRST_DMG_RATIO = 1.0;
 export const RUPTURE_SECOND_DMG_RATIO = 0.8;
 export const RUPTURE_SECOND_DELAY_MS = 250;
 export const DUAL_DEBUFF_HP_BONUS = 0.1;
@@ -151,9 +151,10 @@ function scheduleRuptureSecondImpact(
   player: RupturePlayer,
   enemy: RuptureEnemy,
   underAscension: boolean,
+  dualAtTrigger: boolean,
 ): void {
+  if (!hasDualiteCeleste()) return;
   const enemyId = enemy.netId;
-  const dualAtFirst = hasDualSolarLunarDebuff(enemy);
 
   setTimeout(() => {
     if (!canDealDamageDirectly()) return;
@@ -161,7 +162,7 @@ function scheduleRuptureSecondImpact(
     const e = resolveRuptureEnemy(enemy, enemyId);
     if (!e || e.dead) return;
 
-    if (!underAscension && !dualAtFirst) return;
+    if (!underAscension && !dualAtTrigger) return;
 
     const baseDmg = STATE.stats.atk * RUPTURE_SECOND_DMG_RATIO;
     dealDamageToEnemy(e, baseDmg, { pos: e.position, skillKey: 'primary' });
@@ -206,12 +207,14 @@ export function triggerRuptureAstrale(player: RupturePlayer, dir: THREE.Vector3)
     toE.normalize();
     if (flatDir.dot(toE) < threshold) return;
 
+    const dualAtTrigger = hasDualSolarLunarDebuff(e);
     const damage = STATE.stats.atk * RUPTURE_FIRST_DMG_RATIO;
     dealDamageToEnemy(e, damage, { pos: e.position, skillKey: 'primary' });
     applySolarHitEffects(e, player);
+    applyLunarFragility(e);
     applyLunarHitEffects(player);
     PassiveKeystoneHooks.onRuptureAstraleEnemyHit(player, e, cataclysm);
-    scheduleRuptureSecondImpact(player, e, ascension);
+    scheduleRuptureSecondImpact(player, e, ascension, dualAtTrigger);
     spawnParticles(e.position, 0xaa00ff, 8);
     hitCount++;
   });
