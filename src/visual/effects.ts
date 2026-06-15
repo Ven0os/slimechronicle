@@ -286,20 +286,33 @@ export function createSkillVisual(type, pos, size, color, dir) {
     }
     // ... Autres visuels existants ...
     else if (type === 'shockwave') {
-        const geo = new THREE.RingGeometry(0.5, 1, 32);
-        const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+        const geo = new THREE.RingGeometry(0.72, 1, 64);
+        const mat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.78,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.copy(pos).add(new THREE.Vector3(0, 0.1, 0));
         mesh.rotation.x = -Math.PI / 2;
+        mesh.scale.setScalar(0.08);
         Globals.scene.add(mesh);
         
         // Animation simple inline pour la shockwave (ou ajouter à updateSkillVisuals pour plus de propreté)
+        const startedAt = performance.now();
+        const durationMs = 420;
+        const targetScale = Math.max(0.2, size);
         const expand = () => {
             if(!mesh.parent) return;
-            const s = mesh.scale.x + 0.5;
-            mesh.scale.set(s, s, s);
-            mesh.material.opacity -= 0.05;
-            if(mesh.material.opacity <= 0) {
+            const progress = Math.min(1, (performance.now() - startedAt) / durationMs);
+            const ease = 1 - Math.pow(1 - progress, 3);
+            const shimmer = 1 + Math.sin(progress * Math.PI * 2) * 0.025;
+            mesh.scale.setScalar(THREE.MathUtils.lerp(0.08, targetScale, ease) * shimmer);
+            mesh.material.opacity = (1 - progress) * 0.78;
+            if(progress >= 1) {
                 Globals.scene.remove(mesh);
                 mesh.geometry.dispose();
                 mesh.material.dispose();

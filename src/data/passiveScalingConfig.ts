@@ -89,12 +89,12 @@ const CONTINUUM_MASTERY_PARAGRAPHS = () => [
 
 const SOLAR_INSPIRATION_PARAGRAPHS = () => [
   `RAYON STELLAIRE :
-• Les ennemis tués par Rayon Stellaire créent automatiquement un Puits de Lumière.`,
-  `PUITS DE LUMIÈRE :
-• Chaque allié présent dans le Puits gagne +15 % ATK.
+• Les ennemis tués par Rayon Stellaire créent automatiquement un Champ de Lumière.`,
+  `CHAMP DE LUMIÈRE :
+• Chaque allié présent dans le Champ gagne +15 % ATK.
 • Le Sentinel reçoit le double de ce bonus.`,
   `BRÛLURE SOLAIRE :
-• Les ennemis présents dans le Puits subissent Brûlure Solaire.`,
+• Les ennemis présents dans le Champ subissent Brûlure Solaire.`,
   `SINGULARITÉ :
 • Les ennemis affectés par Brûlure Solaire subissent +15 % dégâts du Rayon Stellaire.`,
 ];

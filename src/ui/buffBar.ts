@@ -205,8 +205,8 @@ export const BuffBar = {
         id: 'apex-sentinel-stellar-singularity',
         name: 'Singularité Stellaire',
         desc: inWell
-          ? 'Dans un Puits de Lumière : +30 % ATK. Rayon Stellaire renforcé sur Brûlure Solaire.'
-          : 'Rayon Stellaire crée des Puits de Lumière sur kill.',
+          ? 'Dans un Champ de Lumière : +30 % ATK. Rayon Stellaire renforcé sur Brûlure Solaire.'
+          : 'Rayon Stellaire crée un Champ de Lumière sur kill.',
         icon: 'fa-sun',
         color: inWell ? '#fff3a0' : '#ffcc00',
         type: 'synergie',

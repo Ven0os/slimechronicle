@@ -292,7 +292,7 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
       branch: 'apex',
       tier: 5,
       name: 'Singularité Stellaire',
-      desc: 'Rayon Stellaire crée des Puits de Lumière sur kill. Alliés dans le Puits : +15 % ATK. Sentinel : +30 % ATK.',
+      desc: 'Rayon Stellaire crée un Champ de Lumière sur kill. Alliés dans le Champ : +15 % ATK. Sentinel : +30 % ATK.',
       icon: 'fa-sun',
       cost: 2,
       keystone: true,
@@ -347,7 +347,7 @@ export const CLASS_CONSTELLATION_DATA: Record<ClassId, ClassConstellation> = {
         classId: 'sentinel',
         branchId: 'sanctuaire',
         slot: 'hp',
-        label: 'Puits',
+        label: 'Champ',
         nodes: extendBranchPath(
           [
             n(1, 'Vitalité Sacrée', '+28 HP', 'fa-heart', { maxHpFlat: 28 }),

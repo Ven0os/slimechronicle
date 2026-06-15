@@ -30,6 +30,8 @@ import { APEX_PASSIVE_BY_CLASS, ConvergenceEffects, getApexPassiveRank, isChrono
 import { clampFracture } from '@/gameplay/classes/chrono/fractureHelpers';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
 import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
+import { canApplyGameplay } from '@/multiplayer/net_authority';
+import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 
 type PassiveBag = Record<string, unknown>;
 
@@ -474,12 +476,12 @@ export const ConstellationEngine = {
     return this.modifyDamageDealt(base * chargeRatio, { skill: true, skillKey: 'space' });
   },
 
-  getActiveSolarLightFields(): Array<{ pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number }> {
+  getActiveSolarLightFields(): Array<{ pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number; nextPulseAt?: number }> {
     const p = ensurePassives();
     const now = Date.now();
-    const legacy = p._solarLightField as { pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number } | undefined;
+    const legacy = p._solarLightField as { pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number; nextPulseAt?: number } | undefined;
     const list = Array.isArray(p._solarLightFields)
-      ? p._solarLightFields as Array<{ pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number }>
+      ? p._solarLightFields as Array<{ pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number; nextPulseAt?: number }>
       : legacy ? [legacy] : [];
     const active = list.filter((field) => field && field.until > now);
     p._solarLightFields = active;
@@ -527,6 +529,7 @@ export const ConstellationEngine = {
       pos: pos.clone(),
       radius: this.getLightFieldRadius(),
       until: Date.now() + durationSec * 1000,
+      nextPulseAt: 0,
     };
     const fields = this.getActiveSolarLightFields();
     fields.push(field);
@@ -534,26 +537,43 @@ export const ConstellationEngine = {
     p._solarLightField = field;
   },
 
-  registerStellarSingularityWell(pos: THREE.Vector3, durationSec = this.getLightFieldDuration(), forceVisual = false): boolean {
-    if (!forceVisual && !this.hasSolarWellCurse()) return false;
+  createSolarLightField(pos: THREE.Vector3, durationSec = this.getLightFieldDuration(), options: { apex?: boolean; label?: string | false } = {}): boolean {
     this.registerSolarLightField(pos, durationSec);
-    this.createStellarLightWellVisual(pos, durationSec);
-    createSkillVisual('shockwave', pos, this.getLightFieldRadius() * 0.7, 0xffd166);
-    createDamageText('PUITS DE LUMIÈRE', pos, '#fff3a0');
-    spawnParticles(pos.clone().add(new THREE.Vector3(0, 0.35, 0)), 0xffd166, 24);
+    this.createSolarLightFieldVisual(pos, durationSec, options);
+    createSkillVisual('shockwave', pos, this.getLightFieldRadius() * 0.72, options.apex ? 0xffd166 : 0xf1c40f);
+    spawnParticles(pos.clone().add(new THREE.Vector3(0, 0.35, 0)), options.apex ? 0xffd166 : 0xf1c40f, options.apex ? 22 : 14);
+    if (options.label !== false) {
+      createDamageText(options.label || 'CHAMP DE LUMIÈRE', pos, '#fff3a0');
+    }
     return true;
   },
 
-  createStellarLightWellVisual(pos: THREE.Vector3, durationSec: number): void {
+  registerStellarSingularityWell(pos: THREE.Vector3, durationSec = this.getLightFieldDuration(), forceVisual = false): boolean {
+    if (!forceVisual && !this.hasSolarWellCurse()) return false;
+    if (!forceVisual) {
+      const p = ensurePassives();
+      const now = Date.now();
+      const nextAt = (p._stellarSingularityNextFieldAt as number) || 0;
+      if (now < nextAt) return false;
+      p._stellarSingularityNextFieldAt = now + 300;
+    }
+    return this.createSolarLightField(pos, durationSec, { apex: true, label: 'CHAMP DE LUMIÈRE' });
+  },
+
+  createSolarLightFieldVisual(pos: THREE.Vector3, durationSec: number, options: { apex?: boolean } = {}): void {
     if (!Globals.scene) return;
     const radius = this.getLightFieldRadius();
     const group = new THREE.Group();
     group.position.copy(pos).add(new THREE.Vector3(0, 0.08, 0));
+    group.userData.nonBlocking = true;
+
+    const mainColor = options.apex ? 0xfff3a0 : 0xf1c40f;
+    const warmColor = options.apex ? 0xffc857 : 0xfff0a6;
 
     const fillMat = new THREE.MeshBasicMaterial({
-      color: 0xfff3a0,
+      color: mainColor,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.12,
       side: THREE.DoubleSide,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -561,15 +581,23 @@ export const ConstellationEngine = {
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.62,
+      opacity: 0.58,
       side: THREE.DoubleSide,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
     const warmRingMat = new THREE.MeshBasicMaterial({
-      color: 0xffc857,
+      color: warmColor,
       transparent: true,
-      opacity: 0.42,
+      opacity: 0.38,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const pulseMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.22,
       side: THREE.DoubleSide,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -588,6 +616,15 @@ export const ConstellationEngine = {
     inner.position.y = 0.01;
     group.add(inner);
 
+    const pulseRing = new THREE.Mesh(new THREE.RingGeometry(radius * 0.18, radius * 0.2, 96), pulseMat);
+    pulseRing.rotation.x = -Math.PI / 2;
+    pulseRing.position.y = 0.02;
+    group.add(pulseRing);
+
+    const light = new THREE.PointLight(mainColor, options.apex ? 1.8 : 1.25, radius * 1.65);
+    light.position.y = 1.1;
+    group.add(light);
+
     Globals.scene.add(group);
     const startedAt = performance.now();
     const durationMs = Math.max(0.2, durationSec) * 1000;
@@ -596,7 +633,10 @@ export const ConstellationEngine = {
       Globals.scene?.remove(group);
       group.traverse((child) => {
         if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
+          else child.material.dispose();
+        }
       });
     };
 
@@ -604,18 +644,24 @@ export const ConstellationEngine = {
       if (!group.parent) return;
       const elapsed = performance.now() - startedAt;
       const progress = Math.min(1, elapsed / durationMs);
+      const intro = Math.min(1, elapsed / 260);
+      const introEase = 1 - Math.pow(1 - intro, 3);
       const fade = progress > 0.82 ? Math.max(0, (1 - progress) / 0.18) : 1;
-      const pulse = 1 + Math.sin(elapsed * 0.004) * 0.025;
+      const pulseScale = 1 + Math.sin(elapsed * 0.004) * 0.025;
+      const pulseProgress = (elapsed * 0.00022) % 1;
 
       group.rotation.y += 0.004;
       outer.rotation.z += 0.006;
       inner.rotation.z -= 0.01;
-      fill.scale.setScalar(pulse);
+      fill.scale.setScalar(introEase * pulseScale);
       outer.scale.setScalar(1 + Math.sin(elapsed * 0.003) * 0.018);
       inner.scale.setScalar(1 + Math.cos(elapsed * 0.0045) * 0.035);
-      fillMat.opacity = 0.14 * fade;
-      ringMat.opacity = 0.62 * fade;
-      warmRingMat.opacity = 0.42 * fade;
+      pulseRing.scale.setScalar(1 + pulseProgress * 3.2);
+      fillMat.opacity = 0.12 * fade * introEase;
+      ringMat.opacity = 0.58 * fade * introEase;
+      warmRingMat.opacity = 0.38 * fade * introEase;
+      pulseMat.opacity = 0.22 * fade * (1 - pulseProgress);
+      light.intensity = (options.apex ? 1.8 : 1.25) * fade * (0.82 + Math.sin(elapsed * 0.0035) * 0.18);
 
       if (progress >= 1) {
         dispose();
@@ -624,6 +670,10 @@ export const ConstellationEngine = {
       }
     };
     animate();
+  },
+
+  createStellarLightWellVisual(pos: THREE.Vector3, durationSec: number): void {
+    this.createSolarLightFieldVisual(pos, durationSec, { apex: true });
   },
 
   applyLightFieldDebuff(enemy: {
@@ -672,10 +722,23 @@ export const ConstellationEngine = {
 
     const source = Globals.player;
     p._solarWellAnchored = false;
-    if (!this.hasSolarWellCurse()) return;
 
     const now = Date.now();
     fields.forEach((field) => {
+      if (!field.nextPulseAt) field.nextPulseAt = 0;
+      if (canApplyGameplay() && now >= field.nextPulseAt) {
+        field.nextPulseAt = now + 100;
+        const fieldDmg = this.modifyDamageDealt(STATE.stats.atk * 0.1, { skill: true, skillKey: 'shift' });
+        Globals.enemies?.forEach((enemy) => {
+          if (enemy.dead || enemy.position.distanceTo(field.pos) > field.radius + (enemy.radius || 0)) return;
+          dealDamageToEnemy(enemy, fieldDmg, { pos: enemy.position, skillKey: 'shift' });
+        });
+        if (source?.position && source.position.distanceTo(field.pos) <= field.radius && typeof source.heal === 'function') {
+          source.heal(this.getLightFieldHealTick());
+        }
+      }
+
+      if (!this.hasSolarWellCurse()) return;
       if (!field.nextBurnAt) field.nextBurnAt = 0;
       if (now < field.nextBurnAt) return;
       field.nextBurnAt = now + 1000;

@@ -4,7 +4,6 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
 import { Network } from '../../multiplayer/network';
-import { canApplyGameplay } from '../../multiplayer/net_authority';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
@@ -865,24 +864,8 @@ export class Sentinel extends PlayerBase {
                 requestAnimationFrame(slamAnim);
             };
             slamAnim();
-            const fieldRadius = ConstellationEngine.getLightFieldRadius();
-            const healTick = ConstellationEngine.getLightFieldHealTick();
             const fieldDuration = ConstellationEngine.getLightFieldDuration();
-            ConstellationEngine.registerSolarLightField(this.position.clone(), fieldDuration);
-            createSkillVisual('vortex', this.position, fieldRadius, 0xf1c40f);
-            const zonePos = this.position.clone();
-            const ringInner = Math.max(0.5, fieldRadius - 0.5);
-            const zone = new THREE.Mesh(new THREE.RingGeometry(ringInner, fieldRadius, 32), new THREE.MeshBasicMaterial({color:0xf1c40f, side:THREE.DoubleSide, transparent:true, opacity:0.5}));
-            zone.rotation.x = -Math.PI/2; zone.position.copy(zonePos).add(new THREE.Vector3(0, 0.1, 0));
-            this.addLocalVisual(zone, fieldDuration, (m, t) => { 
-                m.rotation.z -= 0.02; m.scale.setScalar(1 + Math.sin(t*5)*0.05);
-                if (Math.floor(t * 10) !== Math.floor((t + 0.016) * 10)) { 
-                     if (!canApplyGameplay()) return;
-                     const fieldDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 0.1, { skill: true, skillKey: 'shift' });
-                     Globals.enemies.forEach(e => { if(e.position.distanceTo(zonePos) < fieldRadius) dealDamageToEnemy(e, fieldDmg, { pos: e.position, skillKey: 'shift' }); });
-                     if(this.position.distanceTo(zonePos) < fieldRadius) this.heal(healTick);
-                }
-            });
+            ConstellationEngine.createSolarLightField(this.position.clone(), fieldDuration, { label: 'CHAMP DE LUMIÈRE' });
 
         } else if (key === 'e') { 
             AudioSys.sfx.sentinel.shield();
@@ -992,14 +975,16 @@ export class Sentinel extends PlayerBase {
             spawnParticles(targetPos, 0xffaa00, 28);
         }
         
+        let singularityFieldSpawned = false;
         Globals.enemies.forEach(e => {
             if(e.position.distanceTo(targetPos) < hitRadius) { 
                 const dmg = beamDmg * ConstellationEngine.getStellarSingularityBeamDamageMult(e);
                 const wasAlive = !e.dead;
                 dealDamageToEnemy(e, dmg, { pos: e.position, skillKey: 'space', isRanged: true });
-                if (wasAlive && e.dead && ConstellationEngine.hasSolarWellCurse()) {
+                if (!singularityFieldSpawned && wasAlive && e.dead && ConstellationEngine.hasSolarWellCurse()) {
                     const wellPos = e.position.clone();
                     const created = ConstellationEngine.registerStellarSingularityWell(wellPos);
+                    if (created) singularityFieldSpawned = true;
                     if (created && STATE.multiplayer.active && STATE.multiplayer.isHost) {
                         Network.send({
                             type: 'sentinel-light-well',

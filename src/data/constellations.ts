@@ -321,7 +321,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       branch: 'apex',
       tier: 11,
       name: 'Singularité Stellaire',
-      desc: 'Rayon Stellaire crée des Puits de Lumière sur kill. Alliés dans le Puits : +15 % ATK. Sentinel : +30 % ATK.',
+      desc: 'Rayon Stellaire crée un Champ de Lumière sur kill. Alliés dans le Champ : +15 % ATK. Sentinel : +30 % ATK.',
       icon: 'fa-sun',
       cost: 2,
       keystone: true,
