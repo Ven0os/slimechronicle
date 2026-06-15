@@ -198,6 +198,22 @@ export const BuffBar = {
       });
     }
 
+    if (ConstellationEngine.isApexPassiveActive('solarInspiration', 'sentinel')
+        && Globals.player?.className === 'sentinel') {
+      const inWell = ConstellationEngine.isInSolarInspirationZone(Globals.player);
+      entries.push({
+        id: 'apex-sentinel-stellar-singularity',
+        name: 'Singularité Stellaire',
+        desc: inWell
+          ? 'Dans un Puits de Lumière : +30 % ATK. Rayon Stellaire renforcé sur Brûlure Solaire.'
+          : 'Rayon Stellaire crée des Puits de Lumière sur kill.',
+        icon: 'fa-sun',
+        color: inWell ? '#fff3a0' : '#ffcc00',
+        type: 'synergie',
+        extra: inWell ? '+30%' : 'APEX',
+      });
+    }
+
     if (Globals.player?.className === 'eclipse' && ConstellationEngine.getPassiveRank('devouringSun') > 0) {
       const sparks = Globals.player._solarSparks || 0;
       if (sparks > 0) {
@@ -242,6 +258,45 @@ export const BuffBar = {
       });
     }
 
+    if (ConstellationEngine.isApexPassiveActive('runicColossus', 'warrior') && player?.className === 'warrior') {
+      const runic = ConvergenceEffects.getRunicJudgmentSummary(player);
+      if (runic.count > 0) {
+        entries.push({
+          id: 'apex-warrior-runic-judgment',
+          name: 'Jugement Runique',
+          desc: runic.perfectReady
+            ? `5 Sceaux prêts · ${Math.floor(runic.totalStored)} dégâts stockés · prochain Cri réinitialisé.`
+            : `Sceaux Runiques : ${runic.count}/${runic.max} · ${Math.floor(runic.totalStored)} dégâts stockés.`,
+          icon: 'fa-crown',
+          color: '#ffd86b',
+          type: 'stack',
+          stacks: runic.count,
+          maxStacks: runic.max,
+        });
+      }
+    }
+
+    if (ConstellationEngine.isApexPassiveActive('eternalThirst', 'blade') && player?.className === 'blade') {
+      const bp = ConvergenceEffects.getBladeBreakpointSummary(player);
+      const thirst = ConvergenceEffects.getBladeBloodThirstSummary(player);
+      const thirstText = `Soif de Sang +${Math.round(thirst.bonus * 100)} % dégâts (cap ${Math.round(thirst.cap * 100)} %).`;
+      entries.push({
+        id: 'apex-blade-breakpoint',
+        name: 'Point de Rupture',
+        desc: bp.active
+          ? `Compétence de Rupture : crit automatique et Hémorragie. ${thirstText}`
+          : bp.ready
+            ? `Prochaine compétence : crit automatique et Hémorragie. ${thirstText}`
+            : bp.cdRemaining > 0
+              ? `Rupture recharge : ${bp.cdRemaining.toFixed(1)} s. ${thirstText}`
+              : `Bonus : +${Math.round(bp.critBonus * 100)} % Crit · +${Math.round(bp.critDmgBonus * 100)} % Dégâts Crit. ${thirstText}`,
+        icon: 'fa-skull',
+        color: bp.ready || bp.active ? '#ff2d55' : '#1abc9c',
+        type: 'synergie',
+        extra: bp.cdRemaining > 0 ? `${Math.ceil(bp.cdRemaining)}s` : `${Math.round(bp.critBonus * 100)}%`,
+      });
+    }
+
     if (player?.bloodShield > 0) {
       entries.push({
         id: 'shield-blood',
@@ -255,16 +310,18 @@ export const BuffBar = {
     }
 
     if (ConstellationEngine.isApexPassiveActive('bloodPact', 'pacifier') && player?.className === 'pacifier') {
-      const until = ConvergenceEffects.getPacifierShotsUntilMegaCrit(player);
+      const hemo = ConvergenceEffects.getHemocycleSummary(player);
       entries.push({
-        id: 'apex-pacifier-megacrit',
-        name: 'Pacte de Sang',
-        desc: until === 1 ? 'Prochain tir : Méga-Critique' : `Méga-Crit dans ${until} tirs`,
-        icon: 'fa-crosshairs',
-        color: '#e74c3c',
+        id: 'apex-pacifier-hemocycle',
+        name: 'Hémocycle',
+        desc: hemo.ready
+          ? `Prochain Blood Pistol : libère ${Math.floor(hemo.stored)} dégâts stockés.`
+          : `Marques de Sang : ${hemo.marks}/${hemo.max} · ${Math.floor(hemo.stored)} dégâts stockés.`,
+        icon: 'fa-droplet',
+        color: '#ff4d6d',
         type: 'stack',
-        stacks: until === 1 ? 3 : until - 1,
-        maxStacks: 3,
+        stacks: hemo.marks,
+        maxStacks: hemo.max,
       });
     }
 

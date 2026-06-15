@@ -223,10 +223,12 @@ export class WarlockSkills {
             this.enemy.dealPlayerDamage(target, cfg.damage, { isAbility: true });
             
             // Heal warlock (capped at max Hp)
-            if (!this.enemy.dead) {
+            if (!this.enemy.dead && !(this.enemy._antiHealUntil && Date.now() < this.enemy._antiHealUntil)) {
                 this.enemy.hp = Math.min(this.enemy.maxHp, this.enemy.hp + cfg.heal);
                 createDamageText(`+${cfg.heal}`, this.enemy.position, '#2ecc71');
                 spawnParticles(this.enemy.position, 0x2ecc71, 3);
+            } else if (!this.enemy.dead) {
+                createDamageText('ANTI-SOIN', this.enemy.position, '#ff2d55');
             }
 
             ticks++;

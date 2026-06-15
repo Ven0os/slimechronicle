@@ -113,7 +113,7 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
     }
 
     const enemyDef = getEnemyDefense(enemy);
-    if (enemyDef > 0) {
+    if (enemyDef > 0 && !opts.ignoreDefense) {
         scaled = applyDefenseReduction(scaled, enemyDef, { allowZero: true });
     }
 
@@ -127,17 +127,17 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
     if (isMegaCrit) {
 
-        createDamageText('MÉGA CRIT!', pos, '#ff0066');
+        if (!opts.suppressCritText) createDamageText('MÉGA CRIT!', pos, '#ff0066');
 
         if (AudioSys?.sfx?.crit) AudioSys.sfx.crit();
 
     } else if (isCrit) {
 
-        createDamageText(opts.critLabel || 'CRIT!', pos, opts.critColor || '#ff0');
+        if (!opts.suppressCritText) createDamageText(opts.critLabel || 'CRIT!', pos, opts.critColor || '#ff0');
 
         if (AudioSys?.sfx?.crit) AudioSys.sfx.crit();
 
-        if (!enemy.isMiniBoss) {
+        if (!enemy.isMiniBoss && !opts.skipPassiveHemorrhage) {
 
             PassiveKeystoneHooks.onCritApplyHemorrhage(enemy, dmg);
 
@@ -145,6 +145,10 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
         if (opts.onCrit && typeof opts.onCrit === 'function') opts.onCrit();
 
+    }
+
+    if (opts.applyHemorrhage) {
+        PassiveKeystoneHooks.applyBladeBreakpointHemorrhage(enemy, dmg);
     }
 
 
@@ -187,6 +191,16 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
                 critDmgMult: opts.critDmgMult,
 
+                ignoreDefense: !!opts.ignoreDefense,
+
+                applyHemorrhage: !!opts.applyHemorrhage,
+
+                skipPassiveHemorrhage: !!opts.skipPassiveHemorrhage,
+
+                bladeBreakpointSkillKey: opts.bladeBreakpointSkillKey,
+
+                suppressCritText: !!opts.suppressCritText,
+
             },
 
             amount: dmg,
@@ -214,5 +228,3 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
     return { dmg, isCrit };
 
 }
-
-

@@ -7,6 +7,7 @@ import { Network } from './network';
 import { runVisualOnly, isServerAuthority, getPlayerByPeerId } from './net_combat';
 import { dealDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 import { NetClassState } from './net_class_state';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
 
 function safePlay(soundName) {
     if (AudioSys && AudioSys.sfx) {
@@ -46,6 +47,32 @@ export const NetSkills = {
 
         if (data.action === 'attack-range' && data.class === 'pacifier') {
             NetClassState.resolvePacifierShot(playerId, pos, flatDir);
+            return;
+        }
+
+        if (data.action === 'skill' && data.class === 'warrior' && data.key === 'shift') {
+            const player = getPlayerByPeerId(playerId);
+            const seals = Array.isArray(data.extra?.runicSeals)
+                ? data.extra.runicSeals.map((v) => Math.max(0, Number(v) || 0)).filter((v) => v > 0).slice(0, ConvergenceEffects.getRunicJudgmentMaxSeals())
+                : ConvergenceEffects.consumeRunicJudgmentSeals(player);
+
+            if (player && Array.isArray(data.extra?.runicSeals)) {
+                ConvergenceEffects.setRunicJudgmentSealValues(player, []);
+            }
+
+            const targets = ConvergenceEffects.findRunicJudgmentTargets(pos, seals.length, 18);
+            const releaseRatio = ConvergenceEffects.getRunicJudgmentReleaseRatio();
+            seals.forEach((stored, index) => {
+                const target = targets[index % Math.max(1, targets.length)];
+                if (!target) return;
+                const damage = stored * releaseRatio;
+                dealDamageToEnemy(target, damage, {
+                    pos: target.position,
+                    skillKey: 'shift',
+                    maxRange: 24,
+                    isRanged: true,
+                });
+            });
             return;
         }
 
@@ -102,6 +129,9 @@ export const NetSkills = {
                 if (data.action === 'attack-melee' || data.action === 'attack-range') {
                     remotePlayer.performAttack();
                 } else if (data.action === 'skill') {
+                    if (data.class === 'warrior' && data.key === 'shift' && Array.isArray(data.extra?.runicSeals)) {
+                        ConvergenceEffects.setRunicJudgmentSealValues(remotePlayer, data.extra.runicSeals);
+                    }
                     remotePlayer.useSkill(data.key);
                 }
             });

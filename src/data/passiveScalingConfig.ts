@@ -53,84 +53,100 @@ Infligent +10 % dégâts aux cibles affectées simultanément par :
 ];
 
 const BLOOD_PACT_PARAGRAPHS = () => [
-  `DÉGÂTS CRITIQUES :
-+45 % Crit Damage permanent.`,
-  `MÉGA-CRITIQUE :
-Chaque 3e projectile devient Méga-Critique.
-Multiplicateur critique : ×1,5.
-Le compteur jusqu'au prochain Méga-Crit est visible sur le HUD.`,
-  `SPECTRES MULTICOLORES :
-Le Pacte n'ajoute plus de projectiles spectraux multicolores.
-Les bonus Crit Damage et Méga-Critique s'appliquent à tous vos projectiles.`,
+  `BLOOD PISTOL :
+• Chaque tir applique une Marque de Sang.
+• Chaque marque stocke 20 % des dégâts infligés + 1 % HP max de la cible.
+• Maximum : 6 marques.`,
+  `MARQUES DE SANG :
+• À 6 marques, le prochain Blood Pistol consomme toutes les marques.
+• Relâche 100 % des dégâts stockés.
+• Peut déclencher plusieurs coups critiques.
+• Bénéficie des bonus Blood Pistol.`,
+  `VAMPIRISME :
+• 50 % du vol de vie est converti en dégâts bonus sur Blood Pistol.`,
 ];
 
 const CONTINUUM_MASTERY_PARAGRAPHS = () => [
   `PRISMES AFFINÉS :
-Maximum 3 prismes simultanés.
-Durée initiale : 8,5 s (5 s + 3,5 s Apex).
-Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.
-Rayons dupliqués : −20 % dégâts par profondeur de prisme.`,
+• Maximum : 3 prismes simultanés.
+• Durée initiale : 8,5 s (5 s + 3,5 s Apex).
+• Chaque nouveau prisme prolonge tous les prismes actifs de +3,5 s.
+• Rayons dupliqués : −20 % dégâts par profondeur de prisme.`,
   `FRACTURE :
-Plafond Apex : 150 % (au lieu de 100 %).
-Rayon de distorsion : +0,42 % dégâts et +0,05 % taille par point de Fracture.
-À 150 % Fracture : jusqu'à +63 % dégâts et +7,5 % taille.`,
+• Plafond Apex : 150 % (au lieu de 100 %).
+• Rayon de distorsion : +0,42 % dégâts et +0,05 % taille par point de Fracture.
+• À 150 % Fracture : jusqu'à +63 % dégâts et +7,5 % taille.`,
   `SURCHARGE & SURCHAUFFE :
-Surcharge imminente : à partir de 145 % Fracture (plafond − 5 %).
-Surchauffe : à 150 % Fracture.`,
+• Surcharge imminente : à partir de 145 % Fracture (plafond − 5 %).
+• Surchauffe : à 150 % Fracture.`,
   `BRÛLURE TEMPORELLE :
-Requiert le passif Prisme Supplémentaire.
-Prisme : 4 rayons au lieu de 3.
-Rayons routés par un prisme : Brûlure Temporelle.
-10 % des dégâts infligés par seconde pendant 3 s.
-Maximum 3 cumuls.`,
+• Requiert le passif Prisme Supplémentaire.
+• Prisme : 4 rayons au lieu de 3.
+• Rayons routés par un prisme : Brûlure Temporelle.
+• 10 % des dégâts infligés par seconde pendant 3 s.
+• Maximum : 3 cumuls.`,
 ];
 
 const SOLAR_INSPIRATION_PARAGRAPHS = () => [
-  `AURA INSPIRATION SOLAIRE :
-Rayon : 14 m.
-Alliés : +15 % ATK et +1 % HP/s.
-Vous : +30 % ATK.`,
-  `PUITS SOLAIRE :
-Champ de Lumière devient Puits Solaire.
-Ennemis dans la zone : −35 % vitesse et +25 % dégâts subis.`,
-  `ANCRAGE DANS LE PUITS :
-Condition : vous restez dans le Puits Solaire.
-• +35 % dégâts infligés.
-• +12 % dégâts reçus.
-• Soin : 2 % HP/s.`,
-  `RAYON STELLAIRE (CHARGE) :
-La jauge de charge du Rayon Stellaire appartient au passif de branche Surcharge Stellaire.
-Elle s'affiche uniquement en maintenant Espace avec ce passif actif.
-Elle est indépendante de l'Apex Hélios Incarné.`,
+  `RAYON STELLAIRE :
+• Les ennemis tués par Rayon Stellaire créent automatiquement un Puits de Lumière.`,
+  `PUITS DE LUMIÈRE :
+• Chaque allié présent dans le Puits gagne +15 % ATK.
+• Le Sentinel reçoit le double de ce bonus.`,
+  `BRÛLURE SOLAIRE :
+• Les ennemis présents dans le Puits subissent Brûlure Solaire.`,
+  `SINGULARITÉ :
+• Les ennemis affectés par Brûlure Solaire subissent +15 % dégâts du Rayon Stellaire.`,
 ];
 
 const RUNIC_COLOSSUS_PARAGRAPHS = () => [
   `PARADE :
-Chaque blocage renvoie 30 % des dégâts bloqués.`,
-  `RENVOI DE DÉGÂTS :
-Bonus : +5 % de votre DEF à chaque renvoi.
-Formule : (dégâts bloqués × 30 %) + (DEF × 5 %).
-Déclenchement : à chaque blocage réussi en Parade.`,
+• Chaque Parade réussie crée un Sceau Runique.
+• Maximum : 5 Sceaux Runiques.`,
+  `SCEAUX RUNIQUES :
+• Les Sceaux orbitent autour du Guerrier Runique.
+• Chaque Sceau stocke 250 % des dégâts bloqués par la Parade qui l'a généré.`,
+  `CRI DE GUERRE :
+• Consomme tous les Sceaux Runiques.
+• Pour chaque Sceau : lance un projectile runique sur un ennemi proche.
+• Inflige 150 % de la valeur stockée.`,
+  `PARADE PARFAITE :
+• Si 5 Sceaux Runiques sont consommés, Cri de Guerre est immédiatement réinitialisé.`,
 ];
 
 const ETERNAL_THIRST_PARAGRAPHS = () => [
   `HP MANQUANTS :
-+0,3 % Crit Chance et +0,3 % Crit Damage par % de HP manquant.`,
-  `MAXIMUM À 0 HP :
-Jusqu'à +30 % Crit Chance et +30 % Crit Damage.`,
-  `MISE À JOUR :
-Les bonus se recalculent en temps réel selon vos PV actuels.
-Ne dépend pas des éliminations sous 50 % HP.`,
+• Chaque 1 % HP manquant accorde +0,3 % Chance Critique.
+• Chaque 1 % HP manquant accorde +0,66 % Dégâts Critiques.
+• Cap : 10 % HP restants.`,
+  `SOIF DE SANG :
+• En Apex, Soif de Sang stack 2x plus vite.
+• Cap dégâts : +120 % au lieu de +100 %.
+• À 30 % HP restants : +120 % dégâts.`,
+  `RUPTURE :
+• À 10 % HP restants, la prochaine compétence applique Hémorragie.
+• Cette compétence crit automatiquement.
+• Temps de recharge : 15 s.`,
+  `EXÉCUTION :
+• Si cette compétence tue une cible, elle réinitialise immédiatement son temps de recharge.
+• Restaure 12,5 % Max HP.`,
 ];
 
 const PARADOX_OVERLOAD_PARAGRAPHS = () => [
   `RÉCOMPENSE PARADOXALE :
-Tous les 5 éliminations déclenchent un gain permanent.`,
+• Toutes les 5 éliminations déclenchent un gain permanent.`,
   `STATS POSSIBLES :
-ATK · HP max · Vitesse · Crit Chance · Crit Damage · DEF · Régén · Vol de vie`,
+• ATK
+• HP max
+• Vitesse
+• Crit Chance
+• Crit Damage
+• DEF
+• Régén
+• Vol de vie`,
   `GAIN PAR PROC :
-+0,01 % à +0,09 % sur la stat tirée.
-Les cumuls persistent jusqu'à la fin de la partie.`,
+• +0,01 % à +0,09 % sur la stat tirée.
+• Les cumuls persistent jusqu'à la fin de la partie.`,
 ];
 
 export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
@@ -836,9 +852,17 @@ function splitPassiveMechanicBlock(block: string): { label: string; bodyLines: s
   return { label, bodyLines };
 }
 
+function isPassiveBulletLine(line: string): boolean {
+  return line.startsWith('• ') || line.startsWith('- ');
+}
+
+function stripPassiveBulletMarker(line: string): string {
+  return isPassiveBulletLine(line) ? line.slice(2) : line;
+}
+
 function formatPassiveBodyLine(line: string): string {
-  if (line.startsWith('• ')) {
-    return `<li class="detail-passive-bullet">${highlightPassiveValues(line.slice(2))}</li>`;
+  if (isPassiveBulletLine(line)) {
+    return `<li class="detail-passive-bullet">${highlightPassiveValues(stripPassiveBulletMarker(line))}</li>`;
   }
   return `<p class="detail-passive-line-p">${highlightPassiveValues(line)}</p>`;
 }
@@ -857,7 +881,7 @@ function formatPassiveMechanicBlock(block: string): string {
   };
 
   for (const line of bodyLines) {
-    if (line.startsWith('• ')) {
+    if (isPassiveBulletLine(line)) {
       if (!listOpen) {
         chunks.push('<ul class="detail-passive-list">');
         listOpen = true;
@@ -949,5 +973,3 @@ export function getUnlockedPassiveDetails(classId: ClassId, unlockedNodes: strin
   return out;
 
 }
-
-

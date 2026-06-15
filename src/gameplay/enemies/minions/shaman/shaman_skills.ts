@@ -93,9 +93,13 @@ export class ShamanSkills {
             }
 
             // Apply heal tick
-            targetAlly.hp = Math.min(targetAlly.maxHp, targetAlly.hp + healPerTick);
-            createDamageText(`+${Math.floor(healPerTick)} HP`, targetAlly.position, '#2ecc71');
-            spawnParticles(targetAlly.position, 0x2ecc71, 5);
+            if (!(targetAlly._antiHealUntil && Date.now() < targetAlly._antiHealUntil)) {
+                targetAlly.hp = Math.min(targetAlly.maxHp, targetAlly.hp + healPerTick);
+                createDamageText(`+${Math.floor(healPerTick)} HP`, targetAlly.position, '#2ecc71');
+                spawnParticles(targetAlly.position, 0x2ecc71, 5);
+            } else {
+                createDamageText('ANTI-SOIN', targetAlly.position, '#ff2d55');
+            }
 
             ticks++;
             if (ticks >= maxTicks) {

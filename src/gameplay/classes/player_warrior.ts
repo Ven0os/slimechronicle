@@ -262,6 +262,7 @@ export class Warrior extends PlayerBase {
         }
 
         super.update(dt);
+        ConvergenceEffects.tickRunicJudgmentVisuals(this, dt);
 
     }
 
@@ -271,7 +272,23 @@ export class Warrior extends PlayerBase {
         const resourceEl = document.getElementById('class-resource');
         const charge = ConstellationEngine.getStoredParryCharge();
         if (resourceEl) {
-            if (charge > 0) {
+            const runicSummary = ConvergenceEffects.getRunicJudgmentSummary(this);
+            if (ConvergenceEffects.isRunicJudgmentActive(this) && runicSummary.count > 0) {
+                const pct = (runicSummary.count / runicSummary.max) * 100;
+                resourceEl.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#ffd86b;">
+                            <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-crown"></i> JUGEMENT RUNIQUE</span>
+                            <span>${runicSummary.count}/${runicSummary.max}</span>
+                        </div>
+                        <span style="font-size:9px; color:rgba(255,255,255,0.72);">${Math.floor(runicSummary.totalStored)} dégâts stockés</span>
+                        <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="width:${pct}%; height:100%; background:#ffd86b; box-shadow:0 0 6px #ffd86b; transition: width 0.2s;"></div>
+                        </div>
+                    </div>
+                `;
+                resourceEl.style.display = 'block';
+            } else if (charge > 0) {
                 resourceEl.innerHTML = `
                     <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                         <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#9b59b6;">
@@ -320,6 +337,7 @@ export class Warrior extends PlayerBase {
 
             ConstellationEngine.onBlock(blocked);
             ConstellationEngine.onWarriorParryBlock(this, blocked);
+            ConvergenceEffects.addRunicJudgmentSeal(this, blocked);
             this.parryBlockedTotal = (this.parryBlockedTotal || 0) + blocked;
 
             const hasChargePassive = ConstellationEngine.getPassiveRank('parryCharge');
@@ -577,6 +595,87 @@ export class Warrior extends PlayerBase {
 
 
 
+    fireRunicJudgmentBarrage(sealValues) {
+        const targets = ConvergenceEffects.findRunicJudgmentTargets(this.position, sealValues.length, 18);
+        if (!targets.length) {
+            createDamageText('AUCUNE CIBLE', this.position, '#ffd86b');
+            return;
+        }
+
+        const releaseRatio = ConvergenceEffects.getRunicJudgmentReleaseRatio();
+        sealValues.forEach((stored, index) => {
+            const target = targets[index % targets.length];
+            const damage = stored * releaseRatio;
+            this.launchRunicJudgmentProjectile(target, damage, index);
+        });
+    }
+
+    launchRunicJudgmentProjectile(target, damage, index = 0) {
+        if (!target || damage <= 0) return;
+        const start = this.position.clone().add(new THREE.Vector3(0, 1.35, 0));
+        const projectile = new THREE.Group();
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xffd86b,
+            transparent: true,
+            opacity: 0.95,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+        });
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), mat);
+        const trail = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), new THREE.MeshBasicMaterial({
+            color: 0xd4af37,
+            transparent: true,
+            opacity: 0.22,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+        }));
+        projectile.add(trail, core);
+        projectile.position.copy(start);
+        Globals.scene.add(projectile);
+
+        const duration = 280 + index * 35;
+        const startTime = Date.now();
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const p = Math.min(1, elapsed / duration);
+            const end = target && !target.dead
+                ? target.position.clone().add(new THREE.Vector3(0, 0.75, 0))
+                : start.clone().add(new THREE.Vector3(0, 0.4, 0));
+            const arc = Math.sin(p * Math.PI) * 1.2;
+            projectile.position.lerpVectors(start, end, p);
+            projectile.position.y += arc;
+            projectile.rotation.y += 0.35;
+            projectile.rotation.x += 0.18;
+            projectile.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.35);
+
+            if (p < 1) {
+                requestAnimationFrame(animate);
+                return;
+            }
+
+            Globals.scene.remove(projectile);
+            projectile.traverse((child) => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            });
+
+            if (!target || target.dead) return;
+            if (canDealDamageDirectly()) {
+                dealDamageToEnemy(target, damage, {
+                    pos: target.position,
+                    skillKey: 'shift',
+                    maxRange: 24,
+                    isRanged: true,
+                });
+            }
+            createDamageText('JUGEMENT', target.position, '#ffd86b');
+            spawnParticles(target.position, 0xd4af37, 12);
+        };
+        animate();
+    }
+
+
+
     applySeismicImpact(radius, parryBonus = 0, label = 'CRUSH!') {
         const smashDmg = ConstellationEngine.calcWarriorSkillDamage('space', parryBonus);
         createSkillVisual('shockwave', this.position, radius, 0x8e44ad);
@@ -618,6 +717,20 @@ export class Warrior extends PlayerBase {
         const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.mesh.quaternion);
 
         dir.y = 0; dir.normalize();
+
+        if (key === 'shift' && STATE.multiplayer.active && this.isLocalPlayer()) {
+            Network.send({
+                type: 'net-action',
+                action: 'skill',
+                key: 'shift',
+                id: STATE.multiplayer.id,
+                pos: this.position,
+                dir,
+                color: CONFIG.colors.warrior,
+                class: 'warrior',
+                extra: { runicSeals: ConvergenceEffects.getRunicJudgmentSealValues(this) },
+            });
+        }
 
 
 
@@ -756,6 +869,15 @@ export class Warrior extends PlayerBase {
             this.heal(healAmt);
             PassiveKeystoneHooks.applyGuardianWarCryAllies(this);
 
+            const consumedSeals = ConvergenceEffects.consumeRunicJudgmentSeals(this);
+            if (consumedSeals.length) {
+                this.fireRunicJudgmentBarrage(consumedSeals);
+                if (consumedSeals.length === ConvergenceEffects.getRunicJudgmentMaxSeals()) {
+                    this.cooldowns.shift = 0;
+                    createDamageText('PARADE PARFAITE', this.position, '#ffd86b');
+                }
+            }
+
 
 
         } else if (key === 'e') { 
@@ -801,5 +923,3 @@ export class Warrior extends PlayerBase {
     }
 
 }
-
-

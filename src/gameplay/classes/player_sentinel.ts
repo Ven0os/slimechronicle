@@ -4,6 +4,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
 import { Network } from '../../multiplayer/network';
+import { canApplyGameplay } from '../../multiplayer/net_authority';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
@@ -993,7 +994,20 @@ export class Sentinel extends PlayerBase {
         
         Globals.enemies.forEach(e => {
             if(e.position.distanceTo(targetPos) < hitRadius) { 
-                dealDamageToEnemy(e, beamDmg, { pos: e.position }); 
+                const dmg = beamDmg * ConstellationEngine.getStellarSingularityBeamDamageMult(e);
+                const wasAlive = !e.dead;
+                dealDamageToEnemy(e, dmg, { pos: e.position, skillKey: 'space', isRanged: true });
+                if (wasAlive && e.dead && ConstellationEngine.hasSolarWellCurse()) {
+                    const wellPos = e.position.clone();
+                    const created = ConstellationEngine.registerStellarSingularityWell(wellPos);
+                    if (created && STATE.multiplayer.active && STATE.multiplayer.isHost) {
+                        Network.send({
+                            type: 'sentinel-light-well',
+                            pos: { x: wellPos.x, y: wellPos.y, z: wellPos.z },
+                            duration: ConstellationEngine.getLightFieldDuration(),
+                        });
+                    }
+                }
                 spawnParticles(e.position, 0xf1c40f, beamMods.sizeMult > 1 ? 22 : 15);
                 e.pushBack(targetPos, 5 * beamMods.sizeMult); 
             }

@@ -1,4 +1,5 @@
 import { STATE } from '@/core/config';
+import * as THREE from 'three';
 import { Globals } from '@/core/globals';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
@@ -123,6 +124,8 @@ type RupturePlayer = {
   isLocalPlayer?: () => boolean;
   heal?: (n: number) => void;
   cooldowns?: Record<string, number>;
+  _cataclysmWindowUntil?: number;
+  _ruptureStacks?: number;
 };
 
 type RuptureEnemy = {
@@ -219,7 +222,7 @@ export function triggerRuptureAstrale(player: RupturePlayer, dir: THREE.Vector3)
   }
 
   createDamageText('RUPTURE ASTRALE', player.position, '#c39bd3');
-  createSkillVisual('shockwave', player.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 3.5, 0xaa00ff);
+  createSkillVisual('shockwave', player.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 3.5, 0xaa00ff, undefined);
 }
 
 /** Incrémente les stacks de lance ; à 4 déclenche la rupture et repasse à 0. */

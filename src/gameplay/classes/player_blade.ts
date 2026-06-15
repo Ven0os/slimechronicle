@@ -6,6 +6,7 @@ import { createSkillVisual, createDamageText, spawnParticles } from '../../visua
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
+import { ConvergenceEffects } from '../../systems/convergenceEffects';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { Projectile } from '../entities';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
@@ -144,13 +145,22 @@ export class Blade extends PlayerBase {
     }
 
     getPassiveMultiplier() {
-        return 1.0 + (1.0 - (this.hp / this.maxHp));
+        return ConvergenceEffects.getBladeBloodThirstDamageMult(this);
     }
 
     getBladeDamage(skillKey, passiveMult = 1) {
         const base = calcSkillBaseDamage('blade', skillKey) * passiveMult;
         const flat = PassiveKeystoneHooks.getBloodFrenzyFlatDamage(this);
         return ConstellationEngine.modifyDamageDealt(base + flat, { skill: true, skillKey });
+    }
+
+    getBreakpointDamageOptions(skillKey) {
+        return ConvergenceEffects.getBladeBreakpointDamageOptions(this, skillKey);
+    }
+
+    resolveBreakpointExecution(enemy, skillKey) {
+        if (!enemy?.dead) return;
+        ConvergenceEffects.onBladeBreakpointExecution(this, skillKey);
     }
 
     animateCharacter(dt) {
@@ -243,7 +253,8 @@ export class Blade extends PlayerBase {
                     this.dashHitSet.add(e);
                     
                     const dmg = this.getBladeDamage('shift', passiveMult);
-                    dealDamageToEnemy(e, dmg, { pos: e.position });
+                    dealDamageToEnemy(e, dmg, { pos: e.position, ...this.getBreakpointDamageOptions('shift') });
+                    this.resolveBreakpointExecution(e, 'shift');
                     spawnParticles(e.position, CONFIG.colors.blade, 8);
                     createSkillVisual('slash', e.position, 1.5, 0x1abc9c, this.dashDir);
                 }
@@ -267,6 +278,32 @@ export class Blade extends PlayerBase {
     updateClassPassives(dt) {
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
+            if (ConstellationEngine.isApexPassiveActive('eternalThirst', 'blade')) {
+                const summary = ConvergenceEffects.getBladeBreakpointSummary(this);
+                const thirst = ConvergenceEffects.getBladeBloodThirstSummary(this);
+                const critPct = Math.round(summary.critBonus * 100);
+                const critDmgPct = Math.round(summary.critDmgBonus * 100);
+                const thirstPct = Math.round(thirst.bonus * 100);
+                const thirstCapPct = Math.round(thirst.cap * 100);
+                const readyText = summary.active ? 'RUPTURE ACTIVE' : summary.ready ? 'RUPTURE PRÊTE' : summary.cdRemaining > 0 ? `${summary.cdRemaining.toFixed(1)}s` : `${Math.ceil(summary.hpPct * 100)}% HP`;
+                const pct = Math.min(100, (summary.missingPct / 0.9) * 100);
+                const color = summary.ready || summary.active ? '#ff2d55' : '#1abc9c';
+                resourceEl.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${color};">
+                            <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-skull"></i> POINT DE RUPTURE</span>
+                            <span>${readyText}</span>
+                        </div>
+                        <span style="font-size:9px; color:rgba(255,255,255,0.72);">+${critPct}% Crit · +${critDmgPct}% Dégâts Crit</span>
+                        <span style="font-size:9px; color:rgba(255,255,255,0.72);">Soif de Sang +${thirstPct}% DMG · cap ${thirstCapPct}%</span>
+                        <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="width:${pct}%; height:100%; background:${color}; box-shadow:0 0 6px ${color}; transition: width 0.2s;"></div>
+                        </div>
+                    </div>
+                `;
+                resourceEl.style.display = 'block';
+                return;
+            }
             const mult = this.getPassiveMultiplier();
             const bonusPct = Math.floor((mult - 1.0) * 100); 
             let color = '#1abc9c';
@@ -366,6 +403,7 @@ export class Blade extends PlayerBase {
         const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.mesh.quaternion);
         this.cooldowns[key] = this.maxCooldowns[key] * ConstellationEngine.getSkillCdMult(key);
         ConstellationEngine.onSkillUsed(key);
+        ConvergenceEffects.tryConsumeBladeBreakpoint(this, key);
         const multiplier = this.getPassiveMultiplier();
 
         if(key === 'space') { 
@@ -386,7 +424,8 @@ export class Blade extends PlayerBase {
                 if (ConstellationEngine.getPassiveRank('cyclonePull') && elapsed - lastCycloneDmg > 500) {
                     Globals.enemies.forEach((e) => {
                         if (!e.dead && e.position.distanceTo(this.position) < 5) {
-                            dealDamageToEnemy(e, STATE.stats.atk * 0.35, { pos: e.position });
+                            dealDamageToEnemy(e, STATE.stats.atk * 0.35, { pos: e.position, ...this.getBreakpointDamageOptions('space') });
+                            this.resolveBreakpointExecution(e, 'space');
                         }
                     });
                     lastCycloneDmg = elapsed;
@@ -411,7 +450,8 @@ export class Blade extends PlayerBase {
 
             Globals.enemies.forEach(e => {
                 if(e.position.distanceTo(this.position) < 5) {
-                    dealDamageToEnemy(e, this.getBladeDamage('space', multiplier), { pos: e.position });
+                    dealDamageToEnemy(e, this.getBladeDamage('space', multiplier), { pos: e.position, ...this.getBreakpointDamageOptions('space') });
+                    this.resolveBreakpointExecution(e, 'space');
                     spawnParticles(e.position, 0x1abc9c, 5);
                 }
             });
@@ -527,7 +567,8 @@ export class Blade extends PlayerBase {
 
         Globals.enemies.forEach(e => { 
             if(e.position.distanceTo(this.position) <= 15) {
-                dealDamageToEnemy(e, this.getBladeDamage('e', multiplier), { pos: e.position }); 
+                dealDamageToEnemy(e, this.getBladeDamage('e', multiplier), { pos: e.position, ...this.getBreakpointDamageOptions('e') }); 
+                this.resolveBreakpointExecution(e, 'e');
                 e.pushBack(this.position, 18); 
                 e.speed *= 0.5;
                 setTimeout(() => { if(!e.dead) e.speed *= 2.0; }, 2500);
