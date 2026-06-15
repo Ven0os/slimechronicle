@@ -29,25 +29,11 @@ const pct = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`;
 const CELESTIAL_CONVERGENCE_PARAGRAPHS = () => [
   `RUPTURE ASTRALE :
 Chaque ennemi touché réduit de 0,5 s la recharge restante de Pic de Lune.
-Déclenche un second impact 0,25 s après le premier.
-Premier impact :
-90 % dégâts.
-Second impact :
-80 % dégâts.
-Si la cible possède simultanément :
-• Brûlure Solaire
-• Fragilité Lunaire
-Le second impact :
-• Inflige des dégâts supplémentaires équivalents à 10 % des PV actuels de la cible au moment de l'impact.
-• Réapplique les effets Solaires.
-• Réapplique les effets Lunaires.`,
+Sous Ascension : le second impact est garanti.`,
   `ATTAQUES DE LANCE :
-Infligent +10 % dégâts aux cibles affectées simultanément par :
-• Brûlure Solaire
-• Fragilité Lunaire`,
-  `ASCENSION :
-• Le second impact de Rupture Astrale est garanti.
-• Ascension n'inflige plus de dégâts au joueur.`,
+Infligent +10 % dégâts aux cibles affectées par Brûlure Solaire + Fragilité Lunaire.`,
+  `DOUBLE AFFLICTION :
+Sur une cible Brûlure + Fragilité, le second impact inflige +10 % PV actuels et rafraîchit les deux effets.`,
   `CATACLYSME :
 • Applique Fragilité Lunaire pendant 4 s.`,
 ];
@@ -421,12 +407,10 @@ export const PASSIVE_DETAILS: Record<string, PassiveDetailDef> = {
 
   ruptureAstrale: {
     paragraphs: () => [
-      'Tous les 4 coups de lance :',
-      'Déclenche une Rupture Astrale.',
-      'Premier impact : 90 % dégâts.',
-      'Second impact (0,25 s) : 80 % dégâts.',
-      'Applique les effets Solaires et Lunaires actifs · génère de l\'énergie Cataclysme.',
-      'Si Brûlure Solaire + Fragilité Lunaire : second impact inflige +10 % PV actuels et réapplique les effets.',
+      'Tous les 4 coups de lance : déclenche Rupture Astrale.',
+      'Dégâts : 100 % ATK.',
+      'Effets : applique Brûlure Solaire + Fragilité Lunaire.',
+      'Génère de l\'énergie Cataclysme.',
     ],
   },
 
@@ -710,10 +694,10 @@ Object.assign(PASSIVE_DETAILS, {
 
   ruptureAstrale: {
     paragraphs: () => [
-      'Tous les 4 coups de lance : déclenche une Rupture Astrale.',
-      'Premier impact : 90 % dégâts · second impact (0,25 s) : 80 % dégâts.',
-      'Applique les effets Solaires et Lunaires actifs · génère de l\'énergie Cataclysme.',
-      'Brûlure + Fragilité : second impact +10 % PV actuels et réapplication des effets.',
+      'Tous les 4 coups de lance : déclenche Rupture Astrale.',
+      'Dégâts : 100 % ATK.',
+      'Effets : applique Brûlure Solaire + Fragilité Lunaire.',
+      'Génère de l\'énergie Cataclysme.',
     ],
   },
 

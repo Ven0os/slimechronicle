@@ -57,7 +57,7 @@ export const PASSIVE_CATALOG: Record<string, PassiveDisplayMeta> = {
   solarFlare: { key: 'solarFlare', name: 'Couronne Éclipsée', desc: 'Débloque la charge des attaques de lance (+75 % portée max). Prochaine charge : +7 % dégâts par ennemi de la dernière Fulgurance.', icon: 'fa-crown', color: '#f39c12', category: 'offense' },
   lunarSlow: { key: 'lunarSlow', name: 'Givre Lunaire', desc: 'Ralentissement lunaire renforcé.', icon: 'fa-snowflake', color: '#a3b1cc', category: 'utility' },
   lunarSpike: { key: 'lunarSpike', name: 'Marée Lunaire', desc: 'Pic de Lune : rayon +25 %. Sous Cataclysme : soigne 25 % des dégâts infligés.', icon: 'fa-circle', color: '#85929e', category: 'offense' },
-  ruptureAstrale: { key: 'ruptureAstrale', name: 'Rupture Astrale', desc: 'Tous les 4 coups de lance : Rupture Astrale (90 % + 80 % dégâts, effets Soleil/Lune).', icon: 'fa-burst', color: '#9b59b6', category: 'offense' },
+  ruptureAstrale: { key: 'ruptureAstrale', name: 'Rupture Astrale', desc: 'Tous les 4 coups de lance : 100 % ATK, Brûlure Solaire et Fragilité Lunaire.', icon: 'fa-burst', color: '#9b59b6', category: 'offense' },
   equinoxHaste: { key: 'equinoxHaste', name: 'Équinoxe', desc: 'Vitesse accrue en Ascension.', icon: 'fa-arrows-spin', color: '#bb8fce', category: 'utility' },
   cataclysmHaste: { key: 'cataclysmHaste', name: 'Cataclysme Chargé', desc: 'Cataclysme se charge plus vite.', icon: 'fa-circle-notch', color: '#6c3483', category: 'offense' },
   voidPull: { key: 'voidPull', name: 'Trou Noir', desc: 'Cataclysme attire les ennemis.', icon: 'fa-circle-dot', color: '#2c3e50', category: 'offense' },
