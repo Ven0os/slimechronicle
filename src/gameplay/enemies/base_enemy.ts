@@ -454,6 +454,7 @@ export class BaseEnemy extends THREE.Group {
 
             let heal = resolved.lifeStealHeal;
             if (heal > 0 && s.healRecvMult > 1) heal *= s.healRecvMult;
+            if (heal > 0 && PassiveKeystoneHooks.isEnemyAntiHealed(this)) heal = 0;
             if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal);
 
             if (outOpts.stunDuration && s.stunDurationMult > 1) {

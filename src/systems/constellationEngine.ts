@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
+import * as THREE from 'three';
 import {
   calcSkillBaseDamage,
   createDefaultSkillCdMods,
@@ -28,7 +29,7 @@ import { getPlayerDefense, applyDefenseReduction } from '@/gameplay/combat/defen
 import { APEX_PASSIVE_BY_CLASS, ConvergenceEffects, getApexPassiveRank, isChronoApexActive } from '@/systems/convergenceEffects';
 import { clampFracture } from '@/gameplay/classes/chrono/fractureHelpers';
 import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
-import { createDamageText } from '@/visual/effects';
+import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
 
 type PassiveBag = Record<string, unknown>;
 
@@ -325,6 +326,10 @@ export const ConstellationEngine = {
 
     if (!this.isApexPassiveActive('bloodPact', 'pacifier')) {
       player._convergenceShotIndex = 0;
+      ConvergenceEffects.clearPacifierHemocycleState(player);
+    }
+    if (!this.isApexPassiveActive('runicColossus', 'warrior')) {
+      ConvergenceEffects.clearRunicJudgmentState(player);
     }
     if (player.className === 'chronoregulator') {
       if (this.isApexPassiveActive('continuumMastery', 'chronoregulator') && typeof player.syncChronoApexState === 'function') {
@@ -363,7 +368,6 @@ export const ConstellationEngine = {
       STATE.stats.titanDefBonus = 0;
     }
 
-    this.tickSolarInspiration(dt);
     this.tickSolarLightField(dt);
     PassiveKeystoneHooks.tickParadoxClones(player);
     if (player.className === 'blade') PassiveKeystoneHooks.tickBloodFrenzy(player);
@@ -426,10 +430,6 @@ export const ConstellationEngine = {
       dmg *= 0.88;
     }
 
-    if (p._solarWellAnchored && this.hasSolarWellCurse()) {
-      dmg *= 1.12;
-    }
-
     return dmg;
   },
 
@@ -474,29 +474,39 @@ export const ConstellationEngine = {
     return this.modifyDamageDealt(base * chargeRatio, { skill: true, skillKey: 'space' });
   },
 
-  isInSolarInspirationZone(forPlayer: { position: THREE.Vector3; dead?: boolean }, source = this.getSolarInspirationSource()): boolean {
-    if (!source || !forPlayer || forPlayer.dead) return false;
-    return forPlayer.position.distanceTo(source.position) <= 14;
+  getActiveSolarLightFields(): Array<{ pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number }> {
+    const p = ensurePassives();
+    const now = Date.now();
+    const legacy = p._solarLightField as { pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number } | undefined;
+    const list = Array.isArray(p._solarLightFields)
+      ? p._solarLightFields as Array<{ pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean; nextBurnAt?: number }>
+      : legacy ? [legacy] : [];
+    const active = list.filter((field) => field && field.until > now);
+    p._solarLightFields = active;
+    p._solarLightField = active[active.length - 1];
+    return active;
+  },
+
+  isInSolarInspirationZone(forPlayer: { position: THREE.Vector3; dead?: boolean }): boolean {
+    if (!forPlayer || forPlayer.dead || !this.hasSolarWellCurse()) return false;
+    return this.getActiveSolarLightFields().some((field) => forPlayer.position.distanceTo(field.pos) <= field.radius);
   },
 
   getSolarInspirationAtkMult(forPlayer = Globals.player): number {
-    const source = this.getSolarInspirationSource();
-    if (!source || !forPlayer || forPlayer.dead) return 1;
-    if (!this.isInSolarInspirationZone(forPlayer, source)) return 1;
-    return forPlayer === source ? 1.3 : 1.15;
+    if (!forPlayer || forPlayer.dead) return 1;
+    if (!this.isInSolarInspirationZone(forPlayer)) return 1;
+    return forPlayer.className === 'sentinel' ? 1.3 : 1.15;
   },
 
   getLightFieldRadius(): number {
     let r = 10;
     if (this.getPassiveRank('healAmp')) r += 2;
-    if (this.hasSolarWellCurse()) r += 2;
     return r;
   },
 
   getLightFieldDuration(): number {
     let d = 5;
     if (this.getPassiveRank('healAmp')) d += 2;
-    if (this.hasSolarWellCurse()) d += 1;
     return d;
   },
 
@@ -508,20 +518,112 @@ export const ConstellationEngine = {
   },
 
   getLightFieldEnemyDebuffMods(): { speedMult: number; dmgTakenMult: number } | null {
-    if (!this.hasSolarWellCurse()) return null;
-    return {
-      speedMult: 0.65,
-      dmgTakenMult: 1.25,
-    };
+    return null;
   },
 
   registerSolarLightField(pos: THREE.Vector3, durationSec: number): void {
     const p = ensurePassives();
-    p._solarLightField = {
+    const field = {
       pos: pos.clone(),
       radius: this.getLightFieldRadius(),
       until: Date.now() + durationSec * 1000,
     };
+    const fields = this.getActiveSolarLightFields();
+    fields.push(field);
+    p._solarLightFields = fields;
+    p._solarLightField = field;
+  },
+
+  registerStellarSingularityWell(pos: THREE.Vector3, durationSec = this.getLightFieldDuration(), forceVisual = false): boolean {
+    if (!forceVisual && !this.hasSolarWellCurse()) return false;
+    this.registerSolarLightField(pos, durationSec);
+    this.createStellarLightWellVisual(pos, durationSec);
+    createSkillVisual('shockwave', pos, this.getLightFieldRadius() * 0.7, 0xffd166);
+    createDamageText('PUITS DE LUMIÈRE', pos, '#fff3a0');
+    spawnParticles(pos.clone().add(new THREE.Vector3(0, 0.35, 0)), 0xffd166, 24);
+    return true;
+  },
+
+  createStellarLightWellVisual(pos: THREE.Vector3, durationSec: number): void {
+    if (!Globals.scene) return;
+    const radius = this.getLightFieldRadius();
+    const group = new THREE.Group();
+    group.position.copy(pos).add(new THREE.Vector3(0, 0.08, 0));
+
+    const fillMat = new THREE.MeshBasicMaterial({
+      color: 0xfff3a0,
+      transparent: true,
+      opacity: 0.14,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.62,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const warmRingMat = new THREE.MeshBasicMaterial({
+      color: 0xffc857,
+      transparent: true,
+      opacity: 0.42,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(radius, 64), fillMat);
+    fill.rotation.x = -Math.PI / 2;
+    group.add(fill);
+
+    const outer = new THREE.Mesh(new THREE.RingGeometry(radius * 0.92, radius, 96), ringMat);
+    outer.rotation.x = -Math.PI / 2;
+    group.add(outer);
+
+    const inner = new THREE.Mesh(new THREE.RingGeometry(radius * 0.45, radius * 0.49, 96), warmRingMat);
+    inner.rotation.x = -Math.PI / 2;
+    inner.position.y = 0.01;
+    group.add(inner);
+
+    Globals.scene.add(group);
+    const startedAt = performance.now();
+    const durationMs = Math.max(0.2, durationSec) * 1000;
+
+    const dispose = () => {
+      Globals.scene?.remove(group);
+      group.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
+    };
+
+    const animate = () => {
+      if (!group.parent) return;
+      const elapsed = performance.now() - startedAt;
+      const progress = Math.min(1, elapsed / durationMs);
+      const fade = progress > 0.82 ? Math.max(0, (1 - progress) / 0.18) : 1;
+      const pulse = 1 + Math.sin(elapsed * 0.004) * 0.025;
+
+      group.rotation.y += 0.004;
+      outer.rotation.z += 0.006;
+      inner.rotation.z -= 0.01;
+      fill.scale.setScalar(pulse);
+      outer.scale.setScalar(1 + Math.sin(elapsed * 0.003) * 0.018);
+      inner.scale.setScalar(1 + Math.cos(elapsed * 0.0045) * 0.035);
+      fillMat.opacity = 0.14 * fade;
+      ringMat.opacity = 0.62 * fade;
+      warmRingMat.opacity = 0.42 * fade;
+
+      if (progress >= 1) {
+        dispose();
+      } else {
+        requestAnimationFrame(animate);
+      }
+    };
+    animate();
   },
 
   applyLightFieldDebuff(enemy: {
@@ -561,38 +663,35 @@ export const ConstellationEngine = {
     this.clearExpiredLightFieldDebuffs();
 
     const p = ensurePassives();
-    const field = p._solarLightField as { pos: THREE.Vector3; radius: number; until: number; malusAnnounced?: boolean } | undefined;
-    if (!field || Date.now() >= field.until) {
-      if (field) delete p._solarLightField;
+    const fields = this.getActiveSolarLightFields();
+    if (!fields.length) {
+      delete p._solarLightField;
       p._solarWellAnchored = false;
       return;
     }
 
     const source = Globals.player;
-    const anchored = !!(
-      source
-      && !source.dead
-      && source.className === 'sentinel'
-      && source.position.distanceTo(field.pos) <= field.radius
-    );
-    p._solarWellAnchored = anchored && this.hasSolarWellCurse();
+    p._solarWellAnchored = false;
+    if (!this.hasSolarWellCurse()) return;
 
-    if (anchored && this.hasSolarWellCurse() && source?.heal) {
-      source.heal(source.maxHp * 0.02 * dt);
-    }
+    const now = Date.now();
+    fields.forEach((field) => {
+      if (!field.nextBurnAt) field.nextBurnAt = 0;
+      if (now < field.nextBurnAt) return;
+      field.nextBurnAt = now + 1000;
 
-    const mods = this.getLightFieldEnemyDebuffMods();
-    if (mods) {
+      let touched = false;
       Globals.enemies?.forEach((enemy) => {
         if (enemy.dead || enemy.position.distanceTo(field.pos) > field.radius) return;
-        this.applyLightFieldDebuff(enemy, mods);
+        touched = true;
+        PassiveKeystoneHooks.applySentinelSolarBurn(enemy, source);
       });
 
-      if (!field.malusAnnounced && Globals.enemies?.some((e) => !e.dead && e.position.distanceTo(field.pos) <= field.radius)) {
+      if (touched && !field.malusAnnounced) {
         field.malusAnnounced = true;
-        createDamageText('PUITS SOLAIRE', field.pos, '#e67e22');
+        createDamageText('BRÛLURE SOLAIRE', field.pos, '#ffb703');
       }
-    }
+    });
   },
 
   getSolarInspirationSource() {
@@ -603,26 +702,14 @@ export const ConstellationEngine = {
     return null;
   },
 
-  tickSolarInspiration(dt: number): void {
-    const source = this.getSolarInspirationSource();
-    if (!source || source.dead) return;
+  tickSolarInspiration(_dt: number): void {
+    // Conservé pour compatibilité avec les anciens appels : Singularité Stellaire vit désormais dans tickSolarLightField.
+  },
 
-    const healRate = 0.01;
-    const applyHeal = (target: { hp: number; maxHp: number }) => {
-      if (!target || target.maxHp <= 0) return;
-      target.hp = Math.min(target.maxHp, target.hp + target.maxHp * healRate * dt);
-    };
-
-    applyHeal(source);
-    if (STATE.multiplayer?.remotePlayers) {
-      for (const id of Object.keys(STATE.multiplayer.remotePlayers)) {
-        const ally = STATE.multiplayer.remotePlayers[id];
-        if (!ally || ally.dead || ally === source) continue;
-        if (ally.position.distanceTo(source.position) <= 14) {
-          applyHeal(ally);
-        }
-      }
-    }
+  getStellarSingularityBeamDamageMult(enemy: { _solarBurnUntil?: number } | null | undefined): number {
+    if (!this.hasSolarWellCurse()) return 1;
+    if (!enemy?._solarBurnUntil || Date.now() >= enemy._solarBurnUntil) return 1;
+    return 1.15;
   },
 
   getVampJumpModifiers(): { radius: number; dmgMult: number; stunMs: number; healRatio: number } {
@@ -664,10 +751,6 @@ export const ConstellationEngine = {
 
     dmg *= this.getSolarInspirationAtkMult();
     dmg *= this.getWarFervorMult();
-
-    if (p._solarWellAnchored && this.hasSolarWellCurse()) {
-      dmg *= 1.35;
-    }
 
     const key = context.skillKey ?? (context.skill ? undefined : 'primary');
     if (key) dmg *= this.getSkillDmgMod(key);

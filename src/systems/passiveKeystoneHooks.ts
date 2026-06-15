@@ -227,6 +227,33 @@ export const PassiveKeystoneHooks = {
     }
   },
 
+  applyBladeBreakpointHemorrhage(enemy: {
+    dead?: boolean;
+    position?: THREE.Vector3;
+    takeDamage?: (n: number) => void;
+    hemorrhageStacks?: number;
+    _antiHealUntil?: number;
+  }, dmg: number) {
+    if (!enemy || enemy.dead) return;
+    enemy.hemorrhageStacks = Math.min(3, (enemy.hemorrhageStacks || 0) + 1);
+    enemy._antiHealUntil = Date.now() + 3000;
+    const tick = dmg * 0.2 / 3;
+    const stacks = enemy.hemorrhageStacks;
+    createDamageText('HÉMORRAGIE', enemy.position, '#ff2d55');
+    for (let i = 1; i <= 3; i++) {
+      setTimeout(() => {
+        if (!enemy.dead && enemy.takeDamage) {
+          enemy.takeDamage(tick * stacks);
+          createDamageText('ANTI-SOIN', enemy.position, '#ff2d55');
+        }
+      }, i * 1000);
+    }
+  },
+
+  isEnemyAntiHealed(enemy: { _antiHealUntil?: number } | null | undefined): boolean {
+    return !!(enemy?._antiHealUntil && Date.now() < enemy._antiHealUntil);
+  },
+
   onBladeDashEnd(player: {
     isIntangible?: boolean;
     position?: THREE.Vector3;
@@ -330,6 +357,29 @@ export const PassiveKeystoneHooks = {
 
   /** @deprecated Brûlure Temporelle gérée par chrono/temporalBurn.ts via dealMagicDamage. */
   applyPrismLensBurn(_enemy: unknown, _tickDmg: number) {},
+
+  applySentinelSolarBurn(
+    enemy: { dead?: boolean; position?: THREE.Vector3; _solarBurnUntil?: number },
+    _player: { position?: THREE.Vector3 } | null | undefined,
+  ) {
+    if (!enemy || enemy.dead || !ConstellationEngine.isApexPassiveActive('solarInspiration', 'sentinel')) return;
+    const sunMods = this.getDevouringSunMods();
+    if (sunMods.burnTicks <= 0) return;
+
+    const duration = sunMods.burnStartMs + Math.max(0, sunMods.burnTicks - 1) * sunMods.burnIntervalMs + 400;
+    enemy._solarBurnUntil = Math.max(enemy._solarBurnUntil || 0, Date.now() + duration);
+
+    const burnDmg = STATE.stats.atk * 0.2 * sunMods.burnDmgMult;
+    for (let t = 0; t < sunMods.burnTicks; t++) {
+      const delay = sunMods.burnStartMs + t * sunMods.burnIntervalMs;
+      setTimeout(() => {
+        if (!enemy.dead && canApplyGameplay()) {
+          dealDamageToEnemy(enemy, burnDmg, { pos: enemy.position, noCrit: true, skillKey: 'space' });
+          createDamageText('FEU', enemy.position, '#ffa500');
+        }
+      }, delay);
+    }
+  },
 
   getSolarFlareMods() {
     return { dotMult: 0.3, dotTicks: 1, extraBounces: 0 };

@@ -102,6 +102,7 @@ export function tickMiniBossCombat(
     hp?: number;
     maxHp?: number;
     dead?: boolean;
+    _antiHealUntil?: number;
     _miniBossCombatTimers?: { shieldPulse: number; gardien: number };
   },
   dt: number,
@@ -113,8 +114,9 @@ export function tickMiniBossCombat(
   }
   const timers = enemy._miniBossCombatTimers;
   const s = enemy.miniBossStats;
+  const antiHeal = !!(enemy._antiHealUntil && Date.now() < enemy._antiHealUntil);
 
-  if (s.regenPerSec > 0 && enemy.maxHp) {
+  if (s.regenPerSec > 0 && enemy.maxHp && !antiHeal) {
     enemy.hp = Math.min(enemy.maxHp, (enemy.hp ?? 0) + s.regenPerSec * dt);
   }
 

@@ -11,6 +11,7 @@ import { WorldEvents } from '../gameplay/events';
 import { handleRequestDamage } from './net_combat';
 import { NetChrono } from './net_chrono';
 import { NetClassState } from './net_class_state';
+import { ConstellationEngine } from '../systems/constellationEngine';
 
 export function handleNetworkMessage(data) {
     if (data.type === 'world-update') { 
@@ -35,7 +36,14 @@ export function handleNetworkMessage(data) {
         if (STATE.multiplayer.isHost) { 
             NetChrono.ingestClientInput(data.id, data);
             NetSync.updateRemotePlayer(data.id, data.pos, data.rot, data.class, data.dead, data.stun, NetSync._lastDt); 
+            const remote = STATE.multiplayer.remotePlayers[data.id];
+            if (data.classState && remote) NetClassState.applySnapshot(remote, data.classState);
         }
+    }
+    else if (data.type === 'sentinel-light-well') {
+        if (STATE.multiplayer.isHost) return;
+        const pos = new THREE.Vector3(data.pos.x, data.pos.y, data.pos.z);
+        ConstellationEngine.registerStellarSingularityWell(pos, data.duration || ConstellationEngine.getLightFieldDuration(), true);
     }
     else if (data.type === 'chrono-intent') {
         const localId = String(STATE.multiplayer.id);
@@ -248,6 +256,13 @@ export function handleNetworkMessage(data) {
             Globals.player.heal(data.amount);
             createDamageText("+" + Math.floor(data.amount), Globals.player.position, '#00ff00');
             if(AudioSys.sfx.levelup) AudioSys.sfx.levelup(); 
+        }
+    }
+    else if (data.type === 'blade-breakpoint-execution') {
+        if (data.targetId === STATE.multiplayer.id && Globals.player && !Globals.player.dead) {
+            if (Globals.player.cooldowns && data.skillKey) Globals.player.cooldowns[data.skillKey] = 0;
+            if (data.healAmount) Globals.player.heal(data.healAmount);
+            createDamageText('EXÉCUTION', Globals.player.position, '#ff2d55');
         }
     }
     else if (data.type === 'xp-gain') {

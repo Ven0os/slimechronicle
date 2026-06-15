@@ -11,7 +11,6 @@ import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
 import { UI } from '../../visual/ui';
 import { dealDamageToEnemy } from '../combat/damage_helpers';
 import { canDealDamageDirectly, sendSkillIntent, shouldSendSkillIntent } from '../../multiplayer/net_authority';
-import { NetClassState } from '../../multiplayer/net_class_state';
 import { getGroundLevelAt } from '../world/worldZones';
 
 export class Pacifier extends PlayerBase {
@@ -160,19 +159,26 @@ export class Pacifier extends PlayerBase {
         if(this.drainActiveTime > 0) this.drainActiveTime -= dt;
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
-            const stacks = this.sanguinStacks || 0;
-            const pct = (stacks / 5) * 100;
+            const hemocycleActive = ConstellationEngine.isApexPassiveActive('bloodPact', 'pacifier');
+            const hemo = hemocycleActive ? ConvergenceEffects.getHemocycleSummary(this) : null;
+            const stacks = hemocycleActive ? hemo.marks : (this.sanguinStacks || 0);
+            const maxStacks = hemocycleActive ? hemo.max : 5;
+            const pct = (stacks / maxStacks) * 100;
             const isFrenzy = !!this.bloodPistolActive;
-            const titleColor = isFrenzy ? '#ff0000' : '#e74c3c';
-            const titleText = isFrenzy ? 'FRÉNÉSIE ACTIVE' : 'SOIF DE SANG';
-            const icon = isFrenzy ? 'fa-gun' : 'fa-droplet';
+            const titleColor = hemocycleActive ? '#ff4d6d' : (isFrenzy ? '#ff0000' : '#e74c3c');
+            const titleText = hemocycleActive ? (hemo.ready ? 'HÉMOCYCLE PRÊT' : 'HÉMOCYCLE') : (isFrenzy ? 'FRÉNÉSIE ACTIVE' : 'SOIF DE SANG');
+            const icon = hemocycleActive ? 'fa-droplet' : (isFrenzy ? 'fa-gun' : 'fa-droplet');
+            const storedText = hemocycleActive && hemo.stored > 0
+                ? `<span style="font-size:9px; color:rgba(255,255,255,0.72);">${Math.floor(hemo.stored)} dégâts stockés</span>`
+                : '';
             
             resourceEl.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                     <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${titleColor};">
                         <span style="display:flex; align-items:center; gap:5px;"><i class="fas ${icon}"></i> ${titleText}</span>
-                        <span>${stacks}/5</span>
+                        <span>${stacks}/${maxStacks}</span>
                     </div>
+                    ${storedText}
                     <div style="width:100%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
                         <div style="width:${pct}%; height:100%; background:${titleColor}; box-shadow:0 0 6px ${titleColor}; transition: width 0.2s;"></div>
                     </div>
@@ -209,6 +215,21 @@ export class Pacifier extends PlayerBase {
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 16), new THREE.MeshBasicMaterial({color:0xff0000, side:THREE.DoubleSide, transparent:true, opacity:0.8}));
         ring.rotation.x = -Math.PI/2; ring.position.copy(pos).add(new THREE.Vector3(0,0.1,0));
         this.addLocalVisual(ring, 0.3, (m,t) => { m.scale.multiplyScalar(0.9); m.material.opacity = t/0.3; });
+    }
+
+    releaseHemocycleStoredDamage(enemy, chunks, maxRange = 22) {
+        chunks.forEach((chunk, index) => {
+            if (!enemy || enemy.dead || chunk <= 0) return;
+            const pos = enemy.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, 0.25 + index * 0.04, (Math.random() - 0.5) * 0.25));
+            dealDamageToEnemy(enemy, chunk, {
+                pos,
+                ignoreDefense: true,
+                suppressCritText: true,
+                skillKey: 'primary',
+                maxRange,
+                isRanged: true,
+            });
+        });
     }
 
     performAttack() {
@@ -322,7 +343,7 @@ export class Pacifier extends PlayerBase {
 
         if (!canDealDamageDirectly()) return;
 
-        const playerId = String(STATE.multiplayer.id);
+        const hemocycleActive = this.bloodPistolActive && ConvergenceEffects.isPacifierHemocycleActive(this);
 
         for (let s = 0; s < totalShots; s++) {
             const spread = totalShots > 1 ? (s - (totalShots - 1) / 2) * 0.06 : 0;
@@ -351,13 +372,29 @@ export class Pacifier extends PlayerBase {
             });
 
             if (closestHit) {
-                const shotIdx = STATE.multiplayer.active
-                    ? NetClassState.authorizePacifierShot(playerId)
-                    : ConvergenceEffects.getPacifierShotIndex(this);
-                let pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8 * (trans?.dmgMult ?? 1), { skill: false });
-                const megaCrit = ConvergenceEffects.isMegaCritShot(shotIdx);
+                const releaseChunks = hemocycleActive && ConvergenceEffects.isHemocycleReady(closestHit, this)
+                    ? ConvergenceEffects.consumeHemocycle(closestHit, this)
+                    : [];
+                if (releaseChunks.length) {
+                    this.releaseHemocycleStoredDamage(closestHit, releaseChunks, maxDist + 2);
+                }
+                if (closestHit.dead) continue;
+
+                const basePistolDamage = STATE.stats.atk
+                    * 1.8
+                    * (trans?.dmgMult ?? 1)
+                    * ConvergenceEffects.getHemocycleBloodPistolDamageMult(this);
+                let pDmg = ConstellationEngine.modifyDamageDealt(basePistolDamage, { skill: false });
                 if (PassiveKeystoneHooks.isEnemyMarked(closestHit)) createDamageText('EXECUTE!', closestHit.position, '#e74c3c');
-                dealDamageToEnemy(closestHit, pDmg, { pos: closestHit.position, megaCrit });
+                const { dmg } = dealDamageToEnemy(closestHit, pDmg, {
+                    pos: closestHit.position,
+                    skillKey: 'primary',
+                    maxRange: maxDist + 2,
+                    isRanged: true,
+                });
+                if (hemocycleActive && !releaseChunks.length && dmg > 0) {
+                    ConvergenceEffects.applyHemocycleMark(closestHit, dmg, this);
+                }
                 this.spawnHitAura(closestHit.position);
             }
         }

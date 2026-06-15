@@ -21,7 +21,7 @@ type EclipseState = {
   moon: number;
 };
 type MageState = { paradoxKills: number };
-type WarriorState = { parryBlocked: number };
+type WarriorState = { parryBlocked: number; runicSeals: number[] };
 
 type ClassMechState = {
   pacifier?: PacifierState;
@@ -65,6 +65,27 @@ function ensureMage(s: ClassMechState): MageState {
   return s.mage;
 }
 
+function ensureWarrior(s: ClassMechState): WarriorState {
+  if (!s.warrior) s.warrior = { parryBlocked: 0, runicSeals: [] };
+  return s.warrior;
+}
+
+function releaseHemocycleStoredDamage(enemy, chunks, maxRange = 22) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!enemy || enemy.dead || chunk <= 0) return;
+    const pos = enemy.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, 0.25 + i * 0.04, (Math.random() - 0.5) * 0.25));
+    dealDamageToEnemy(enemy, chunk, {
+      pos,
+      ignoreDefense: true,
+      suppressCritText: true,
+      skillKey: 'primary',
+      maxRange,
+      isRanged: true,
+    });
+  }
+}
+
 function playerIdOf(player: { userData?: { id?: string } } | null): string | null {
   if (!player) return null;
   if (player === Globals.player) return String(STATE.multiplayer.id);
@@ -91,6 +112,10 @@ function readPlayerIntoAuth(playerId: string, player: Record<string, unknown>) {
     const m = ensureMage(s);
     m.paradoxKills = (STATE.passives?._paradoxKillCount as number) ?? m.paradoxKills;
   }
+  if (player.className === 'warrior') {
+    const w = ensureWarrior(s);
+    w.runicSeals = ConvergenceEffects.getRunicJudgmentSealValues(player);
+  }
 }
 
 function applyAuthToPlayer(player: Record<string, unknown>, snap: ClassMechState) {
@@ -110,6 +135,9 @@ function applyAuthToPlayer(player: Record<string, unknown>, snap: ClassMechState
   if (snap.mage && player.className === 'mage') {
     if (!STATE.passives) STATE.passives = {};
     STATE.passives._paradoxKillCount = snap.mage.paradoxKills;
+  }
+  if (snap.warrior && player.className === 'warrior') {
+    ConvergenceEffects.setRunicJudgmentSealValues(player, snap.warrior.runicSeals || []);
   }
 }
 
@@ -160,6 +188,9 @@ export const NetClassState = {
     if (player.className === 'mage' && s.mage) {
       out.mage = { pk: s.mage.paradoxKills };
     }
+    if (player.className === 'warrior' && s.warrior) {
+      out.warrior = { rs: s.warrior.runicSeals };
+    }
     return out;
   },
 
@@ -181,6 +212,9 @@ export const NetClassState = {
     }
     if (snap.mage) {
       ensureMage(s).paradoxKills = snap.mage.pk ?? 0;
+    }
+    if (snap.warrior) {
+      ensureWarrior(s).runicSeals = Array.isArray(snap.warrior.rs) ? snap.warrior.rs : [];
     }
     s.version = snap.v ?? s.version;
     applyAuthToPlayer(player, s);
@@ -323,9 +357,12 @@ export const NetClassState = {
   resolvePacifierShot(playerId: string, pos: THREE.Vector3, dir: THREE.Vector3) {
     if (!Globals.enemies) return;
     const maxDist = 20;
-    const shotIdx = this.authorizePacifierShot(playerId);
-    const megaCrit = ConvergenceEffects.isMegaCritShot(shotIdx);
-    const pDmg = ConstellationEngine.modifyDamageDealt(STATE.stats.atk * 1.8, { skill: false });
+    const player = getPlayerByPeerId(playerId);
+    const hemocycleActive = ConvergenceEffects.isPacifierHemocycleActive(player);
+    const pDmg = ConstellationEngine.modifyDamageDealt(
+      STATE.stats.atk * 1.8 * ConvergenceEffects.getHemocycleBloodPistolDamageMult(player),
+      { skill: false },
+    );
 
     const flatDir = dir.clone();
     flatDir.y = 0;
@@ -350,12 +387,23 @@ export const NetClassState = {
     }
 
     if (closestHit) {
-      dealDamageToEnemy(closestHit, pDmg, {
+      const releaseChunks = hemocycleActive && ConvergenceEffects.isHemocycleReady(closestHit, player)
+        ? ConvergenceEffects.consumeHemocycle(closestHit, player)
+        : [];
+      if (releaseChunks.length) {
+        releaseHemocycleStoredDamage(closestHit, releaseChunks, maxDist + 2);
+      }
+      if (closestHit.dead) return;
+
+      const { dmg } = dealDamageToEnemy(closestHit, pDmg, {
         pos: closestHit.position,
-        megaCrit,
         maxRange: maxDist + 2,
         skillKey: 'primary',
+        isRanged: true,
       });
+      if (hemocycleActive && !releaseChunks.length && dmg > 0) {
+        ConvergenceEffects.applyHemocycleMark(closestHit, dmg, player);
+      }
     }
   },
 

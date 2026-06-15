@@ -144,6 +144,7 @@ export const NetSync = {
                     extraPrismLens: (STATE.passives?.extraPrismLens as number) ? 1 : 0,
                 };
             }
+            const classPayload = NetClassState.getSnapshot(STATE.multiplayer.id, Globals.player);
             Network.send({
                 type: 'client-input',
                 id: STATE.multiplayer.id,
@@ -153,6 +154,7 @@ export const NetSync = {
                 dead: Globals.player.dead,
                 stun: Globals.player.isStunned ? 1 : 0,
                 chrono: chronoPayload,
+                classState: classPayload || undefined,
             });
         }
     },

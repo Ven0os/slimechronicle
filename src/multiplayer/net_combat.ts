@@ -4,6 +4,8 @@ import { Globals } from '@/core/globals';
 import { Network } from './network';
 import { computeDamageToEnemy } from '@/gameplay/combat/damage_helpers';
 import { createDamageText } from '@/visual/effects';
+import { PassiveKeystoneHooks } from '@/systems/passiveKeystoneHooks';
+import { ConvergenceEffects } from '@/systems/convergenceEffects';
 
 let visualOnlyDepth = 0;
 
@@ -178,10 +180,8 @@ export function handleRequestDamage(data) {
     let opts = { ...(data.opts || {}) };
 
     if (attacker?.className === 'pacifier') {
-        const shotIdx = NetClassState.authorizePacifierShot(playerId);
         opts = {
             ...opts,
-            megaCrit: ConvergenceEffects.isMegaCritShot(shotIdx),
             noCrit: false,
         };
     }
@@ -198,7 +198,21 @@ export function handleRequestDamage(data) {
     amount = Math.max(0, Math.min(amount, maxAllowed));
 
     if (amount <= 0) return;
+    if (opts.applyHemorrhage) {
+        PassiveKeystoneHooks.applyBladeBreakpointHemorrhage(enemy, amount);
+    }
     enemy.takeDamage(amount, {
         isRanged: !!(data.opts?.isRanged || data.opts?.ranged),
     });
+    if (enemy.dead && attacker?.className === 'blade' && opts.bladeBreakpointSkillKey) {
+        const didExecute = ConvergenceEffects.onBladeBreakpointExecution(attacker, opts.bladeBreakpointSkillKey);
+        if (didExecute && String(playerId) !== String(STATE.multiplayer.id)) {
+            Network.send({
+                type: 'blade-breakpoint-execution',
+                targetId: playerId,
+                skillKey: opts.bladeBreakpointSkillKey,
+                healAmount: ConvergenceEffects.getBladeBreakpointExecutionHeal(attacker),
+            });
+        }
+    }
 }

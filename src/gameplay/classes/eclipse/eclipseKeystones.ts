@@ -1,4 +1,5 @@
 import { STATE } from '@/core/config';
+import * as THREE from 'three';
 import { Globals } from '@/core/globals';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { createDamageText, createSkillVisual, spawnParticles } from '@/visual/effects';
@@ -66,13 +67,13 @@ export function triggerSolarExplosion(
   });
 
   createDamageText('EXPLOSION SOLAIRE', player.position, '#ff6600');
-  createSkillVisual('shockwave', player.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 3.2, 0xffaa00);
+  createSkillVisual('shockwave', player.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 3.2, 0xffaa00, undefined);
   return true;
 }
 
 /** Marée Lunaire — soin sous fenêtre Cataclysme sur dégâts du Pic. */
 export function applyLunarTideHeal(
-  player: { heal?: (n: number) => void; position?: THREE.Vector3; isLocalPlayer?: () => boolean },
+  player: { heal?: (n: number) => void; position?: THREE.Vector3; isLocalPlayer?: () => boolean; _cataclysmWindowUntil?: number },
   damageDealt: number,
 ): void {
   if (!rank('lunarSpike') || !isEclipseCataclysmWindow(player)) return;
