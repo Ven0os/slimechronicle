@@ -59,7 +59,7 @@ function passives() {
 const PARADOX_STAT_KEYS = ['atk', 'maxHp', 'speed', 'crit', 'critDmg', 'defense', 'regen', 'lifesteal'] as const;
 const HEMOCYCLE_MAX_MARKS = 6;
 const HEMOCYCLE_STORE_RATIO = 0.2;
-const HEMOCYCLE_TARGET_MAX_HP_RATIO = 0.01;
+const HEMOCYCLE_PLAYER_MAX_HP_RATIO = 0.01;
 const HEMOCYCLE_LIFESTEAL_TO_DAMAGE = 0.5;
 const RUNIC_JUDGMENT_MAX_SEALS = 5;
 const RUNIC_JUDGMENT_STORE_RATIO = 2.5;
@@ -126,9 +126,13 @@ function getHemocycleStored(enemy: HemocycleEnemy | null | undefined): number {
   return getHemocycleChunks(enemy).reduce((sum, val) => sum + val, 0);
 }
 
-function calcHemocycleStoredChunk(enemy: HemocycleEnemy, dealtDamage: number): number {
+function getHemocyclePlayerMaxHp(player?: Record<string, unknown> | null): number {
+  return Math.max(0, Number(player?.maxHp ?? Globals.player?.maxHp ?? STATE.stats.maxHp ?? 0) || 0);
+}
+
+function calcHemocycleStoredChunk(dealtDamage: number, player?: Record<string, unknown> | null): number {
   const damageStored = Math.max(0, dealtDamage) * HEMOCYCLE_STORE_RATIO;
-  const maxHpBonus = Math.max(0, enemy.maxHp || 0) * HEMOCYCLE_TARGET_MAX_HP_RATIO;
+  const maxHpBonus = getHemocyclePlayerMaxHp(player) * HEMOCYCLE_PLAYER_MAX_HP_RATIO;
   return damageStored + maxHpBonus;
 }
 
@@ -333,7 +337,7 @@ export const ConvergenceEffects = {
 
     const chunks = getHemocycleChunks(enemy);
     enemy._hemocycleMarks = Math.min(HEMOCYCLE_MAX_MARKS, (enemy._hemocycleMarks || 0) + 1);
-    chunks.push(calcHemocycleStoredChunk(enemy, dealtDamage));
+    chunks.push(calcHemocycleStoredChunk(dealtDamage, player));
     while (chunks.length > enemy._hemocycleMarks) chunks.shift();
     refreshHemocycleVisuals(enemy);
     syncHemocycleFocus(player, enemy);

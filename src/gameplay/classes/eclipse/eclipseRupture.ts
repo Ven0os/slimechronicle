@@ -13,7 +13,7 @@ export const RUPTURE_STACK_MAX = 4;
 export const RUPTURE_FIRST_DMG_RATIO = 1.0;
 export const RUPTURE_SECOND_DMG_RATIO = 0.8;
 export const RUPTURE_SECOND_DELAY_MS = 250;
-export const DUAL_DEBUFF_HP_BONUS = 0.1;
+export const DUAL_DEBUFF_HP_BONUS = 0.75;
 export const LUNAR_FRAGILITY_MS = 4000;
 export const LUNAR_FRAGILITY_DMG_MULT = 1.1;
 export const RUPTURE_ENERGY_GAIN = 15;
@@ -120,6 +120,7 @@ export function applyLunarHitEffects(
 
 type RupturePlayer = {
   position: THREE.Vector3;
+  hp?: number;
   eclipse?: { sun: number; moon: number; active?: boolean };
   isLocalPlayer?: () => boolean;
   heal?: (n: number) => void;
@@ -147,6 +148,10 @@ function resolveRuptureEnemy(enemy: RuptureEnemy, enemyId?: string): RuptureEnem
   return enemy;
 }
 
+function getEclipseCurrentHp(player: RupturePlayer): number {
+  return Math.max(0, player.hp ?? Globals.player?.hp ?? 0);
+}
+
 function scheduleRuptureSecondImpact(
   player: RupturePlayer,
   enemy: RuptureEnemy,
@@ -168,7 +173,7 @@ function scheduleRuptureSecondImpact(
     dealDamageToEnemy(e, baseDmg, { pos: e.position, skillKey: 'primary' });
 
     if (hasDualSolarLunarDebuff(e)) {
-      const currentHp = Math.max(0, e.hp ?? 0);
+      const currentHp = getEclipseCurrentHp(player);
       const hpBonus = currentHp * DUAL_DEBUFF_HP_BONUS;
       if (hpBonus > 0) {
         dealDamageToEnemy(e, hpBonus, { pos: e.position, noCrit: true, skillKey: 'primary' });

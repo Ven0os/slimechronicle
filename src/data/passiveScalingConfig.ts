@@ -33,7 +33,7 @@ Sous Ascension : le second impact est garanti.`,
   `ATTAQUES DE LANCE :
 Infligent +10 % dégâts aux cibles affectées par Brûlure Solaire + Fragilité Lunaire.`,
   `DOUBLE AFFLICTION :
-Sur une cible Brûlure + Fragilité, le second impact inflige +10 % PV actuels et rafraîchit les deux effets.`,
+Sur une cible Brûlure + Fragilité, le second impact inflige +75 % des PV actuels du Chevalier Éclipse et rafraîchit les deux effets.`,
   `CATACLYSME :
 • Applique Fragilité Lunaire pendant 4 s.`,
 ];
@@ -41,7 +41,7 @@ Sur une cible Brûlure + Fragilité, le second impact inflige +10 % PV actuels e
 const BLOOD_PACT_PARAGRAPHS = () => [
   `BLOOD PISTOL :
 • Chaque tir applique une Marque de Sang.
-• Chaque marque stocke 20 % des dégâts infligés + 1 % HP max de la cible.
+• Chaque marque stocke 20 % des dégâts infligés + 1 % HP max du personnage.
 • Maximum : 6 marques.`,
   `MARQUES DE SANG :
 • À 6 marques, le prochain Blood Pistol consomme toutes les marques.
@@ -694,7 +694,7 @@ Object.assign(PASSIVE_DETAILS, {
 
   ruptureAstrale: {
     paragraphs: () => [
-      'Tous les 4 coups de lance : déclenche Rupture Astrale.',
+      'Tous les 4 coups de lance : déclenche une Rupture Astrale.',
       'Dégâts : 100 % ATK.',
       'Effets : applique Brûlure Solaire + Fragilité Lunaire.',
       'Génère de l\'énergie Cataclysme.',

@@ -541,7 +541,7 @@ export const CLASS_CONSTELLATIONS: Record<ClassId, ClassConstellation> = {
       branch: 'apex',
       tier: 11,
       name: 'Hémocycle',
-      desc: 'Blood Pistol : Marques de Sang · stockage amplifié par les HP max de la cible.',
+      desc: 'Blood Pistol : Marques de Sang · stockage amplifié par les HP max du personnage.',
       icon: 'fa-heart-pulse',
       cost: 2,
       keystone: true,
