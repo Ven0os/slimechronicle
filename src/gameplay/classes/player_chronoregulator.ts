@@ -3,6 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, createSkillVisual, createTelegraph, spawnParticles } from '../../visual/effects';
+import { disposeObject3D } from '../../visual/meshMaterialUtils';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
@@ -1268,10 +1269,7 @@ export class Chronoregulator extends PlayerBase {
   destroyBeamVisuals() {
     for (const mesh of this.beamVisuals) {
       Globals.scene.remove(mesh);
-      mesh.traverse((c) => {
-        if (c.geometry) c.geometry.dispose();
-        if (c.material) c.material.dispose();
-      });
+      disposeObject3D(mesh);
     }
     this.beamVisuals = [];
   }
@@ -1696,8 +1694,14 @@ export class Chronoregulator extends PlayerBase {
 
   removeLensEntry(lens) {
     if (!lens) return;
-    if (lens.mesh) Globals.scene.remove(lens.mesh);
-    if (lens.ring) Globals.scene.remove(lens.ring);
+    if (lens.mesh) {
+      Globals.scene.remove(lens.mesh);
+      disposeObject3D(lens.mesh);
+    }
+    if (lens.ring) {
+      Globals.scene.remove(lens.ring);
+      disposeObject3D(lens.ring);
+    }
     if (lens.id && this._lensMeshesById[lens.id]) delete this._lensMeshesById[lens.id];
   }
 
@@ -1735,6 +1739,15 @@ export class Chronoregulator extends PlayerBase {
       };
       this.lenses.push(lens);
       this._lensMeshesById[snap.id] = lens;
+    }
+
+    // Retire les lentilles absentes du snapshot autoritaire (expirées côté hôte).
+    for (let i = this.lenses.length - 1; i >= 0; i--) {
+      const lens = this.lenses[i];
+      if (lens.id && !incomingIds.has(lens.id)) {
+        this.removeLensEntry(lens);
+        this.lenses.splice(i, 1);
+      }
     }
   }
 
@@ -2452,18 +2465,7 @@ export class Chronoregulator extends PlayerBase {
   rebuildClassModel() {
     if (this.mesh) {
       this.bodyGroup.remove(this.mesh);
-      this.mesh.traverse(child => {
-        if (child.isMesh) {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach(m => m.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        }
-      });
+      disposeObject3D(this.mesh);
     }
     
     this.createClassModel();

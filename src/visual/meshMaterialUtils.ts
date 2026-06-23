@@ -12,6 +12,26 @@ export function safeSetHex(colorLike, hex) {
   return true;
 }
 
+/**
+ * Libère récursivement geometry, materials (simple ou tableau) et textures
+ * d'un Object3D spawné. À appeler après l'avoir retiré de la scène pour éviter
+ * les fuites mémoire GPU.
+ */
+export function disposeObject3D(root) {
+  if (!root || typeof root.traverse !== 'function') return;
+  root.traverse((obj) => {
+    if (obj.geometry?.dispose) obj.geometry.dispose();
+    for (const mat of normalizeMaterials(obj.material)) {
+      if (!mat) continue;
+      for (const key in mat) {
+        const val = mat[key];
+        if (val && val.isTexture && typeof val.dispose === 'function') val.dispose();
+      }
+      if (typeof mat.dispose === 'function') mat.dispose();
+    }
+  });
+}
+
 export function applyToMeshMaterials(root, callback) {
   if (!root || typeof root.traverse !== 'function') return;
   root.traverse((obj) => {

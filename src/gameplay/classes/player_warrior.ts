@@ -7,6 +7,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { disposeObject3D } from '../../visual/meshMaterialUtils';
 
 import { Network } from '../../multiplayer/network';
 
@@ -654,10 +655,7 @@ export class Warrior extends PlayerBase {
             }
 
             Globals.scene.remove(projectile);
-            projectile.traverse((child) => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
-            });
+            disposeObject3D(projectile);
 
             if (!target || target.dead) return;
             if (canDealDamageDirectly()) {
