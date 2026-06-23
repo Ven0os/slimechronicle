@@ -28,8 +28,12 @@ export const SkillTree = {
       if (window.UI) window.UI.toast('✦ PALIER STELLAIRE : +25% EXP');
     }
 
-    const postUnlockAction = () => {
-      SkillTree.render();
+    const postUnlockAction = (isApex = false) => {
+      if (isApex) {
+        SkillTree.render();
+      } else {
+        ConstellationUI.refreshVisuals();
+      }
       if (window.UI) window.UI.updateHUD();
       if (window.BuffBar) window.BuffBar.render();
       if (window.NewSkillUI) {
@@ -40,9 +44,9 @@ export const SkillTree = {
     };
 
     if (nodeId.endsWith('-10')) {
-      ConstellationUI.playBranchEndPassiveUnlockAnimation(nodeId, postUnlockAction);
+      ConstellationUI.playBranchEndPassiveUnlockAnimation(nodeId, () => postUnlockAction(false));
     } else if (nodeId.endsWith('-apex')) {
-      ConstellationUI.playApexUnlockAnimation(nodeId, postUnlockAction);
+      ConstellationUI.playApexUnlockAnimation(nodeId, () => postUnlockAction(true));
     } else {
       postUnlockAction();
     }
@@ -90,7 +94,7 @@ export const SkillTree = {
       }
 
       const postUnlockAction = () => {
-        SkillTree.render();
+        ConstellationUI.refreshVisuals();
         if (window.UI) window.UI.updateHUD();
         if (window.BuffBar) window.BuffBar.render();
         if (window.NewSkillUI) {
@@ -101,7 +105,7 @@ export const SkillTree = {
       };
 
       if (unlockedTenth) {
-        ConstellationUI.playBranchEndPassiveUnlockAnimation(`${classId}-${branchId}-10`, postUnlockAction);
+        ConstellationUI.playBranchEndPassiveUnlockAnimation(`${classId}-${branchId}-10`, () => postUnlockAction());
       } else {
         postUnlockAction();
       }
@@ -310,6 +314,11 @@ export const NewSkillUI = {
       if (apexState === 'unlocked') apexStatus.textContent = 'Débloqué';
       else if (apexState === 'ready') apexStatus.textContent = 'APEX READY';
       else apexStatus.textContent = 'Verrouillé';
+    }
+
+    const grimoireSchemaContainer = document.querySelector('.grimoire-apex-schema-container');
+    if (grimoireSchemaContainer) {
+      grimoireSchemaContainer.innerHTML = ConstellationUI.getApexBranchesSchemaHtml(classId);
     }
 
     const tooltips = CONFIG.tooltips[cls];

@@ -166,11 +166,16 @@
   box-shadow:
     0 0 20px rgba(255, 150, 200, 0.16),
     0 0 36px rgba(100, 200, 255, 0.08);
-  animation: apexPulse 3s ease-in-out infinite;
+  animation: apexCardPulse 3s ease-in-out infinite;
 }
 
 .apex-progress-card::before {
   display: none;
+}
+
+.apex-progress-card.apex-ready-state::before,
+.apex-progress-card.apex-unlocked-state::before {
+  display: block;
 }
 
 .apex-progress-label {
@@ -927,16 +932,19 @@
 @keyframes apexCoreShine {
   0%,
   100% {
+    transform: scale(1);
     box-shadow:
       0 0 35px rgba(255, 150, 255, 0.45),
       0 0 60px rgba(100, 200, 255, 0.25),
       inset 0 0 20px rgba(255, 255, 255, 0.12);
   }
   50% {
+    transform: scale(1.15);
     box-shadow:
-      0 0 50px rgba(100, 255, 200, 0.55),
-      0 0 80px rgba(255, 100, 150, 0.35),
-      inset 0 0 28px rgba(255, 255, 255, 0.2);
+      0 0 65px rgba(100, 255, 200, 0.85),
+      0 0 95px rgba(255, 100, 150, 0.65),
+      0 0 130px rgba(255, 215, 0, 0.45),
+      inset 0 0 28px rgba(255, 255, 255, 0.3);
   }
 }
 
@@ -1027,6 +1035,8 @@
   border: 1px solid var(--constellation-theme);
   transform: rotate(45deg);
   background: rgba(0, 0, 0, 0.4);
+  margin: 10px 14px 10px 10px; /* Accounts for 45deg rotation diagonal footprint */
+  flex-shrink: 0;
 }
 
 .detail-node-icon i {
@@ -2509,3 +2519,454 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- ACTIVE APEX COSMIC EFFECTS --- */
+.center-star.apex-unlocked::before {
+  content: '';
+  position: absolute;
+  inset: -35px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 100, 200, 0.28) 0%, rgba(107, 203, 255, 0.16) 40%, rgba(255, 215, 0, 0.06) 70%, transparent 100%);
+  animation: apexActiveAura 8s linear infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.center-star.apex-unlocked::after {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.35);
+  animation: apexActiveRings 12s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes apexActiveAura {
+  0% { transform: rotate(0deg) scale(0.95); opacity: 0.8; }
+  50% { transform: rotate(180deg) scale(1.15); opacity: 1; }
+  100% { transform: rotate(360deg) scale(0.95); opacity: 0.8; }
+}
+
+@keyframes apexActiveRings {
+  0% { transform: rotate(0deg); opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { transform: rotate(-360deg); opacity: 0.5; }
+}
+
+/* --- CUSTOM USER-FRIENDLY STAT BARS --- */
+.stat-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  animation: fadeDetail 0.35s ease;
+}
+
+.stat-bar-container {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+
+.stat-bar-container:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.09);
+  transform: translateX(2px);
+}
+
+.stat-bar-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.stat-bar-icon-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-bar-icon-label i {
+  font-size: 0.82rem;
+  width: 14px;
+  text-align: center;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.stat-bar-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #ccc;
+  letter-spacing: 0.3px;
+}
+
+.stat-bar-value {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px currentColor;
+}
+
+.stat-bar-progress-bg {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.stat-bar-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  box-shadow: 0 0 8px currentColor;
+  transition: width 0.5s cubic-bezier(0.1, 0.8, 0.2, 1);
+}
+
+/* --- APEX BRANCHES COMPLETION DIAGRAM (UX/UI) --- */
+.apex-branches-schema {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  margin: 14px 0 16px 0;
+  padding: 0 4px;
+  width: 100%;
+}
+
+.apex-branches-schema::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  right: 15px;
+  top: 50%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 0;
+  transform: translateY(-50%);
+}
+
+.apex-schema-branch {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: conic-gradient(var(--constellation-theme) var(--branch-pct), rgba(255, 255, 255, 0.1) var(--branch-pct));
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  cursor: help;
+  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s ease;
+}
+
+.apex-schema-branch-icon {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #111116;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 0.7rem;
+  transition: color 0.3s ease, background 0.3s ease;
+}
+
+.apex-schema-branch-icon i {
+  display: block;
+}
+
+.apex-schema-branch:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px var(--constellation-theme);
+}
+
+.apex-schema-branch.completed .apex-schema-branch-icon {
+  background: var(--constellation-theme);
+  color: #0c0c14;
+}
+
+.apex-schema-branch.completed {
+  box-shadow: 0 0 10px var(--constellation-theme);
+}
+
+.apex-schema-branch:not(.completed) .apex-schema-branch-icon i {
+  color: #777;
+}
+
+.apex-schema-branch-tooltip {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(10, 10, 16, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.apex-schema-branch:hover .apex-schema-branch-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Grimoire Specific Override */
+.grimoire-apex-schema-container {
+  width: 100%;
+}
+
+/* --- NON-SCALING APEX CARD PULSE --- */
+@keyframes apexCardPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(255, 150, 200, 0.16),
+      0 0 36px rgba(100, 200, 255, 0.08);
+    opacity: 0.95;
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(255, 150, 200, 0.32),
+      0 0 54px rgba(100, 200, 255, 0.18);
+    opacity: 1;
+  }
+}
+
+.kicker-tag {
+  background: rgba(142, 68, 173, 0.16) !important;
+  color: #c49de0 !important;
+  border: 1px solid rgba(142, 68, 173, 0.36) !important;
+}
+
+/* Make stats bonus section match the passive card boxes */
+.detail-section-stat-bonus {
+  margin-top: 14px !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  background: rgba(0, 0, 0, 0.24) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Also style the stat block on stat nodes as a clean card */
+.detail-card.reward-stat .detail-section {
+  margin-top: 14px !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  background: rgba(0, 0, 0, 0.24) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+/* --- SKILL HOVER TOOLTIPS --- */
+.stat-bar-container.has-tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.stat-bar-tooltip {
+  position: absolute;
+  top: 102%;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 16, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 99;
+  transform: translateY(4px);
+}
+
+.stat-bar-container.has-tooltip:hover .stat-bar-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tooltip-skill-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffe566;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 3px;
+}
+
+.tooltip-skill-desc {
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: #ddd;
+  white-space: pre-line;
+}
+
+/* Ensure the card has position relative to anchor badges tooltips */
+.detail-card {
+  position: relative;
+}
+
+/* --- SKILL LINK TAGS --- */
+.skill-link-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(162, 155, 254, 0.1);
+  border: 1px solid rgba(162, 155, 254, 0.35);
+  color: #b3adff;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: help;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.skill-link-tag:hover {
+  background: rgba(162, 155, 254, 0.2);
+  border-color: rgba(162, 155, 254, 0.6);
+  color: #fff;
+}
+
+.skill-link-none-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #777;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Position tooltip relative to the detail-card */
+.skill-link-tag .stat-bar-tooltip {
+  top: 70px; /* Position it below the header area */
+  left: 16px;
+  right: 16px;
+  width: auto;
+}
+
+.skill-link-tag:hover .stat-bar-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- DETAIL SECTION SKILL LINK --- */
+.detail-section-skill-link {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.detail-section-skill-link .detail-section-title {
+  color: #a29bfe;
+  letter-spacing: 2px;
+}
+
+.skill-link-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skill-link-card {
+  padding: 12px;
+  background: rgba(162, 155, 254, 0.05);
+  border: 1px solid rgba(162, 155, 254, 0.18);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s ease;
+}
+
+.skill-link-card:hover {
+  background: rgba(162, 155, 254, 0.08);
+  border-color: rgba(162, 155, 254, 0.35);
+  box-shadow: 0 4px 12px rgba(162, 155, 254, 0.1);
+}
+
+.skill-link-card.none {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #888;
+}
+
+.skill-link-card.none .skill-link-card-icon {
+  color: #666;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.skill-link-card.none .skill-link-card-name {
+  color: #aaa;
+}
+
+.skill-link-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.skill-link-card-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(162, 155, 254, 0.1);
+  border: 1px solid rgba(162, 155, 254, 0.3);
+  color: #a29bfe;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.skill-link-card-kicker {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  color: #8a81f3;
+  letter-spacing: 1px;
+  font-weight: 700;
+  display: block;
+}
+
+.skill-link-card-name {
+  margin: 2px 0 0 0;
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  color: #ffe566;
+  font-weight: bold;
+}
+
+.skill-link-card-desc {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: #c8cbd0;
+  white-space: pre-line;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 6px;
+}
+
+
+
+

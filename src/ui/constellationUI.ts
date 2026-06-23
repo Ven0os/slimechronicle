@@ -1,10 +1,11 @@
 // @ts-nocheck
-import { STATE } from '@/core/config';
+import { STATE, CONFIG } from '@/core/config';
 import {
   getConstellationForClass,
   getNodeById,
   type ClassId,
   type ConstellationNode,
+  type NodeEffects,
 } from '@/data/constellations';
 import {
   CONSTELLATION_META,
@@ -12,10 +13,12 @@ import {
   getNodeRewardKind,
   getRewardBadgeHtml,
   hasStatEffects,
+  isPctAttackStatSkillMod,
 } from '@/data/constellationMeta';
 import { getPassiveMeta } from '@/data/passiveCatalog';
 import { formatPassiveDetailHtml } from '@/data/passiveScalingConfig';
 import { getBranchLayout, getClassLayout } from '@/data/constellationLayouts';
+import { getSkillLabel, type SkillKey } from '@/data/classStatsConfig';
 import { ConstellationEngine } from '@/systems/constellationEngine';
 import { AudioSys } from '@/core/ressources';
 
@@ -343,6 +346,34 @@ function branchProgress(classId: ClassId, branchId: string): { unlocked: number;
   return { unlocked, total: branch.nodes.length };
 }
 
+function getApexBranchesSchemaHtml(classId: ClassId): string {
+  const data = getConstellationForClass(classId);
+  const meta = CONSTELLATION_META[classId];
+
+  const dots = data.branches.map((branch) => {
+    const prog = branchProgress(classId, branch.id);
+    const isCompleted = prog.unlocked === prog.total;
+    const branchMeta = meta.branches[branch.id];
+    const icon = branchMeta?.icon || 'fa-star';
+    const percent = Math.round((prog.unlocked / prog.total) * 100);
+
+    return `
+      <div class="apex-schema-branch ${isCompleted ? 'completed' : ''}" style="--branch-pct: ${percent}%" title="${branch.label} : ${prog.unlocked} / ${prog.total}">
+        <div class="apex-schema-branch-icon">
+          <i class="fas ${icon}"></i>
+        </div>
+        <div class="apex-schema-branch-tooltip">${branch.label} (${percent}%)</div>
+      </div>
+    `;
+  });
+
+  return `
+    <div class="apex-branches-schema" style="--constellation-theme: ${data.themeColor}">
+      ${dots.join('')}
+    </div>
+  `;
+}
+
 function apexProgressCardClass(state: string): string {
   if (state === 'unlocked') return 'apex-progress-card apex-unlocked-state';
   if (state === 'ready') return 'apex-progress-card apex-ready-state';
@@ -415,6 +446,359 @@ function renderPassiveEffectLines(lines: PassiveEffectLine[]): string {
     .join('');
 }
 
+function getVisualStatBarsHtml(effects: NodeEffects, classId?: ClassId, keystoneStats = false): string {
+  const bars: string[] = [];
+  const cid = classId || 'warrior';
+
+  const addBar = (icon: string, color: string, label: string, valueText: string, percentage: number, skillKey?: string) => {
+    let tooltipHtml = '';
+    if (skillKey) {
+      tooltipHtml = getSkillTooltipHtml(cid, skillKey as SkillKey);
+    }
+
+    bars.push(`
+      <div class="stat-bar-container ${tooltipHtml ? 'has-tooltip' : ''}">
+        <div class="stat-bar-info">
+          <span class="stat-bar-icon-label">
+            <i class="fas ${icon}" style="color: ${color}"></i>
+            <span class="stat-bar-label">${label}</span>
+          </span>
+          <span class="stat-bar-value" style="color: ${color}">${valueText}</span>
+        </div>
+        <div class="stat-bar-progress-bg">
+          <div class="stat-bar-progress-fill" style="width: ${percentage}%; background-color: ${color}"></div>
+        </div>
+        ${tooltipHtml}
+      </div>
+    `);
+  };
+
+  // 1. ATK
+  if (effects.atk && effects.atk !== 0) {
+    addBar('fa-fire', '#e74c3c', 'Attaque', `+${effects.atk} ATK`, Math.min(100, (effects.atk / 30) * 100));
+  }
+
+  // 2. HP Flat
+  if (effects.maxHpFlat && Math.abs(effects.maxHpFlat) > 0.01) {
+    addBar('fa-heart', '#2ecc71', 'Points de Vie', `+${effects.maxHpFlat} HP`, Math.min(100, (effects.maxHpFlat / 150) * 100));
+  }
+
+  // 3. HP Pct
+  if (!keystoneStats && effects.maxHpPct && effects.maxHpPct !== 0) {
+    addBar('fa-heart', '#2ecc71', 'Points de Vie %', `+${Math.round(effects.maxHpPct * 100)}% HP`, Math.min(100, (effects.maxHpPct / 0.15) * 100));
+  }
+
+  // 4. Regen
+  if (effects.regen && Math.abs(effects.regen) > 0.01) {
+    addBar('fa-heart-pulse', '#2ecc71', 'Régénération', `+${effects.regen} HP/s`, Math.min(100, (effects.regen / 5) * 100));
+  }
+
+  // 5. Speed Flat
+  if (effects.speed && effects.speed !== 0) {
+    addBar('fa-person-running', '#3498db', 'Vitesse', `+${effects.speed} Sprint`, Math.min(100, (effects.speed / 30) * 100));
+  }
+
+  // 6. Speed Pct
+  if (effects.speedPct && effects.speedPct !== 0) {
+    addBar('fa-person-running', '#3498db', 'Vitesse %', `+${Math.round(effects.speedPct * 100)}% Sprint`, Math.min(100, (effects.speedPct / 0.15) * 100));
+  }
+
+  // 7. Crit Chance
+  if (effects.crit && effects.crit !== 0) {
+    addBar('fa-crosshairs', '#ffd700', 'Critique', `+${Math.round(effects.crit * 100)}% Critique`, Math.min(100, (effects.crit / 0.10) * 100));
+  }
+
+  // 8. Crit Dmg
+  if (effects.critDmg && effects.critDmg !== 0) {
+    addBar('fa-bolt', '#ff8080', 'Dégâts Critiques', `+${Math.round(effects.critDmg * 100)}% Dégâts Crit`, Math.min(100, (effects.critDmg / 0.25) * 100));
+  }
+
+  // 9. Attack Speed Mod
+  if (effects.attackSpeedMod && effects.attackSpeedMod !== 0) {
+    const v = Math.abs(effects.attackSpeedMod);
+    addBar('fa-gauge-high', '#e67e22', 'Cadence de tir', `+${Math.round(v * 100)}% Cadence`, Math.min(100, (v / 0.15) * 100));
+  }
+
+  // 10. Lifesteal
+  if (effects.lifesteal && effects.lifesteal !== 0) {
+    addBar('fa-droplet', '#c0392b', 'Vol de vie', `+${Math.round(effects.lifesteal * 100)}% Vol de vie`, Math.min(100, (effects.lifesteal / 0.15) * 100));
+  }
+
+  // 11. Defense
+  const defVal = effects.def || effects.defense;
+  if (defVal && defVal !== 0) {
+    addBar('fa-shield-halved', '#6e76ef', 'Défense', `+${defVal} DEF`, Math.min(100, (defVal / 25) * 100));
+  }
+
+  // 12. XP Mod
+  if (effects.xpMod && effects.xpMod !== 0) {
+    addBar('fa-graduation-cap', '#e8d48a', 'Bonus d\'XP', `+${Math.round(effects.xpMod * 100)}% XP`, Math.min(100, (effects.xpMod / 0.25) * 100));
+  }
+
+  // 13. Skill Mods
+  if (cid && effects.skillMods) {
+    for (const [key, val] of Object.entries(effects.skillMods)) {
+      if (typeof val !== 'number' || val === 0) continue;
+      if (isPctAttackStatSkillMod(cid, key as SkillKey)) continue;
+      const label = getSkillLabel(cid, key as SkillKey);
+      const valText = val > 0 ? `+${Math.round(val * 100)}%` : `${Math.round(val * 100)}%`;
+      addBar('fa-wand-magic-sparkles', '#a29bfe', label, `${valText} Dégâts`, Math.min(100, (Math.abs(val) / 0.4) * 100), key);
+    }
+  }
+
+  // 14. Skill CD Mods
+  if (cid && effects.skillCdMods) {
+    for (const [key, val] of Object.entries(effects.skillCdMods)) {
+      if (typeof val !== 'number' || val === 0) continue;
+      const label = getSkillLabel(cid, key as SkillKey);
+      const valText = val < 0 ? `${Math.round(val * 100)}%` : `+${Math.round(val * 100)}%`;
+      addBar('fa-stopwatch', '#a29bfe', `CD ${label}`, `${valText} Recharge`, Math.min(100, (Math.abs(val) / 0.3) * 100), key);
+    }
+  }
+
+  if (bars.length === 0) return '';
+
+  return `
+    <div class="stat-bars-list">
+      ${bars.join('')}
+    </div>
+  `;
+}
+
+function getSkillTooltipHtml(classId: ClassId, skillKey: SkillKey): string {
+  const cid = classId || 'warrior';
+  const tooltipData = CONFIG.tooltips[cid]?.[skillKey];
+  let skillName = '';
+  let skillDesc = '';
+  
+  if (tooltipData) {
+    skillName = tooltipData.name;
+    skillDesc = tooltipData.desc;
+  } else if (skillKey === 'primary') {
+    skillName = getSkillLabel(cid, 'primary');
+    skillDesc = cid === 'chronoregulator' ? "Canalise un rayon de distorsion temporelle." : "Attaque de base avec votre arme.";
+  } else if (skillKey === 'rupture') {
+    skillName = "Explosion de Rupture";
+    skillDesc = "Déclenche une explosion temporelle de zone basée sur le niveau de Fracture accumulé.";
+  }
+
+  if (skillName && skillDesc) {
+    return `
+      <div class="stat-bar-tooltip">
+        <div class="tooltip-skill-name">${skillName}</div>
+        <div class="tooltip-skill-desc">${skillDesc}</div>
+      </div>
+    `;
+  }
+  return '';
+}
+
+const PASSIVE_SKILL_LINKS: Record<string, SkillKey[]> = {
+  // Warrior
+  ironThorn: [],
+  ironWall: ['passive'],
+  warFervor: ['primary'],
+  titanBlood: ['primary', 'space', 'shift', 'e'],
+  guardianWarCry: ['shift'],
+  parryRefund: ['e'],
+  parryCharge: ['e', 'space'],
+  runicColossus: ['e', 'shift'],
+
+  // Mage
+  arcaneOverload: ['passive'],
+  paradoxOverload: [],
+  deepStasis: ['shift'],
+  etherSteps: [],
+  blinkMastery: ['e'],
+  arcaneBarragePlus: ['space'],
+  paradoxReplicated: [],
+  cloneExtend: [],
+
+  // Sentinel
+  stellarOvercharge: ['space'],
+  solarBeamHaste: ['space'],
+  lightFieldAmp: ['shift'],
+  healAmp: [],
+  beamHaste: ['space'],
+  divineBulwark: ['e'],
+  overhealShield: [],
+  solarInspiration: ['space', 'shift'],
+
+  // Blade
+  bloodFrenzy: ['passive'],
+  hemorrhage: [],
+  shadowVeil: ['shift'],
+  dashReset: ['shift'],
+  cycloneExtend: ['space'],
+  cyclonePull: ['space'],
+  earlyThirst: ['passive'],
+  eternalThirst: ['passive'],
+  lastBreath: [],
+
+  // Pacifier
+  crimsonShield: ['passive'],
+  shieldOverflow: ['passive'],
+  vampiricMark: ['shift'],
+  executioner: ['shift'],
+  frenzyBurst: ['e'],
+  acceleratedTransfusion: ['e'],
+  frenzyAdrenaline: ['e'],
+  vampJumpAmp: ['space'],
+  bloodPact: ['e'],
+
+  // Eclipse
+  solarBounce: ['passive'],
+  devouringSun: ['passive'],
+  solarFlare: ['primary', 'space'],
+  lunarSlow: ['passive'],
+  lunarSpike: ['shift'],
+  ruptureAstrale: ['primary', 'passive'],
+  equinoxHaste: [],
+  cataclysmHaste: ['e'],
+  voidPull: ['e'],
+  celestialConvergence: ['primary', 'space', 'shift', 'e'],
+
+  // Chronoregulator
+  extraPrismLens: ['space'],
+  continuumBurst: ['space', 'e'],
+  ruptureSurge: ['passive'],
+  anachronismeAmp: ['passive'],
+  freezeFieldAmp: ['shift'],
+  continuumMastery: ['passive', 'space'],
+};
+
+function getSkillIcon(classId: ClassId, skillKey: SkillKey): string {
+  const list = CONFIG.skillIcons?.[classId];
+  if (list && list.length >= 3) {
+    if (skillKey === 'space') {
+      const match = list[0].match(/fa-[a-z0-9-]+/);
+      if (match) return match[0];
+    } else if (skillKey === 'shift') {
+      const match = list[1].match(/fa-[a-z0-9-]+/);
+      if (match) return match[0];
+    } else if (skillKey === 'e') {
+      const match = list[2].match(/fa-[a-z0-9-]+/);
+      if (match) return match[0];
+    }
+  }
+
+  // Fallbacks
+  if (skillKey === 'primary') {
+    if (classId === 'warrior') return 'fa-hammer';
+    if (classId === 'mage') return 'fa-wand-magic-sparkles';
+    if (classId === 'sentinel') return 'fa-shield-sun';
+    if (classId === 'blade') return 'fa-khanda';
+    if (classId === 'pacifier') return 'fa-gun';
+    if (classId === 'eclipse') return 'fa-circle-half-stroke';
+    if (classId === 'chronoregulator') return 'fa-gem';
+    return 'fa-sword';
+  }
+  if (skillKey === 'passive') {
+    if (classId === 'warrior') return 'fa-shield';
+    if (classId === 'mage') return 'fa-bolt';
+    if (classId === 'sentinel') return 'fa-sun';
+    if (classId === 'blade') return 'fa-droplet';
+    if (classId === 'pacifier') return 'fa-shield-heart';
+    if (classId === 'eclipse') return 'fa-arrows-spin';
+    if (classId === 'chronoregulator') return 'fa-hourglass-start';
+    return 'fa-star';
+  }
+  if (skillKey === 'rupture') {
+    return 'fa-burst';
+  }
+  return 'fa-star';
+}
+
+function getLinkedSkillsBadgesHtml(classId: ClassId, passiveKey: string): string {
+  const keys = PASSIVE_SKILL_LINKS[passiveKey] || [];
+  if (keys.length === 0) {
+    return `<span class="skill-link-none-tag"><i class="fas fa-unlink"></i> Non lié</span>`;
+  }
+
+  return keys.map((skillKey) => {
+    const icon = getSkillIcon(classId, skillKey);
+    const label = skillKey === 'passive' ? 'Passif de classe' : getSkillLabel(classId, skillKey);
+    const tooltip = getSkillTooltipHtml(classId, skillKey);
+    return `
+      <span class="skill-link-tag">
+        <i class="fas ${icon}"></i> Lié à : ${label}
+        ${tooltip}
+      </span>
+    `;
+  }).join('');
+}
+
+function getLinkedSkillsSectionHtml(classId: ClassId, passiveKey: string | undefined): string {
+  const keys = passiveKey ? (PASSIVE_SKILL_LINKS[passiveKey] || []) : [];
+  
+  if (keys.length === 0) {
+    return `
+      <div class="detail-section detail-section-skill-link">
+        <div class="detail-section-title">Compétence liée</div>
+        <div class="skill-link-card none">
+          <div class="skill-link-card-header">
+            <span class="skill-link-card-icon"><i class="fas fa-unlink"></i></span>
+            <div>
+              <span class="skill-link-card-kicker">Effet Indépendant</span>
+              <h4 class="skill-link-card-name">Non lié à une compétence</h4>
+            </div>
+          </div>
+          <div class="skill-link-card-desc">Ce passif n'est pas lié à une compétence spécifique et applique ses effets de manière globale.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const cardsHtml = keys.map((skillKey) => {
+    const icon = getSkillIcon(classId, skillKey);
+    const skillKeyLabel = skillKey === 'passive'
+      ? 'Passif principal'
+      : skillKey === 'primary'
+      ? 'Attaque de base'
+      : skillKey === 'rupture'
+      ? 'Rupture'
+      : `Compétence ${skillKey.toUpperCase()}`;
+
+    const cid = classId || 'warrior';
+    const tooltipData = CONFIG.tooltips[cid]?.[skillKey];
+    let skillName = '';
+    let skillDesc = '';
+    
+    if (tooltipData) {
+      skillName = tooltipData.name;
+      skillDesc = tooltipData.desc;
+    } else if (skillKey === 'primary') {
+      skillName = getSkillLabel(cid, 'primary');
+      skillDesc = cid === 'chronoregulator' ? "Canalise un rayon de distorsion temporelle." : "Attaque de base avec votre arme.";
+    } else if (skillKey === 'rupture') {
+      skillName = "Explosion de Rupture";
+      skillDesc = "Déclenche une explosion temporelle de zone basée sur le niveau de Fracture accumulé.";
+    }
+
+    return `
+      <div class="skill-link-card">
+        <div class="skill-link-card-header">
+          <span class="skill-link-card-icon"><i class="fas ${icon}"></i></span>
+          <div>
+            <span class="skill-link-card-kicker">${skillKeyLabel}</span>
+            <h4 class="skill-link-card-name">${skillName}</h4>
+          </div>
+        </div>
+        <div class="skill-link-card-desc">${skillDesc}</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="detail-section detail-section-skill-link">
+      <div class="detail-section-title">${keys.length > 1 ? 'Compétences liées' : 'Compétence liée'}</div>
+      <div class="skill-link-cards-list">
+        ${cardsHtml}
+      </div>
+    </div>
+  `;
+}
+
 function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): void {
   const panel = document.getElementById('constellation-detail');
   if (!panel) return;
@@ -454,13 +838,10 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
   const rewardKind = getNodeRewardKind(node);
   const isStatNode = rewardKind === 'stat';
   const isKeystone = rewardKind === 'keystone';
-  const effectPills = formatEffectPills(node.effects, !isStatNode, classId);
   const passiveMeta = !isStatNode && node.effects.passive ? getPassiveMeta(node.effects.passive) : null;
-  const statPills = isStatNode
-    ? effectPills
-    : (hasStatEffects(node.effects, isKeystone, classId)
-      ? formatEffectPills(node.effects, false, classId, isKeystone)
-      : '');
+  const visualBars = hasStatEffects(node.effects, isKeystone, classId)
+    ? getVisualStatBarsHtml(node.effects, classId, isKeystone)
+    : '';
 
   let reqText = '';
   if (node.requires?.length) {
@@ -491,37 +872,29 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
   const effectSectionHtml = isStatNode
     ? ''
     : (() => {
-        const accent = passiveMeta?.color || '#d4af37';
-        let icon = passiveMeta?.icon || node.icon || 'fa-star';
-        if (!icon.startsWith('fa-')) icon = `fa-${icon}`;
-        const apexClass = rewardKind === 'apex' ? ' detail-section-apex-effect' : '';
-        const iconClass = rewardKind === 'apex' ? ' detail-passive-effect-icon apex-card-icon' : ' detail-passive-effect-icon';
         const passiveKey = node.effects.passive;
         const passiveRank = node.effects.passiveRank ?? 1;
-        const detailHtml = passiveKey
+        return passiveKey
           ? formatPassiveDetailHtml(passiveKey, passiveRank)
-          : `<p class="detail-passive-fallback">${node.desc}</p>`;
-        const passiveTitle = passiveMeta?.name || node.name;
-        const passiveCategory = passiveMeta ? PASSIVE_CATEGORY_LABEL[passiveMeta.category] : 'Passif';
-        return `<div class="detail-section detail-section-passive-effect${apexClass}">
-          <div class="detail-passive-effect-card" style="--passive-accent:${accent}">
-            <div class="detail-passive-effect-glow"></div>
-            <div class="${iconClass.trim()}"><i class="fas ${icon}" aria-hidden="true"></i></div>
-            <div class="detail-passive-effect-body">
-              <div class="detail-passive-effect-kicker">${rewardKind === 'apex' ? 'Synergie' : `Passif · ${passiveCategory}`}</div>
-              <div class="detail-passive-effect-name">${passiveTitle}</div>
-              ${detailHtml}
-            </div>
-          </div>
-        </div>`;
+          : `<div class="detail-passive-paragraph"><p class="detail-passive-fallback">${node.desc}</p></div>`;
       })();
+
+  const isBranchEndOrApex = rewardKind === 'keystone' || rewardKind === 'apex';
+  const skillLinkSectionHtml = isBranchEndOrApex
+    ? getLinkedSkillsSectionHtml(classId, node.effects.passive)
+    : '';
 
   panel.innerHTML = `
     <div class="detail-card status-${status} reward-${rewardKind}">
       <div class="detail-card-header">
         <span class="detail-node-icon"><i class="fas ${node.icon}"></i></span>
         <div>
-          <div class="detail-header-badges">${getRewardBadgeHtml(rewardKind)}${node.keystone && rewardKind === 'keystone' ? '<span class="keystone-tag">FIN DE BRANCHE</span>' : ''}</div>
+          <div class="detail-header-badges">
+            ${getRewardBadgeHtml(rewardKind)}
+            ${node.keystone && rewardKind === 'keystone' ? '<span class="keystone-tag">FIN DE BRANCHE</span>' : ''}
+            ${passiveMeta ? `<span class="detail-reward-badge kicker-tag">${PASSIVE_CATEGORY_LABEL[passiveMeta.category] || 'Passif'}</span>` : ''}
+            ${isBranchEndOrApex ? (node.effects.passive ? getLinkedSkillsBadgesHtml(classId, node.effects.passive) : `<span class="skill-link-none-tag"><i class="fas fa-unlink"></i> Non lié</span>`) : ''}
+          </div>
           <h3 class="detail-node-name">${node.name}</h3>
           <span class="detail-node-tier">Palier ${node.tier} · ${node.cost} point${node.cost > 1 ? 's' : ''} stellaire${node.cost > 1 ? 's' : ''}</span>
         </div>
@@ -529,7 +902,9 @@ function renderDetailPanel(node: ConstellationNode | null, classId: ClassId): vo
 
       ${effectSectionHtml}
 
-      ${statPills ? `<div class="detail-section${isStatNode ? '' : ' detail-section-stat-bonus'}"><div class="detail-section-title">${isStatNode ? 'Attributs augmentés' : 'BONUS DE STATS'}</div><div class="effect-pills${isStatNode ? '' : ' effect-pills-animated'}">${statPills}</div></div>` : ''}
+      ${skillLinkSectionHtml}
+
+      ${visualBars ? `<div class="detail-section${isStatNode ? '' : ' detail-section-stat-bonus'}"><div class="detail-section-title">${isStatNode ? 'Attributs augmentés' : 'BONUS DE STATS'}</div>${visualBars}</div>` : ''}
 
       ${reqHtml}
       <div class="detail-status-msg">${statusMsg}</div>
@@ -728,6 +1103,8 @@ function bindNode(el: HTMLElement, node: ConstellationNode, onUnlock: (id: strin
 }
 
 export const ConstellationUI = {
+  getApexBranchesSchemaHtml,
+
   render(onUnlock: (id: string) => void): void {
     const mount = document.querySelector('#view-tree .constellation-layout');
     if (!mount) return;
@@ -763,6 +1140,9 @@ export const ConstellationUI = {
         <div class="${apexProgressCardClass(apexState)}">
           <div class="apex-progress-label"><i class="fas fa-crown"></i> Apex Progress</div>
           <div class="apex-progress-bar"><div class="apex-progress-fill" style="width:${apexPct}%"></div></div>
+          <div class="apex-branches-schema-container">
+            ${getApexBranchesSchemaHtml(classId)}
+          </div>
           <div class="apex-progress-text">${apexProg} / ${apexTotal} Nœuds · ${keystones} / ${keystonesTotal} Passifs</div>
           <div class="apex-progress-status">${apexStatusLabel(apexState)}</div>
         </div>
@@ -1004,6 +1384,31 @@ export const ConstellationUI = {
       apexText.textContent = `${prog} / ${total} Nœuds · ${keystones} / ${keystonesTotal} Passifs`;
     }
     if (apexStatusEl) apexStatusEl.textContent = apexStatusLabel(apexState);
+
+    const schemaWrap = document.querySelector('.apex-branches-schema-container');
+    if (schemaWrap) {
+      schemaWrap.innerHTML = getApexBranchesSchemaHtml(classId);
+    }
+
+    // Update branch progress sidebar rows & max buttons
+    data.branches.forEach((branch) => {
+      const row = document.querySelector(`.sidebar-branch-row[data-branch-id="${CSS.escape(branch.id)}"]`);
+      if (row) {
+        const prog = branchProgress(classId, branch.id);
+        const isCompleted = prog.unlocked === prog.total;
+        const progSp = row.querySelector('.branch-row-prog');
+        if (progSp) progSp.textContent = `${prog.unlocked} / ${prog.total}`;
+        const btn = row.querySelector('.branch-max-btn');
+        if (btn) {
+          btn.className = `branch-max-btn ${isCompleted ? 'completed' : ''}`;
+          if (isCompleted) {
+            btn.setAttribute('disabled', 'true');
+          } else {
+            btn.removeAttribute('disabled');
+          }
+        }
+      }
+    });
 
     const svg = document.getElementById('constellation-svg');
     if (svg) drawOrbits(svg, classId, data.themeColor);
