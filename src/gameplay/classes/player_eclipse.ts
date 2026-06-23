@@ -4,6 +4,7 @@ import { UI } from '../../visual/ui';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { disposeObject3D } from '../../visual/meshMaterialUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -662,8 +663,7 @@ export class Eclipse extends PlayerBase {
                                 e.speed = originalSpeed;
                             }
                             e.remove(stunVisual);
-                            stunVisual.geometry.dispose();
-                            stunVisual.material.dispose();
+                            disposeObject3D(stunVisual);
                         }, 1500); // 1.5 seconds stun
                     }
 

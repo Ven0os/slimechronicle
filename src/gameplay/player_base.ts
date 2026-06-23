@@ -5,6 +5,7 @@ import { UI } from '../visual/ui';
 import { Input } from '../core/input';
 import { AudioSys } from '../core/ressources';
 import { createDamageText, spawnParticles } from '../visual/effects';
+import { disposeObject3D } from '../visual/meshMaterialUtils';
 import { Network } from '../multiplayer/network';
 import { NetSkills } from '../multiplayer/net_skills';
 import { isServerAuthority } from '../multiplayer/net_combat';
@@ -778,7 +779,7 @@ export class PlayerBase extends THREE.Group {
             if(v.updateFn) v.updateFn(v.mesh, v.duration, v.maxDuration);
             if(v.duration <= 0) {
                 Globals.scene.remove(v.mesh);
-                if(v.mesh.geometry) v.mesh.geometry.dispose();
+                disposeObject3D(v.mesh);
                 this.localVisuals.splice(i, 1);
             }
         }

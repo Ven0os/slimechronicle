@@ -3,6 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { disposeObject3D } from '../../visual/meshMaterialUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -585,11 +586,7 @@ export class Sentinel extends PlayerBase {
     rebuildClassModel() {
         if (this.mesh) {
             this.bodyGroup.remove(this.mesh);
-            this.mesh.traverse(child => {
-                if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose();
-                }
-            });
+            disposeObject3D(this.mesh);
         }
         
         this.createClassModel();

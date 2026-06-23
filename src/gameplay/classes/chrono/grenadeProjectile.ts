@@ -2,6 +2,7 @@
 import { Globals } from '../../../core/globals';
 import { AudioSys } from '../../../core/ressources';
 import { spawnParticles, createSkillVisual } from '../../../visual/effects';
+import { disposeObject3D } from '../../../visual/meshMaterialUtils';
 import { CHRONO_SKILLS } from './constants';
 
 export class ChronoDephasingGrenade {
@@ -95,10 +96,7 @@ export class ChronoDephasingGrenade {
   destroy() {
     if (this.mesh) {
       Globals.scene.remove(this.mesh);
-      this.mesh.traverse((c) => {
-        if (c.geometry) c.geometry.dispose();
-        if (c.material) c.material.dispose();
-      });
+      disposeObject3D(this.mesh);
       this.mesh = null;
     }
     const idx = Globals.projectiles.indexOf(this);

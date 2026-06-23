@@ -317,10 +317,14 @@ export const NetChrono = {
       pruneExpiredLenses(auth);
 
       if (player.lenses) {
-        for (const lens of player.lenses) {
+        for (let i = player.lenses.length - 1; i >= 0; i--) {
+          const lens = player.lenses[i];
           if (lens.timer > 0) lens.timer = Math.max(0, lens.timer - dt);
+          if (lens.timer <= 0) {
+            if (typeof player.removeLensEntry === 'function') player.removeLensEntry(lens);
+            player.lenses.splice(i, 1);
+          }
         }
-        player.lenses = player.lenses.filter((l) => l.timer > 0);
       }
       syncAuthLensesFromPlayer(playerId, player);
 
