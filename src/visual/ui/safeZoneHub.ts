@@ -297,32 +297,34 @@ export const SafeZoneHub = {
       UI.toast("Vous entrez dans la zone de combat !");
     }
 
-    // Gestion de la translucidité de la falaise de spawn et de ses roches
-    if (Globals.spawnPlatformGroup) {
-      const targetOpacity = STATE.leftSafeZone ? 0.35 : 1.0;
-      Globals.spawnPlatformGroup.traverse((child) => {
+    // Translucidité de la falaise de spawn et des NPCs : on ne parcourt les hiérarchies
+    // que pendant la transition. Une fois l'opacité cible atteinte, plus de traverse par frame.
+    const targetOpacity = STATE.leftSafeZone ? 0.35 : 1.0;
+    if (this._fadeTarget !== targetOpacity) {
+      this._fadeTarget = targetOpacity;
+      this._fadeDone = false;
+    }
+    if (!this._fadeDone) {
+      let allSettled = true;
+      const fadeMesh = (child) => {
         if (child.isMesh && child.material) {
           if (!child.material.transparent) {
             child.material.transparent = true;
           }
-          child.material.opacity += (targetOpacity - child.material.opacity) * dt * 4.0;
-        }
-      });
-    }
-
-    // Gestion de la translucidité des NPCs du spawn (Mage et Golem)
-    if (WorldEvents && WorldEvents.npcs) {
-      const targetOpacity = STATE.leftSafeZone ? 0.35 : 1.0;
-      for (const npc of WorldEvents.npcs) {
-        npc.traverse((child) => {
-          if (child.isMesh && child.material) {
-            if (!child.material.transparent) {
-              child.material.transparent = true;
-            }
-            child.material.opacity += (targetOpacity - child.material.opacity) * dt * 4.0;
+          const diff = targetOpacity - child.material.opacity;
+          if (Math.abs(diff) > 0.01) {
+            child.material.opacity += diff * Math.min(1, dt * 4.0);
+            allSettled = false;
+          } else {
+            child.material.opacity = targetOpacity;
           }
-        });
+        }
+      };
+      if (Globals.spawnPlatformGroup) Globals.spawnPlatformGroup.traverse(fadeMesh);
+      if (WorldEvents && WorldEvents.npcs) {
+        for (const npc of WorldEvents.npcs) npc.traverse(fadeMesh);
       }
+      this._fadeDone = allSettled;
     }
 
     const isMenuOpen = !!(window.UI && typeof window.UI.isMenuOpen === 'function' && window.UI.isMenuOpen());

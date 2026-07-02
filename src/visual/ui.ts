@@ -14,8 +14,10 @@ export const UI = {
     ...UICompendium,
     
     // --- NOUVELLE FONCTION : Vérifie si un menu bloquant est ouvert ---
+    // Références DOM mises en cache (les partials sont injectés dynamiquement,
+    // on re-cherche donc tant qu'un élément n'a pas été trouvé/reconnecté).
+    _blockingMenuEls: {},
     isMenuOpen: function() {
-        // Liste des IDs des interfaces qui doivent bloquer le joueur
         const blockingMenus = [
             'skill-ui-wrapper',
             'screen-forge',
@@ -26,7 +28,11 @@ export const UI = {
         ];
 
         for (const id of blockingMenus) {
-            const el = document.getElementById(id);
+            let el = this._blockingMenuEls[id];
+            if (!el || !el.isConnected) {
+                el = document.getElementById(id);
+                this._blockingMenuEls[id] = el;
+            }
             // On considère ouvert si : existe ET (classe 'active' OU display visible)
             if (el && (el.classList.contains('active') || el.style.display === 'flex' || el.style.display === 'block')) {
                 return true;

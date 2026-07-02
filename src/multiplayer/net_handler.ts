@@ -35,7 +35,7 @@ export function handleNetworkMessage(data) {
     else if (data.type === 'client-input') {
         if (STATE.multiplayer.isHost) { 
             NetChrono.ingestClientInput(data.id, data);
-            NetSync.updateRemotePlayer(data.id, data.pos, data.rot, data.class, data.dead, data.stun, NetSync._lastDt); 
+            NetSync.updateRemotePlayer(data.id, data.pos, data.rot, data.class, data.dead, data.stun); 
             const remote = STATE.multiplayer.remotePlayers[data.id];
             if (data.classState && remote) NetClassState.applySnapshot(remote, data.classState);
         }

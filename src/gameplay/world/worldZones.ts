@@ -50,6 +50,16 @@ export function getPlayableRadiusAt(x: number, z: number): number {
   return 112 + borderNoise; // Coastal playable limit in shallow water
 }
 
+// Constantes hissées hors de getGroundLevelAt : la fonction est appelée des dizaines
+// de fois par frame (joueur + chaque ennemi), on évite l'allocation de ces tableaux à chaque appel.
+const GROUND_REGIONS = [
+  { id: 'mountain', cx: 80, cz: 80, weight: 1.0 },
+  { id: 'cold', cx: -60, cz: 60, weight: 1.0 },
+  { id: 'desert', cx: -60, cz: -60, weight: 1.0 },
+  { id: 'temperate', cx: 10, cz: -20, weight: 2.2 },
+] as const;
+const groundWeights = new Array(GROUND_REGIONS.length).fill(0);
+
 export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }): number {
   const dx = pos.x - 90;
   const dz = pos.z - 90;
@@ -71,35 +81,27 @@ export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }):
   const distValX = x + noiseX;
   const distValZ = z + noiseZ;
   
-  const regions = [
-    { id: 'mountain', cx: 80, cz: 80, weight: 1.0 },
-    { id: 'cold', cx: -60, cz: 60, weight: 1.0 },
-    { id: 'desert', cx: -60, cz: -60, weight: 1.0 },
-    { id: 'temperate', cx: 10, cz: -20, weight: 2.2 }
-  ];
-  
   let totalWeight = 0;
-  const weights: number[] = [];
-  
-  for (const r of regions) {
+  for (let i = 0; i < GROUND_REGIONS.length; i++) {
+    const r = GROUND_REGIONS[i];
     const rdx = distValX - r.cx;
     const rdz = distValZ - r.cz;
     const distVal = Math.hypot(rdx, rdz);
     const score = distVal / r.weight;
     const w = 1.0 / Math.pow(score + 0.1, 9.0); // Power 9.0 for very marked biome changes!
-    weights.push(w);
+    groundWeights[i] = w;
     totalWeight += w;
   }
   
   let baseHeight = 0.0;
-  for (let i = 0; i < regions.length; i++) {
-    const wNorm = weights[i] / totalWeight;
+  for (let i = 0; i < GROUND_REGIONS.length; i++) {
+    const wNorm = groundWeights[i] / totalWeight;
     let rh = 0.0;
-    if (regions[i].id === 'mountain') {
+    if (GROUND_REGIONS[i].id === 'mountain') {
       rh = 1.4 * (Math.sin(x * 0.08) * Math.cos(z * 0.08)) + 0.5 * Math.sin(x * 0.2);
-    } else if (regions[i].id === 'desert') {
+    } else if (GROUND_REGIONS[i].id === 'desert') {
       rh = 0.8 * Math.sin(x * 0.06 + z * 0.06);
-    } else if (regions[i].id === 'cold') {
+    } else if (GROUND_REGIONS[i].id === 'cold') {
       rh = 0.6 * (Math.sin(x * 0.07) + Math.cos(z * 0.07));
     } else {
       rh = 0.25 * Math.sin(x * 0.04) * Math.cos(z * 0.04);
@@ -156,17 +158,10 @@ export function getRegionAt(x: number, z: number): 'mountain' | 'cold' | 'desert
   const distValX = x + noiseX;
   const distValZ = z + noiseZ;
 
-  const regions = [
-    { id: 'mountain', cx: 80, cz: 80, weight: 1.0 },
-    { id: 'cold', cx: -60, cz: 60, weight: 1.0 },
-    { id: 'desert', cx: -60, cz: -60, weight: 1.0 },
-    { id: 'temperate', cx: 10, cz: -20, weight: 2.2 }
-  ];
-  
   let bestId = 'temperate';
   let minScore = Infinity;
   
-  for (const r of regions) {
+  for (const r of GROUND_REGIONS) {
     const dx = distValX - r.cx;
     const dz = distValZ - r.cz;
     const distVal = Math.hypot(dx, dz);

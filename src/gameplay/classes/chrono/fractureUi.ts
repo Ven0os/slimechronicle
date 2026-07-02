@@ -44,32 +44,36 @@ export function updateChronoFractureUI(
   root.classList.toggle('chrono-fracture-silence', silence > 0);
 
   if (label) {
+    let labelText;
     if (silence > 0) {
-      label.textContent = `Silence — ${silence.toFixed(1)} s`;
+      labelText = `Silence — ${silence.toFixed(1)} s`;
     } else if (overheat) {
-      label.textContent = 'Surchauffe';
+      labelText = 'Surchauffe';
     } else if (imminence) {
-      label.textContent = 'Surcharge imminente';
+      labelText = 'Surcharge imminente';
     } else if (apexActive) {
-      label.textContent = `Fracture ${fractureValue}% / ${cap}%`;
+      labelText = `Fracture ${fractureValue}% / ${cap}%`;
     } else {
-      label.textContent = `Fracture ${fractureValue}%`;
+      labelText = `Fracture ${fractureValue}%`;
     }
+    if (label.textContent !== labelText) label.textContent = labelText;
   }
 
   if (hint) {
+    let hintText;
     if (silence > 0) {
-      hint.textContent = 'Compétences indisponibles';
+      hintText = 'Compétences indisponibles';
     } else if (overheat) {
-      hint.textContent = 'Surchauffe critique';
+      hintText = 'Surchauffe critique';
     } else if (imminence) {
-      hint.textContent = 'Relâchez pour désurcharger (−10 %)';
+      hintText = 'Relâchez pour désurcharger (−10 %)';
     } else if (apexActive && fractureValue >= CHRONO_FRACTURE.max && fractureValue < getOverloadImminenceThreshold(cap)) {
-      hint.textContent = `Surcharge Apex — jusqu'à ${cap}% (rayon +0,42 % dmg, +0,05 % taille / %)`;
+      hintText = `Surcharge Apex — jusqu'à ${cap}% (rayon +0,42 % dmg, +0,05 % taille / %)`;
     } else if (isDecaying) {
-      hint.textContent = 'Fracture en décroissance';
+      hintText = 'Fracture en décroissance';
     } else {
-      hint.textContent = 'Maintenez clic pour canaliser';
+      hintText = 'Maintenez clic pour canaliser';
     }
+    if (hint.textContent !== hintText) hint.textContent = hintText;
   }
 }

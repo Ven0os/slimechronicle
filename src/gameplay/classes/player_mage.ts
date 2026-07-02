@@ -3,6 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { setHtmlIfChanged } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -251,7 +252,7 @@ export class Mage extends PlayerBase {
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
             const cdr = Math.floor((1.0 - ConstellationEngine.getSkillCdMult('space')) * 100);
-            resourceEl.innerHTML = `
+            setHtmlIfChanged(resourceEl, `
                 <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                     <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#3498db;">
                         <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-wand-magic-sparkles"></i> ARCHIMAGE (CDR)</span>
@@ -261,7 +262,7 @@ export class Mage extends PlayerBase {
                         <div style="width:${cdr}%; height:100%; background:#3498db; box-shadow:0 0 6px #00ffff; transition: width 0.2s;"></div>
                     </div>
                 </div>
-            `;
+            `);
             resourceEl.style.display = 'block';
         }
     }
@@ -487,9 +488,9 @@ export class Mage extends PlayerBase {
             const cloneGeo = new THREE.CylinderGeometry(0.3, 0.6, 1.4, 12);
             const clone = new THREE.Mesh(cloneGeo, new THREE.MeshBasicMaterial({color:0x3498db, wireframe:true, transparent:true, opacity:0.5}));
             clone.position.copy(oldPos).add(new THREE.Vector3(0,0.8,0));
-            this.addLocalVisual(clone, 0.5, (m, t) => { 
+            this.addLocalVisual(clone, 0.5, (m, t, maxT, dt) => { 
                 m.material.opacity = 0.5 - (t/0.5)*0.5; 
-                m.scale.multiplyScalar(1.05);
+                m.scale.multiplyScalar(Math.pow(1.05, dt*60));
             });
             createSkillVisual('explosion', oldPos, 3, 0x3498db); 
             PassiveKeystoneHooks.registerParadoxClone(this, oldPos);
@@ -555,8 +556,8 @@ export class Mage extends PlayerBase {
         const pos = this.position.clone().add(new THREE.Vector3(0, 0.05, 0));
         rune.position.copy(pos); innerRune.position.copy(pos);
         
-        this.addLocalVisual(rune, 3.0, (m, t, maxT) => {
-            m.rotation.z += 0.02;
+        this.addLocalVisual(rune, 3.0, (m, t, maxT, dt) => {
+            m.rotation.z += 1.2 * dt;
             const scale = 1 - (t/maxT);
             m.scale.setScalar(1 + Math.sin(t*10)*0.02);
             if(t > maxT - 0.5) m.material.opacity = (maxT-t)*2;

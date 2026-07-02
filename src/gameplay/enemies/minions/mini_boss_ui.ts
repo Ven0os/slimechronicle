@@ -322,38 +322,62 @@ export function updateMiniBossUi(
   ui.tiers = tiers;
   enemy.miniBossTiers = tiers;
 
-  const tierDisplay = getTierDisplay(enemy);
+  // Le layout des tiers (mesure de texte) n'est recalculé que quand les tiers changent.
+  const tiersKey = tiers.join('|');
+  let repaintNeeded = false;
+  if (ui._tiersKey !== tiersKey || !ui._tierDisplay) {
+    ui._tiersKey = tiersKey;
+    ui._tierDisplay = getTierDisplay(enemy);
+    repaintNeeded = true;
+  }
+  const tierDisplay = ui._tierDisplay;
   const renderedKey = tierDisplay.lines.join('|');
   if (ui._lastRenderedTiers !== renderedKey) {
     ui._lastRenderedTiers = renderedKey;
     logMiniBossTierPipeline('ui-render', enemy, { rendered: tierDisplay.lines.join(' • ') });
   }
   const plateH = computePlateHeight(tierDisplay.lines.length);
+  if (ui.canvas.height !== plateH) repaintNeeded = true; // le resize efface le canvas
   ensureCanvasSize(ui, plateH);
   ui.plateH = plateH;
   ui.tierLineCount = tierDisplay.lines.length;
 
-  if (ui.shieldFlash > 0) ui.shieldFlash -= dt;
+  if (ui.shieldFlash > 0) {
+    ui.shieldFlash -= dt;
+    repaintNeeded = true;
+  }
 
   const shield = getOvershieldHp(enemy);
   const maxShield = getMaxOvershieldHp(enemy);
   if (ui.lastShield >= 0 && shield < ui.lastShield) ui.shieldFlash = 0.18;
   ui.lastShield = shield;
 
-  ui.displayHp = THREE.MathUtils.lerp(ui.displayHp, enemy.hp ?? 0, Math.min(1, dt * 10));
-  ui.displayShield = THREE.MathUtils.lerp(ui.displayShield, shield, Math.min(1, dt * 12));
+  const targetHp = enemy.hp ?? 0;
+  if (ui.displayHp !== targetHp) {
+    ui.displayHp = THREE.MathUtils.lerp(ui.displayHp, targetHp, Math.min(1, dt * 10));
+    if (Math.abs(ui.displayHp - targetHp) < 0.2) ui.displayHp = targetHp;
+    repaintNeeded = true;
+  }
+  if (ui.displayShield !== shield) {
+    ui.displayShield = THREE.MathUtils.lerp(ui.displayShield, shield, Math.min(1, dt * 12));
+    if (Math.abs(ui.displayShield - shield) < 0.2) ui.displayShield = shield;
+    repaintNeeded = true;
+  }
 
-  paintPlate(ui.ctx, plateH, {
-    name: ui.name,
-    tierLines: tierDisplay.lines,
-    tierFontSize: tierDisplay.fontSize,
-    accentHex: ui.accentHex,
-    hpPct: Math.max(0, Math.min(1, ui.displayHp / enemy.maxHp)),
-    shieldPct: maxShield > 0 ? Math.max(0, Math.min(1, ui.displayShield / maxShield)) : 0,
-    hasShield: maxShield > 0,
-    shieldFlash: ui.shieldFlash,
-  });
-  ui.texture.needsUpdate = true;
+  // Repeindre le canvas + re-uploader la texture GPU seulement si quelque chose a changé.
+  if (repaintNeeded) {
+    paintPlate(ui.ctx, plateH, {
+      name: ui.name,
+      tierLines: tierDisplay.lines,
+      tierFontSize: tierDisplay.fontSize,
+      accentHex: ui.accentHex,
+      hpPct: Math.max(0, Math.min(1, ui.displayHp / enemy.maxHp)),
+      shieldPct: maxShield > 0 ? Math.max(0, Math.min(1, ui.displayShield / maxShield)) : 0,
+      hasShield: maxShield > 0,
+      shieldFlash: ui.shieldFlash,
+    });
+    ui.texture.needsUpdate = true;
+  }
 
   const scale = computeScale(enemy as THREE.Object3D, cam);
   plate.scale.set(PLATE_W * scale, plateH * scale, 1);

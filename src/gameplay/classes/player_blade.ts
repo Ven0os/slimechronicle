@@ -3,6 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { setHtmlIfChanged } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -288,7 +289,7 @@ export class Blade extends PlayerBase {
                 const readyText = summary.active ? 'RUPTURE ACTIVE' : summary.ready ? 'RUPTURE PRÊTE' : summary.cdRemaining > 0 ? `${summary.cdRemaining.toFixed(1)}s` : `${Math.ceil(summary.hpPct * 100)}% HP`;
                 const pct = Math.min(100, (summary.missingPct / 0.9) * 100);
                 const color = summary.ready || summary.active ? '#ff2d55' : '#1abc9c';
-                resourceEl.innerHTML = `
+                setHtmlIfChanged(resourceEl, `
                     <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                         <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${color};">
                             <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-skull"></i> POINT DE RUPTURE</span>
@@ -300,7 +301,7 @@ export class Blade extends PlayerBase {
                             <div style="width:${pct}%; height:100%; background:${color}; box-shadow:0 0 6px ${color}; transition: width 0.2s;"></div>
                         </div>
                     </div>
-                `;
+                `);
                 resourceEl.style.display = 'block';
                 return;
             }
@@ -309,7 +310,7 @@ export class Blade extends PlayerBase {
             let color = '#1abc9c';
             if (bonusPct > 50) color = '#e74c3c';
             const pct = Math.min(100, (bonusPct / 100) * 100);
-            resourceEl.innerHTML = `
+            setHtmlIfChanged(resourceEl, `
                 <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                     <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${color};">
                         <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-droplet"></i> SOIF DE SANG</span>
@@ -319,7 +320,7 @@ export class Blade extends PlayerBase {
                         <div style="width:${pct}%; height:100%; background:${color}; box-shadow:0 0 6px ${color}; transition: width 0.2s;"></div>
                     </div>
                 </div>
-            `;
+            `);
             resourceEl.style.display = 'block';
         }
     }
@@ -446,7 +447,7 @@ export class Blade extends PlayerBase {
 
             const ring = new THREE.Mesh(new THREE.RingGeometry(3, 4.0, 32), new THREE.MeshBasicMaterial({color:0x1abc9c, side:THREE.DoubleSide, transparent:true}));
             ring.rotation.x = -Math.PI/2; ring.position.copy(this.position).add(new THREE.Vector3(0,1,0));
-            this.addLocalVisual(ring, 0.3, (m,t) => { m.material.opacity = t/0.3; m.rotation.z += 0.5; });
+            this.addLocalVisual(ring, 0.3, (m,t,maxT,dt) => { m.material.opacity = t/0.3; m.rotation.z += 30 * dt; });
 
             Globals.enemies.forEach(e => {
                 if(e.position.distanceTo(this.position) < 5) {

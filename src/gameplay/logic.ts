@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import { STATE, CONFIG } from '../core/config';
-import { Globals, GameActions, setPlayer, addEnemy, removeEnemy } from '../core/globals';
+import { Globals, GameActions, setPlayer, addEnemy, removeEnemy, disposeEnemyResources } from '../core/globals';
 import { AudioSys } from '../core/ressources';
 import { Network } from '@/multiplayer/network';
 import { Player } from './player';
@@ -1795,8 +1795,32 @@ export const GameLogic = {
                 STATE.leftSafeZone = false;
             }
 
-            Globals.enemies.forEach(e => { Globals.scene.remove(e); });
+            Globals.enemies.forEach(e => {
+                Globals.scene.remove(e);
+                disposeEnemyResources(e);
+            });
             Globals.enemies.length = 0;
+
+            // Nettoie aussi les projectiles, télégraphes et particules restants du combat.
+            for (let i = Globals.projectiles.length - 1; i >= 0; i--) {
+                Globals.projectiles[i].destroy();
+            }
+            if (Globals.telegraphs) {
+                for (const t of Globals.telegraphs) {
+                    t.userData.onComplete = null; // plus de dégâts post-wipe
+                    Globals.scene.remove(t);
+                    t.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                            else child.material.dispose();
+                        }
+                    });
+                }
+                Globals.telegraphs.length = 0;
+            }
+            for (const p of Globals.particles) Globals.scene.remove(p.mesh);
+            Globals.particles.length = 0;
 
             STATE.bossSpawned = false;
             STATE.isBossFight = false;
@@ -1926,9 +1950,13 @@ export const GameLogic = {
                 // Despawn building with a shrink animation
                 if (camp.building) {
                     const b = camp.building;
+                    let lastShrink = performance.now();
                     const shrink = () => {
+                        const nowT = performance.now();
+                        const frameDt = Math.min((nowT - lastShrink) / 1000, 0.1);
+                        lastShrink = nowT;
                         if (b.scale.x > 0.05) {
-                            b.scale.multiplyScalar(0.85); // Shrink out
+                            b.scale.multiplyScalar(Math.pow(0.85, frameDt * 60)); // Shrink out (indépendant du FPS)
                             requestAnimationFrame(shrink);
                         } else {
                             if (b.parent) b.parent.remove(b);

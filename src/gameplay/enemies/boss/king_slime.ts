@@ -5,7 +5,7 @@ import { STATE, CONFIG } from '../../../core/config';
 import { ENEMY_ATTACKS } from '../../../core/enemy_attacks_config';
 import { AudioSys } from '../../../core/ressources';
 import { createDamageText, spawnParticles, createSkillVisual, createTelegraph } from '../../../visual/effects';
-import { flashMeshDamage, restoreMeshDamageFlash, safeMaterialSetHex } from '../../../visual/meshMaterialUtils';
+import { flashMeshDamage, restoreMeshDamageFlash, safeMaterialSetHex, disposeObject3D } from '../../../visual/meshMaterialUtils';
 import { Network } from '../../../multiplayer/network';
 import { damagePlayer, getAllLivingPlayers } from '../../../multiplayer/net_combat';
 import { Projectile } from '../../entities';
@@ -1067,6 +1067,15 @@ export class KingSlime extends BaseEnemy {
     pushBack(force) { return; }
     applyStun(duration) { return; }
 
+    // La mort du boss est pilotée par sa cinématique de 5 s dans update() (animState 'dying').
+    // On neutralise l'animation de mort générique de BaseEnemy : sans cela, la boucle de jeu
+    // la déclenchait en parallèle (deathTimer incrémenté 2×, fondu 1 s) et retirait le boss
+    // de la scène AVANT finishDie() → récompenses et fin de combat jamais déclenchées.
+    startDeathAnimation() {
+        this.isDying = true;
+    }
+    updateDeathAnimation(dt) {}
+
     die() {
         if (this.flashTimeout) { clearTimeout(this.flashTimeout); this.flashTimeout = null; }
         if (STATE.multiplayer.active && !STATE.multiplayer.isHost) { super.die(); return; }
@@ -1074,15 +1083,34 @@ export class KingSlime extends BaseEnemy {
         const bossHud = document.getElementById('boss-hud');
         if (bossHud) bossHud.style.display = 'none';
 
-        this.activeMeteors.forEach(m => Globals.scene.remove(m));
+        // Annule les télégraphes en cours (leurs onComplete pouvaient encore infliger des dégâts).
+        this.clearActiveTelegraphs();
+
+        this.activeMeteors.forEach(m => {
+            Globals.scene.remove(m);
+            disposeObject3D(m);
+        });
         this.activeMeteors = [];
-        this.activeSpikes.forEach(s => Globals.scene.remove(s));
+        this.activeSpikes.forEach(s => {
+            Globals.scene.remove(s);
+            disposeObject3D(s);
+        });
         this.activeSpikes = [];
         if (this.effectsGroup) this.mesh.remove(this.effectsGroup);
         if (this.shieldMesh) { this.remove(this.shieldMesh); this.shieldMesh = null; }
 
         // Début de la cinématique lente de mort (5 secondes)
         this.dead = true;
+
+        // Les piliers de bouclier restants meurent avec leur maître.
+        // Après `this.dead = true` : leur die() ne redéclenchera pas breakSandShield().
+        // (copie du tableau : leur die() appelle removeEnemy pendant l'itération)
+        const pillars = Globals.enemies.filter(e => e !== this && e.type === 'shield_pillar' && !e.dead && e.master === this);
+        for (const p of pillars) {
+            p.hp = 0;
+            p.die();
+        }
+
         this.animState = 'dying';
         this.deathTimer = 0.0;
         this.deathScreamPlayed = false;
@@ -1114,6 +1142,9 @@ export class KingSlime extends BaseEnemy {
     }
 
     finishDie() {
+        // Autorise la boucle de jeu à retirer le boss de la scène maintenant que la cinématique est finie.
+        this.deathAnimDone = true;
+
         if (STATE.multiplayer.active && STATE.multiplayer.isHost) {
             Network.send({ type: 'prismatic-trigger' });
             Network.send({ type: 'boss-cleared' });

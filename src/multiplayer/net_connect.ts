@@ -79,11 +79,39 @@ export const NetConnect = {
                  }
              }
         });
+        // Retire l'avatar du joueur distant quand sa connexion se ferme.
+        conn.on('close', () => {
+            this.cleanupRemotePlayers();
+            if (Network.conn === conn) Network.conn = null;
+            UI.toast("Un joueur s'est déconnecté.");
+        });
+    },
+
+    /** Retire de la scène et libère tous les avatars distants (déconnexion / fermeture). */
+    cleanupRemotePlayers: function() {
+        for (const id in STATE.multiplayer.remotePlayers) {
+            const p = STATE.multiplayer.remotePlayers[id];
+            if (p) {
+                Globals.scene.remove(p);
+                p.traverse?.((child) => {
+                    if (child.isMesh || child.isSprite) {
+                        child.geometry?.dispose?.();
+                        const mats = Array.isArray(child.material) ? child.material : (child.material ? [child.material] : []);
+                        for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); }
+                    }
+                });
+            }
+            delete STATE.multiplayer.remotePlayers[id];
+        }
     },
 
     setupPeerEvents: function() {
         Network.peer.on('disconnected', () => { if (Network.peer && !Network.peer.destroyed) Network.peer.reconnect(); });
-        Network.peer.on('close', () => { Network.conn = null; UI.toast("Serveur fermé."); });
+        Network.peer.on('close', () => {
+            Network.conn = null;
+            this.cleanupRemotePlayers();
+            UI.toast("Serveur fermé.");
+        });
         Network.peer.on('error', (err) => { 
             console.error(err); 
             if(document.getElementById('screen-host').classList.contains('active')) UI.toast("Erreur réseau: " + (err.type || "Inconnue")); 

@@ -38,4 +38,26 @@ export function addEnemy(e) { Globals.enemies.push(e); }
 export function removeEnemy(e) { 
     const idx = Globals.enemies.indexOf(e);
     if(idx > -1) Globals.enemies.splice(idx, 1);
+    disposeEnemyResources(e);
+}
+
+// Libère les ressources GPU d'un ennemi définitivement retiré (géométries, matériaux, textures).
+// Chaque ennemi construit son propre modèle : aucune ressource n'est partagée entre instances.
+export function disposeEnemyResources(e) {
+    if (!e || e._resourcesDisposed) return;
+    e._resourcesDisposed = true;
+    if (e.flashTimeout) { clearTimeout(e.flashTimeout); e.flashTimeout = null; }
+    if (typeof e.disposeHealthBar === 'function') e.disposeHealthBar();
+    if (typeof e.traverse === 'function') {
+        e.traverse((child) => {
+            if (child.isMesh || child.isSprite || child.isPoints || child.isLine) {
+                if (child.geometry) child.geometry.dispose();
+                const mats = Array.isArray(child.material) ? child.material : (child.material ? [child.material] : []);
+                for (const m of mats) {
+                    if (m.map) m.map.dispose();
+                    m.dispose();
+                }
+            }
+        });
+    }
 }
