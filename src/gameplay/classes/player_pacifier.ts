@@ -3,6 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { setHtmlIfChanged } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -172,7 +173,7 @@ export class Pacifier extends PlayerBase {
                 ? `<span style="font-size:9px; color:rgba(255,255,255,0.72);">${Math.floor(hemo.stored)} dégâts stockés</span>`
                 : '';
             
-            resourceEl.innerHTML = `
+            setHtmlIfChanged(resourceEl, `
                 <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                     <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:${titleColor};">
                         <span style="display:flex; align-items:center; gap:5px;"><i class="fas ${icon}"></i> ${titleText}</span>
@@ -183,7 +184,7 @@ export class Pacifier extends PlayerBase {
                         <div style="width:${pct}%; height:100%; background:${titleColor}; box-shadow:0 0 6px ${titleColor}; transition: width 0.2s;"></div>
                     </div>
                 </div>
-            `;
+            `);
             resourceEl.style.display = 'block';
         }
     }
@@ -214,7 +215,7 @@ export class Pacifier extends PlayerBase {
         for(let i=0; i<5; i++) { spawnParticles(pos, 0xff0000, 3); }
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 16), new THREE.MeshBasicMaterial({color:0xff0000, side:THREE.DoubleSide, transparent:true, opacity:0.8}));
         ring.rotation.x = -Math.PI/2; ring.position.copy(pos).add(new THREE.Vector3(0,0.1,0));
-        this.addLocalVisual(ring, 0.3, (m,t) => { m.scale.multiplyScalar(0.9); m.material.opacity = t/0.3; });
+        this.addLocalVisual(ring, 0.3, (m,t,maxT,dt) => { m.scale.multiplyScalar(Math.pow(0.9, dt*60)); m.material.opacity = t/0.3; });
     }
 
     releaseHemocycleStoredDamage(enemy, chunks, maxRange = 22) {
@@ -469,8 +470,9 @@ export class Pacifier extends PlayerBase {
                     this.animState.armR_Rot.z = 0.2; this.animState.armL_Rot.z = -0.2; this.body.rotation.x = 1.0; 
                 }
                 if (this.isLocalPlayer()) {
+                    // Descente caméra pilotée par la progression p (temps réel) : indépendante du FPS.
                     if (p < 0.5) Globals.camera.position.y = originalCamY + (this.mesh.position.y * 0.5);
-                    else Globals.camera.position.y = THREE.MathUtils.lerp(Globals.camera.position.y, originalCamY, 0.2);
+                    else Globals.camera.position.y = originalCamY + (this.mesh.position.y * 0.5) * (1 - (p - 0.5) * 2);
                 }
                 requestAnimationFrame(diveAnim);
             };
@@ -497,7 +499,7 @@ export class Pacifier extends PlayerBase {
                         PassiveKeystoneHooks.markEnemyVerdict(e);
                         const mark = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 8, 16), new THREE.MeshBasicMaterial({color:0xff0000}));
                         mark.position.copy(e.position).add(new THREE.Vector3(0, 2.5, 0));
-                        this.addLocalVisual(mark, 5.0, (m) => { m.rotation.y += 0.1; m.scale.setScalar(1 + Math.sin(Date.now()*0.01)*0.2); });
+                        this.addLocalVisual(mark, 5.0, (m,t,maxT,dt) => { m.rotation.y += 6 * dt; m.scale.setScalar(1 + Math.sin(Date.now()*0.01)*0.2); });
                     }
                 });
             }, snapDur * 0.6);

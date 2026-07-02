@@ -44,15 +44,17 @@ export function createDamageText(text, pos, color = '#ffffff') {
     });
 }
 
+const floatingTextProjection = new THREE.Vector3();
+
 export function updateFloatingTexts(dt) {
     if (!Globals.camera) return;
 
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         const item = floatingTexts[i];
         item.life -= dt;
-        item.pos.add(item.velocity.clone().multiplyScalar(dt));
+        item.pos.addScaledVector(item.velocity, dt);
         
-        const vector = item.pos.clone();
+        const vector = floatingTextProjection.copy(item.pos);
         vector.project(Globals.camera);
 
         const x = (vector.x * .5 + .5) * window.innerWidth;
@@ -73,26 +75,41 @@ export function updateFloatingTexts(dt) {
     }
 }
 
+// Géométries unitaires et matériaux partagés entre toutes les particules :
+// évite une allocation GPU par particule et la fuite mémoire à leur destruction.
+let particleGeos = null;
+const particleMats = new Map();
+
+function getParticleGeo() {
+    if (!particleGeos) {
+        particleGeos = [
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.OctahedronGeometry(1, 0),
+            new THREE.TetrahedronGeometry(1, 0),
+        ];
+    }
+    const rand = Math.random();
+    if (rand < 0.4) return particleGeos[0];
+    if (rand < 0.7) return particleGeos[1];
+    return particleGeos[2];
+}
+
+function getParticleMat(color) {
+    const key = String(color);
+    let mat = particleMats.get(key);
+    if (!mat) {
+        mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.95 });
+        particleMats.set(key, mat);
+    }
+    return mat;
+}
+
 export function spawnParticles(pos, color, count, sizeMult = 1.0) {
     for (let i = 0; i < count; i++) {
         // Random shape: Box, Octahedron, or Tetrahedron for realistic debris shards
         const size = (0.06 + Math.random() * 0.14) * sizeMult;
-        let geo;
-        const rand = Math.random();
-        if (rand < 0.4) {
-            geo = new THREE.BoxGeometry(size, size, size);
-        } else if (rand < 0.7) {
-            geo = new THREE.OctahedronGeometry(size, 0);
-        } else {
-            geo = new THREE.TetrahedronGeometry(size, 0);
-        }
-
-        const mat = new THREE.MeshBasicMaterial({ 
-            color: color,
-            transparent: true,
-            opacity: 0.95
-        });
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = new THREE.Mesh(getParticleGeo(), getParticleMat(color));
+        mesh.scale.setScalar(size);
         
         // Randomize initial positions around origin
         mesh.position.copy(pos);
@@ -232,7 +249,7 @@ export function updateSkillVisuals(dt) {
         if (v.type === 'melee_slash') {
             v.mesh.rotation.z -= 8.0 * dt; // Rotation rapide
             v.mesh.material.opacity = v.life * 2.0; // Fade out
-            v.mesh.scale.multiplyScalar(1.05); // Légère expansion
+            v.mesh.scale.multiplyScalar(Math.pow(1.05, dt * 60)); // Légère expansion (indépendante du FPS)
         }
 
         if (v.life <= 0) {
@@ -368,12 +385,12 @@ export function createSkillVisual(type, pos, size, color, dir) {
         }
         Globals.scene.add(raysGroup);
 
-        // Animate everything together
+        // Animate everything together (temps réel : identique à tout framerate)
         const maxLife = 0.45;
-        let life = maxLife;
+        const startTime = performance.now();
         const animate = () => {
-            life -= 0.016; // approx dt
-            const progress = life / maxLife; // 1.0 down to 0.0
+            const life = maxLife - (performance.now() - startTime) / 1000;
+            const progress = Math.max(0, life / maxLife); // 1.0 down to 0.0
             const easeOut = 1 - Math.pow(progress, 3);
 
             // Fireball updates
@@ -479,10 +496,10 @@ export function createSkillVisual(type, pos, size, color, dir) {
         spawnParticles(pos, 0x00ffff, 10);
 
         const duration = 1.5; // Spikes persist for 1.5s
-        let elapsed = 0;
+        const spikesStart = performance.now();
 
         const animateSpikes = () => {
-            elapsed += 0.016;
+            const elapsed = (performance.now() - spikesStart) / 1000;
             const progress = elapsed / duration;
 
             spikes.forEach(s => {
@@ -564,10 +581,14 @@ export function createSkillVisual(type, pos, size, color, dir) {
         }
 
         const duration = 0.6; // beam channels/blasts for 0.6 seconds
-        let elapsed = 0;
+        const beamStart = performance.now();
+        let beamLastFrame = beamStart;
 
         const animateBeam = () => {
-            elapsed += 0.016;
+            const nowT = performance.now();
+            const frameDt = Math.min((nowT - beamLastFrame) / 1000, 0.1);
+            beamLastFrame = nowT;
+            const elapsed = (nowT - beamStart) / 1000;
             const progress = elapsed / duration;
 
             if (progress >= 1.0) {
@@ -590,14 +611,14 @@ export function createSkillVisual(type, pos, size, color, dir) {
 
                 // Spin and move rings
                 rings.forEach((r, idx) => {
-                    r.rotation.z += 0.1;
+                    r.rotation.z = elapsed * 6;
                     r.material.opacity = (1.0 - progress) * 0.8;
                     r.position.x = Math.sin(elapsed * 30 + idx) * 0.05;
                     r.position.y = Math.cos(elapsed * 30 + idx) * 0.05;
                 });
 
-                // Spawn particles along the beam path
-                if (Math.random() < 0.4) {
+                // Spawn particles along the beam path (taux normalisé sur 60 FPS)
+                if (Math.random() < 0.4 * frameDt * 60) {
                     const randDist = Math.random() * length;
                     const pPos = pos.clone().add(dir.clone().multiplyScalar(randDist));
                     pPos.y += (Math.random() - 0.5) * 0.5;
@@ -633,21 +654,25 @@ export function createSkillVisual(type, pos, size, color, dir) {
         rock.add(glow);
 
         const duration = 0.55; // fall speed
-        let elapsed = 0;
+        const fallStart = performance.now();
+        let fallLastFrame = fallStart;
         
         const fall = () => {
-            elapsed += 0.016;
+            const nowT = performance.now();
+            const frameDt = Math.min((nowT - fallLastFrame) / 1000, 0.1);
+            fallLastFrame = nowT;
+            const elapsed = (nowT - fallStart) / 1000;
             const t = Math.min(elapsed / duration, 1.0);
             
             // Linear descent
             rock.position.y = targetPos.y + startHeight * (1.0 - t);
             
             // Rotation during fall
-            rock.rotation.x += 0.08;
-            rock.rotation.y += 0.05;
+            rock.rotation.x = elapsed * 4.8;
+            rock.rotation.y = elapsed * 3;
 
-            // Spawn fire/smoke trail particles
-            if (Math.random() < 0.6) {
+            // Spawn fire/smoke trail particles (taux normalisé sur 60 FPS)
+            if (Math.random() < 0.6 * frameDt * 60) {
                 spawnParticles(rock.position.clone().add(new THREE.Vector3(
                     (Math.random()-0.5)*0.2,
                     0.3,
@@ -708,11 +733,16 @@ export function createSkillVisual(type, pos, size, color, dir) {
         }
 
         const duration = 4.0; // cloud lasts 4s
-        let elapsed = 0;
+        const cloudStart = performance.now();
+        let cloudLastFrame = cloudStart;
 
         const animateCloud = () => {
-            elapsed += 0.016;
+            const nowT = performance.now();
+            const frameDt = Math.min((nowT - cloudLastFrame) / 1000, 0.1);
+            cloudLastFrame = nowT;
+            const elapsed = (nowT - cloudStart) / 1000;
             const progress = elapsed / duration;
+            const driftStep = frameDt * 60;
 
             puffs.forEach(p => {
                 // Expand
@@ -721,8 +751,8 @@ export function createSkillVisual(type, pos, size, color, dir) {
                 
                 // Float up and drift
                 p.mesh.position.y = p.baseY + progress * 1.5;
-                p.mesh.position.x += Math.sin(elapsed * p.wobbleSpeed) * 0.006;
-                p.mesh.position.z += Math.cos(elapsed * p.wobbleSpeed) * 0.006;
+                p.mesh.position.x += Math.sin(elapsed * p.wobbleSpeed) * 0.006 * driftStep;
+                p.mesh.position.z += Math.cos(elapsed * p.wobbleSpeed) * 0.006 * driftStep;
             });
 
             // Pulse opacity (fade out at the end)
@@ -732,8 +762,8 @@ export function createSkillVisual(type, pos, size, color, dir) {
                 cloudMat.opacity = 0.12 + Math.sin(elapsed * 2) * 0.02;
             }
 
-            // Spawn particles
-            if (Math.random() < 0.22 && progress < 0.9) {
+            // Spawn particles (taux normalisé sur 60 FPS)
+            if (Math.random() < 0.22 * driftStep && progress < 0.9) {
                 const pPos = pos.clone().add(new THREE.Vector3(
                     (Math.random() - 0.5) * size * 1.3,
                     0.2 + Math.random() * 0.9,
@@ -769,10 +799,14 @@ export function createSkillVisual(type, pos, size, color, dir) {
         const targetObj = dir.target;
 
         const duration = size; // duration passed in size parameter
-        let elapsed = 0;
+        const linkStart = performance.now();
+        let linkLastFrame = linkStart;
 
         const animateLink = () => {
-            elapsed += 0.016;
+            const nowT = performance.now();
+            const frameDt = Math.min((nowT - linkLastFrame) / 1000, 0.1);
+            linkLastFrame = nowT;
+            const elapsed = (nowT - linkStart) / 1000;
             
             // Check if either is dead or if elapsed duration exceeded
             if (elapsed >= duration || sourceObj.dead || targetObj.dead || !sourceObj.mesh || !targetObj.mesh) {
@@ -810,8 +844,8 @@ export function createSkillVisual(type, pos, size, color, dir) {
             // Pulsing opacity
             cylinderMat.opacity = 0.6 + Math.sin(elapsed * 25) * 0.2;
 
-            // Spawn particles along the link
-            if (Math.random() < 0.35) {
+            // Spawn particles along the link (taux normalisé sur 60 FPS)
+            if (Math.random() < 0.35 * frameDt * 60) {
                 const lerpVal = Math.random();
                 const pPos = pStart.clone().lerp(pEnd, lerpVal);
                 spawnParticles(pPos, linkColor, 1);

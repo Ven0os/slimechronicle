@@ -887,7 +887,7 @@ export class Sentinel extends PlayerBase {
             spinAnim();
             const sphere = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), new THREE.MeshBasicMaterial({color:0xffff00, wireframe:true, transparent:true, opacity:0.5}));
             sphere.position.copy(this.position);
-            this.addLocalVisual(sphere, 5.0, (m, t) => { m.position.copy(this.position); m.rotation.y += 0.02; m.material.opacity = (t/5.0) * 0.5; });
+            this.addLocalVisual(sphere, 5.0, (m, t, maxT, dt) => { m.position.copy(this.position); m.rotation.y += 1.2 * dt; m.material.opacity = (t/5.0) * 0.5; });
             this.heal(40);
             this.addBuff('Shield', 5, '<i class="fas fa-shield-alt"></i>');
             createDamageText("BOUCLIER DIVIN", this.position, '#ffff00');

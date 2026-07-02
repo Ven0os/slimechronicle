@@ -14,5 +14,11 @@ export const Input = {
         
         window.addEventListener('mousedown', () => { if(!STATE.isPaused) STATE.mouseDown = true; });
         window.addEventListener('mouseup', () => { STATE.mouseDown = false; });
+
+        // Évite les touches "collées" (personnage qui continue de courir) après un alt-tab.
+        window.addEventListener('blur', () => {
+            this.keys = {};
+            STATE.mouseDown = false;
+        });
     }
 };

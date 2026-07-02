@@ -345,6 +345,8 @@ export const TextureManager = {
     }),
 
     load: function() {
+        // Idempotent : appelé depuis main.ts et game-loop.ts, on ne régénère pas les textures.
+        if (this.textures['white']) return;
         const createTex = (color) => {
             const canvas = document.createElement('canvas'); 
             canvas.width = 64; canvas.height = 64;

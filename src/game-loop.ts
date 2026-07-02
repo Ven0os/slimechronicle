@@ -122,7 +122,9 @@ function createQuestArrowModel(): THREE.Group {
   return group;
 }
 
-function updateQuestIndicator(): void {
+const questArrowTarget = new THREE.Vector3();
+
+function updateQuestIndicator(dt: number): void {
   if (!Globals.player) return;
   if (!questArrow) {
     questArrow = createQuestArrowModel();
@@ -135,8 +137,9 @@ function updateQuestIndicator(): void {
       questArrow.visible = false;
     } else {
       questArrow.visible = true;
-      const targetPos = Globals.player.position.clone().add(new THREE.Vector3(0, 3.5, 0));
-      questArrow.position.lerp(targetPos, 0.2);
+      questArrowTarget.copy(Globals.player.position);
+      questArrowTarget.y += 3.5;
+      questArrow.position.lerp(questArrowTarget, 1 - Math.exp(-13 * dt));
       questArrow.lookAt(target.position.x, target.position.y, target.position.z);
       const t = Date.now() * 0.005;
       if (questArrow.children[0]) questArrow.children[0].position.z = Math.sin(t) * 0.2;
@@ -207,16 +210,16 @@ function animate(): void {
   HUDEnchant.updateLoop(dt);
   SafeZoneHub.tick(dt);
   WorldEvents.update(dt);
-  updateQuestIndicator();
+  updateQuestIndicator(dt);
 
   if (Globals.player && Globals.camera) {
     updateOcclusion(Globals.camera, Globals.player);
   }
 
   if (STATE.multiplayer.active) {
+    // Network.update envoie déjà l'état du monde (throttlé à ~20 Hz côté NetSync).
     Network.update(dt);
     if (STATE.multiplayer.isHost) {
-      Network.sendWorldState();
       enemySpawnTimer += dt * STATE.timeScale;
       const rate = STATE.gameOptions?.enemySpawnRate ?? 1.0;
       const maxMobs = STATE.gameOptions?.maxMobDisplay ?? 15;
@@ -266,13 +269,15 @@ function animate(): void {
       }
     }
   }
+  // Physique particules normalisée sur 60 FPS pour rester identique quel que soit le framerate.
+  const particleStep = dt * 60;
   for (let i = Globals.particles.length - 1; i >= 0; i--) {
     const p = Globals.particles[i];
     p.life -= dt;
-    p.mesh.position.add(p.vel);
-    p.vel.y -= 0.01;
-    p.mesh.rotation.x += 0.1;
-    p.mesh.scale.multiplyScalar(0.95);
+    p.mesh.position.addScaledVector(p.vel, particleStep);
+    p.vel.y -= 0.01 * particleStep;
+    p.mesh.rotation.x += 0.1 * particleStep;
+    p.mesh.scale.multiplyScalar(Math.pow(0.95, particleStep));
     if (p.life <= 0) {
       Globals.scene.remove(p.mesh);
       Globals.particles.splice(i, 1);
@@ -310,9 +315,10 @@ function animate(): void {
     Globals.camera.position.x += Globals.cameraShake.x;
     Globals.camera.position.y += Globals.cameraShake.y;
     Globals.camera.position.z += Globals.cameraShake.z;
-    Globals.cameraShake.x *= 0.88;
-    Globals.cameraShake.y *= 0.88;
-    Globals.cameraShake.z *= 0.88;
+    const shakeDecay = Math.pow(0.88, dt * 60);
+    Globals.cameraShake.x *= shakeDecay;
+    Globals.cameraShake.y *= shakeDecay;
+    Globals.cameraShake.z *= shakeDecay;
   }
 
   Globals.renderer.render(Globals.scene, Globals.camera);

@@ -4,6 +4,7 @@ import { STATE } from '../core/config';
 import { spawnParticles, createDamageText } from '../visual/effects';
 import { dealDamageToEnemy } from './combat/damage_helpers';
 import { damageClosestPlayerInRadius, isServerAuthority, isVisualOnlyMode } from '@/multiplayer/net_combat';
+import { disposeObject3D } from '../visual/meshMaterialUtils';
 
 export class Projectile {
     constructor(geo, mat, pos, dir, speed, dmg, owner, color, hasTrail = true) {
@@ -158,6 +159,7 @@ export class Projectile {
     
     destroy() { 
         Globals.scene.remove(this.mesh); 
+        disposeObject3D(this.mesh);
         const idx = Globals.projectiles.indexOf(this);
         if(idx > -1) Globals.projectiles.splice(idx, 1);
     }

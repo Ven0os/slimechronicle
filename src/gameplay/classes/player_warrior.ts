@@ -7,6 +7,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
+import { setHtmlIfChanged } from '../../visual/domUtils';
 import { disposeObject3D } from '../../visual/meshMaterialUtils';
 
 import { Network } from '../../multiplayer/network';
@@ -200,6 +201,7 @@ export class Warrior extends PlayerBase {
 
         super.animateCharacter(dt);
 
+        // += 0.4 est un OFFSET constant (cape relevée en mouvement), pas un incrément cumulatif : OK tel quel.
         if(this.cape) { this.cape.rotation.x = 0.15 + Math.sin(this.animTime) * 0.1; if(this.isMoving) this.cape.rotation.x += 0.4; }
 
         if (this.animState.override) {
@@ -276,7 +278,7 @@ export class Warrior extends PlayerBase {
             const runicSummary = ConvergenceEffects.getRunicJudgmentSummary(this);
             if (ConvergenceEffects.isRunicJudgmentActive(this) && runicSummary.count > 0) {
                 const pct = (runicSummary.count / runicSummary.max) * 100;
-                resourceEl.innerHTML = `
+                setHtmlIfChanged(resourceEl, `
                     <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                         <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#ffd86b;">
                             <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-crown"></i> JUGEMENT RUNIQUE</span>
@@ -287,10 +289,10 @@ export class Warrior extends PlayerBase {
                             <div style="width:${pct}%; height:100%; background:#ffd86b; box-shadow:0 0 6px #ffd86b; transition: width 0.2s;"></div>
                         </div>
                     </div>
-                `;
+                `);
                 resourceEl.style.display = 'block';
             } else if (charge > 0) {
-                resourceEl.innerHTML = `
+                setHtmlIfChanged(resourceEl, `
                     <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                         <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Cinzel', serif; font-size:10px; font-weight:700; color:#9b59b6;">
                             <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-shield-halved"></i> CHARGE SISMIQUE</span>
@@ -300,7 +302,7 @@ export class Warrior extends PlayerBase {
                             <div style="width:${Math.min(100, (charge / 500) * 100)}%; height:100%; background:#9b59b6; box-shadow:0 0 6px #9b59b6; transition: width 0.2s;"></div>
                         </div>
                     </div>
-                `;
+                `);
                 resourceEl.style.display = 'block';
             } else {
                 resourceEl.style.display = 'none';
@@ -645,8 +647,8 @@ export class Warrior extends PlayerBase {
             const arc = Math.sin(p * Math.PI) * 1.2;
             projectile.position.lerpVectors(start, end, p);
             projectile.position.y += arc;
-            projectile.rotation.y += 0.35;
-            projectile.rotation.x += 0.18;
+            projectile.rotation.y = (elapsed / 1000) * 21; // rotation temps réel (0.35/frame @60fps)
+            projectile.rotation.x = (elapsed / 1000) * 10.8;
             projectile.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.35);
 
             if (p < 1) {
@@ -914,7 +916,7 @@ export class Warrior extends PlayerBase {
 
             shield.position.copy(this.position);
 
-            this.addLocalVisual(shield, 3.0, (m, t) => { m.position.copy(this.position).add(new THREE.Vector3(0,1,0)); m.rotation.y += 0.05; m.scale.setScalar(1 + Math.sin(t*10)*0.05); });
+            this.addLocalVisual(shield, 3.0, (m, t, maxT, dt) => { m.position.copy(this.position).add(new THREE.Vector3(0,1,0)); m.rotation.y += 3 * dt; m.scale.setScalar(1 + Math.sin(t*10)*0.05); });
 
         }
 

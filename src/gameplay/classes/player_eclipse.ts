@@ -5,6 +5,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
 import { disposeObject3D } from '../../visual/meshMaterialUtils';
+import { setHtmlIfChanged } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -796,7 +797,7 @@ export class Eclipse extends PlayerBase {
                     </div>
                 `;
             }
-            resourceEl.innerHTML = html;
+            setHtmlIfChanged(resourceEl, html);
             resourceEl.style.display = 'block';
         }
     }
@@ -1717,7 +1718,7 @@ export class Eclipse extends PlayerBase {
                     
                     // Animate appearance (eruption, solid hold, sinking fadeout)
                     const dtLocal = 1.2;
-                    this.addLocalVisual(spike, dtLocal, (m, t, maxT) => {
+                    this.addLocalVisual(spike, dtLocal, (m, t, maxT, frameDt) => {
                         const progress = t / maxT;
                         
                         if (!m.userData.debrisTriggered && progress <= 0.76) {
@@ -1745,7 +1746,7 @@ export class Eclipse extends PlayerBase {
                                 }
                             });
                         }
-                        m.rotation.y += 0.01; // slow rotate
+                        m.rotation.y += 0.6 * frameDt; // slow rotate (indépendant du FPS)
 
                         // Animate floating crystal shards bobbing and orbiting
                         const floatGroup = m.getObjectByName("floatingShards");

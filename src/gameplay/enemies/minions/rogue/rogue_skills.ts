@@ -175,6 +175,7 @@ export class RogueSkills {
         spawnParticles(this.enemy.position, 0x000000, 15);
         
         setTimeout(() => {
+            if (this.enemy.dead) return;
             const behindPos = target.position.clone().add(target.getWorldDirection(new THREE.Vector3()).multiplyScalar(-2.0));
             behindPos.x = Math.max(-40, Math.min(40, behindPos.x));
             behindPos.z = Math.max(-40, Math.min(40, behindPos.z));
@@ -183,15 +184,19 @@ export class RogueSkills {
             this.enemy.animState = 'teleport_appear';
             spawnParticles(this.enemy.position, 0x000000, 15);
             setTimeout(() => {
+                if (this.enemy.dead) return;
                 this.enemy.animState = 'strike_stab';
                 createSkillVisual('shockwave', this.enemy.position, cfg.range, 0x000000);
                 
-                if (target.position.distanceTo(this.enemy.position) < cfg.range) {
+                if (!target.dead && target.position.distanceTo(this.enemy.position) < cfg.range) {
                     this.enemy.dealPlayerDamage(target, cfg.damage, { stunDuration: cfg.stunDuration });
                     createDamageText("DOS !", target.position, '#cc0000');
                     if (cfg.soundImpact && AudioSys.play) AudioSys.play(cfg.soundImpact);
                 }
-                setTimeout(() => { this.enemy.animState = 'idle'; this.enemy.isAttacking = false; }, 400); 
+                setTimeout(() => {
+                    if (this.enemy.dead) return;
+                    this.enemy.animState = 'idle'; this.enemy.isAttacking = false;
+                }, 400); 
             }, cfg.reappearDelay * 1000); 
         }, cfg.castTime * 1000); 
         this.enemy.attackCooldown = cfg.cooldown; 

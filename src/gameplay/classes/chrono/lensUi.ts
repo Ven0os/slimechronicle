@@ -61,36 +61,46 @@ export function updateChronoLensUI(
   }
 
   if (label) {
-    label.textContent = `Prismes ${count}/${max}`;
+    const labelText = `Prismes ${count}/${max}`;
+    if (label.textContent !== labelText) label.textContent = labelText;
   }
 
   if (hint) {
+    let hintText;
     if (count >= max) {
-      hint.textContent = 'Prismes au maximum — le plus ancien est remplacé';
+      hintText = 'Prismes au maximum — le plus ancien est remplacé';
     } else if (count > 0) {
-      const minTimer = Math.min(...list.map((l) => l.timer));
-      hint.textContent = `5s+${extension}s — expire dans ${minTimer.toFixed(1)}s (+${extension}s par nouveau prisme)`;
+      let minTimer = Infinity;
+      for (const l of list) if (l.timer < minTimer) minTimer = l.timer;
+      hintText = `5s+${extension}s — expire dans ${minTimer.toFixed(1)}s (+${extension}s par nouveau prisme)`;
     } else {
-      hint.textContent = `Jusqu'à ${max} prismes · 5s+${extension}s chacun · +${extension}s aux actifs`;
+      hintText = `Jusqu'à ${max} prismes · 5s+${extension}s chacun · +${extension}s aux actifs`;
     }
+    if (hint.textContent !== hintText) hint.textContent = hintText;
   }
 
-  orbs.innerHTML = '';
+  // Pool d'orbes réutilisées : plus de innerHTML='' + createElement à chaque frame.
+  while (orbs.childElementCount < max) {
+    const orb = document.createElement('div');
+    orbs.appendChild(orb);
+  }
+  while (orbs.childElementCount > max) {
+    orbs.removeChild(orbs.lastElementChild);
+  }
 
   for (let i = 0; i < max; i++) {
-    const orb = document.createElement('div');
-    orb.className = 'chrono-lens-orb';
+    const orb = orbs.children[i];
     const lens = list[i];
     if (lens) {
-      orb.classList.add('chrono-lens-orb-active');
+      orb.className = 'chrono-lens-orb chrono-lens-orb-active';
       const maxT = lens.maxTimer || baseDuration;
       const pct = Math.max(0, Math.min(1, lens.timer / maxT));
       orb.style.setProperty('--lens-fill', `${pct * 100}%`);
       orb.title = `Prisme actif — ${lens.timer.toFixed(1)}s`;
-    } else {
-      orb.classList.add('chrono-lens-orb-empty');
+    } else if (orb.className !== 'chrono-lens-orb chrono-lens-orb-empty') {
+      orb.className = 'chrono-lens-orb chrono-lens-orb-empty';
+      orb.style.removeProperty('--lens-fill');
       orb.title = 'Emplacement libre';
     }
-    orbs.appendChild(orb);
   }
 }

@@ -244,8 +244,8 @@ export class PlayerBase extends THREE.Group {
         this.isMoving = false;
         
         if(this.knockback.length() > 0.1) {
-            this.position.add(this.knockback.clone().multiplyScalar(dt));
-            this.knockback.multiplyScalar(0.9);
+            this.position.addScaledVector(this.knockback, dt);
+            this.knockback.multiplyScalar(Math.pow(0.9, dt * 60));
             this.resolveCollisions();
         } else if (!STATE.isPaused && !this.isStunned && !UI.isMenuOpen() && !STATE.cinematicActive) { 
             const moveInput = new THREE.Vector3();
@@ -325,14 +325,32 @@ export class PlayerBase extends THREE.Group {
         }
     }
 
+    // Cache des éléments DOM du HUD de cooldown (évite querySelector/getElementById à chaque frame)
+    _getCooldownEls(k) {
+        this._cdEls = this._cdEls || {};
+        let els = this._cdEls[k];
+        if (!els || !els.btn.isConnected) {
+            const btn = document.querySelector(`.skill-icon#skill-${k}`);
+            if (!btn) return null;
+            els = { btn, text: document.getElementById(`cd-${k}`), overlay: null, hidden: false };
+            this._cdEls[k] = els;
+        }
+        return els;
+    }
+
     updateCooldowns(dt) {
+        const isLocal = this.isLocalPlayer();
         Object.keys(this.cooldowns).forEach(k => {
             if(this.cooldowns[k] > 0) {
                 this.cooldowns[k] -= dt;
-                if (this.isLocalPlayer()) this.updateCooldownUI(k);
-            } else if (this.isLocalPlayer()) {
-                const cdText = document.getElementById(`cd-${k}`);
-                if(cdText) cdText.style.display = 'none';
+                if (isLocal) this.updateCooldownUI(k);
+            } else if (isLocal) {
+                const els = this._getCooldownEls(k);
+                if (els && !els.hidden) {
+                    if (els.text) els.text.style.display = 'none';
+                    if (els.overlay) els.overlay.style.height = '0%';
+                    els.hidden = true;
+                }
             }
         });
     }
@@ -419,20 +437,31 @@ export class PlayerBase extends THREE.Group {
 
     updateCooldownUI(k) {
         if (!this.isLocalPlayer()) return;
-        const btn = document.querySelector(`.skill-icon#skill-${k}`);
-        if(btn) {
-            const pct = (this.cooldowns[k] / this.maxCooldowns[k]) * 100;
-            let overlay = btn.querySelector('.cooldown-overlay');
+        const els = this._getCooldownEls(k);
+        if (!els) return;
+
+        const pct = (this.cooldowns[k] / this.maxCooldowns[k]) * 100;
+        if (!els.overlay || !els.overlay.isConnected) {
+            let overlay = els.btn.querySelector('.cooldown-overlay');
             if(!overlay) {
                 overlay = document.createElement('div');
                 overlay.className = 'cooldown-overlay';
                 overlay.style.position = 'absolute'; overlay.style.bottom = '0'; overlay.style.left = '0';
                 overlay.style.width = '100%'; overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
-                btn.appendChild(overlay);
+                els.btn.appendChild(overlay);
             }
-            overlay.style.height = pct + '%';
-            const cdText = document.getElementById(`cd-${k}`);
-            if(cdText) { cdText.style.display = 'flex'; cdText.innerText = Math.ceil(this.cooldowns[k]); }
+            els.overlay = overlay;
+        }
+        els.overlay.style.height = pct + '%';
+        els.hidden = false;
+        if (els.text) {
+            els.text.style.display = 'flex';
+            const secs = Math.ceil(this.cooldowns[k]);
+            // Écriture DOM seulement quand la valeur affichée change
+            if (els.lastSecs !== secs) {
+                els.lastSecs = secs;
+                els.text.innerText = secs;
+            }
         }
     }
 
@@ -465,8 +494,10 @@ export class PlayerBase extends THREE.Group {
             }
             if(this.mesh) this.mesh.position.y = Math.abs(Math.sin(this.animTime * 2)) * 0.1;
         } else {
-            if(this.legL) this.legL.rotation.x = 0; 
-            if(this.legR) this.legR.rotation.x = 0;
+            // Retour progressif des jambes au repos (évite le "pop" à l'arrêt du déplacement).
+            const restLerp = Math.min(1, dt * 10);
+            if(this.legL) this.legL.rotation.x = THREE.MathUtils.lerp(this.legL.rotation.x, 0, restLerp);
+            if(this.legR) this.legR.rotation.x = THREE.MathUtils.lerp(this.legR.rotation.x, 0, restLerp);
             if(!this.isAttacking && this.weaponGroup) {
                 this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, 0, dt * 5);
                 if(this.armL) this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, 0, dt * 5);
@@ -776,7 +807,7 @@ export class PlayerBase extends THREE.Group {
         for(let i = this.localVisuals.length - 1; i >= 0; i--) {
             const v = this.localVisuals[i];
             v.duration -= dt;
-            if(v.updateFn) v.updateFn(v.mesh, v.duration, v.maxDuration);
+            if(v.updateFn) v.updateFn(v.mesh, v.duration, v.maxDuration, dt);
             if(v.duration <= 0) {
                 Globals.scene.remove(v.mesh);
                 disposeObject3D(v.mesh);

@@ -70,6 +70,7 @@ export const BuffBar = {
   pointerX: 0,
   pointerY: 0,
   _eventsBound: false,
+  _lastRenderAt: 0,
 
   bindEvents(): void {
     if (this._eventsBound) return;
@@ -374,6 +375,12 @@ export const BuffBar = {
   },
 
   render(): void {
+    // Reconstruire le DOM de la barre à ~10 Hz suffit (timers affichés à la seconde) ;
+    // la reconstruire à chaque frame forçait un layout complet (elementFromPoint) 60+ fois/s.
+    const now = performance.now();
+    if (now - this._lastRenderAt < 100) return;
+    this._lastRenderAt = now;
+
     this.bindEvents();
 
     const strip = document.getElementById('buff-strip');

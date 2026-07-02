@@ -161,19 +161,20 @@ export const NetSync = {
 
     // --- RÉCEPTION CLIENT ---
     syncEnemies: function(enemiesData) {
-        // ... (Code existant inchangé) ...
-        const serverIds = enemiesData.map(e => e.id);
+        // Lookups indexés (Set/Map) : évite un balayage O(n²) à chaque paquet réseau.
+        const serverIds = new Set(enemiesData.map(e => e.id));
         
         for(let i = Globals.enemies.length - 1; i >= 0; i--) { 
             const localEnemy = Globals.enemies[i];
-            if(!serverIds.includes(localEnemy.netId)) { 
+            if(!serverIds.has(localEnemy.netId)) { 
                 Globals.scene.remove(localEnemy);
                 removeEnemy(localEnemy);
             } 
         }
         
+        const localById = new Map(Globals.enemies.map(e => [e.netId, e]));
         enemiesData.forEach(eData => {
-            let enemy = Globals.enemies.find(e => e.netId === eData.id);
+            let enemy = localById.get(eData.id);
             const targetPos = new THREE.Vector3(eData.x, eData.y, eData.z);
             
             if (enemy) { 
@@ -301,6 +302,25 @@ export const NetSync = {
     },
 
     syncPlayers: function(playersData) {
+        // Retire les avatars distants absents du snapshot autoritaire (joueur déconnecté).
+        const snapshotIds = new Set(playersData.map(p => String(p.id)));
+        for (const id in STATE.multiplayer.remotePlayers) {
+            if (!snapshotIds.has(String(id))) {
+                const stale = STATE.multiplayer.remotePlayers[id];
+                if (stale) {
+                    Globals.scene.remove(stale);
+                    stale.traverse?.((child) => {
+                        if (child.isMesh || child.isSprite) {
+                            child.geometry?.dispose?.();
+                            const mats = Array.isArray(child.material) ? child.material : (child.material ? [child.material] : []);
+                            for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); }
+                        }
+                    });
+                }
+                delete STATE.multiplayer.remotePlayers[id];
+            }
+        }
+
         playersData.forEach(pData => {
             if (pData.id === STATE.multiplayer.id) {
                 if (pData.chrono && Globals.player?.className === 'chronoregulator') {
@@ -311,7 +331,7 @@ export const NetSync = {
                 }
                 return;
             }
-            this.updateRemotePlayer(pData.id, {x: pData.x, y: pData.y, z: pData.z}, pData.rot, pData.class, pData.dead, pData.stun, this._lastDt);
+            this.updateRemotePlayer(pData.id, {x: pData.x, y: pData.y, z: pData.z}, pData.rot, pData.class, pData.dead, pData.stun);
             const remote = STATE.multiplayer.remotePlayers[pData.id];
             if (pData.chrono && remote) {
                 NetChrono.applySnapshot(remote, pData.chrono, false);
@@ -322,7 +342,9 @@ export const NetSync = {
         });
     },
 
-    updateRemotePlayer: function(id, pos, rot, className, isDead, isStunned, dt) {
+    // À réception d'un paquet (~20 Hz) : on mémorise la CIBLE réseau.
+    // L'interpolation vers cette cible se fait à chaque frame dans update() → mouvement fluide.
+    updateRemotePlayer: function(id, pos, rot, className, isDead, isStunned) {
         let p = STATE.multiplayer.remotePlayers[id];
         
         if (!p) { 
@@ -332,31 +354,26 @@ export const NetSync = {
         
         if (className && p.className !== className) {
             Globals.scene.remove(p);
+            p.traverse?.((child) => {
+                if (child.isMesh || child.isSprite) {
+                    child.geometry?.dispose?.();
+                    const mats = Array.isArray(child.material) ? child.material : (child.material ? [child.material] : []);
+                    for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); }
+                }
+            });
             p = this.createRemotePlayer(className, id);
             STATE.multiplayer.remotePlayers[id] = p;
         }
 
-        const targetV = new THREE.Vector3(pos.x, pos.y, pos.z);
-        const snapDist = 5;
-        const lerpFactor = 1 - Math.exp(-12 * (dt || 0.016));
-        if (p.position.distanceTo(targetV) > snapDist) p.position.copy(targetV);
-        else p.position.lerp(targetV, lerpFactor);
-
+        if (!p.netTargetPos) p.netTargetPos = new THREE.Vector3();
+        p.netTargetPos.set(pos.x, pos.y, pos.z);
         p.netRotation = rot;
 
-        if(p.mesh) {
-            let r = p.mesh.rotation.y;
-            let diff = rot - r;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            const rotLerp = 1 - Math.exp(-12 * (dt || 0.016));
-            if (Math.abs(diff) > 1.0) p.mesh.rotation.y = rot;
-            else p.mesh.rotation.y += diff * rotLerp;
+        // Téléportation / désync importante : on snap immédiatement.
+        if (p.position.distanceTo(p.netTargetPos) > 5) {
+            p.position.copy(p.netTargetPos);
+            if (p.mesh) p.mesh.rotation.y = rot;
         }
-        
-        const dist = p.position.distanceTo(p.lastPos || p.position);
-        p.isMoving = dist > 0.01;
-        p.lastPos = p.position.clone();
         
         if(isDead !== undefined) p.visible = !isDead;
 
@@ -366,6 +383,21 @@ export const NetSync = {
         } else {
             p.isStunned = false;
             if (p.stunVisualGroup) p.stunVisualGroup.visible = false;
+        }
+    },
+
+    // Interpolation par frame des joueurs distants vers leur cible réseau.
+    interpolateRemotePlayer: function(p, dt) {
+        if (!p.netTargetPos) return;
+        const lerpFactor = 1 - Math.exp(-12 * dt);
+        p.position.lerp(p.netTargetPos, lerpFactor);
+
+        if (p.mesh && p.netRotation !== undefined) {
+            let diff = p.netRotation - p.mesh.rotation.y;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            if (Math.abs(diff) > 1.0) p.mesh.rotation.y = p.netRotation;
+            else p.mesh.rotation.y += diff * lerpFactor;
         }
     },
 
@@ -388,10 +420,7 @@ export const NetSync = {
         return p;
     },
 
-    _lastDt: 0.016,
-
     update: function(dt) {
-        this._lastDt = dt;
         if (STATE.multiplayer.isHost) {
             NetChrono.tick(dt);
             NetClassState.tick(dt);
@@ -402,6 +431,7 @@ export const NetSync = {
         for (let id in STATE.multiplayer.remotePlayers) {
             const p = STATE.multiplayer.remotePlayers[id];
             if (p && typeof p.update === 'function') {
+                this.interpolateRemotePlayer(p, dt);
                 p.update(dt);
             }
         }

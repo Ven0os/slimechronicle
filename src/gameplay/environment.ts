@@ -374,55 +374,64 @@ export function createDecorations(importedData = null) {
 }
 
 // --- LOGIQUE D'OCCLUSION ---
+// Throttlée à 10 Hz : le raycast récursif sur toutes les décorations est coûteux à 60+ FPS.
+// Le matériau de fondu est cloné UNE fois par mesh puis réutilisé (avant : un clone par frame, jamais disposé).
 const raycaster = new THREE.Raycaster();
-const fadedObjects = []; 
+const fadedObjects = [];
+const occlusionDir = new THREE.Vector3();
+let lastOcclusionCheck = 0;
 
 export function updateOcclusion(camera, player) {
-    // Restauration des matériaux d'origine
-    for (const obj of fadedObjects) {
-        obj.traverse(child => {
-            if (child.isMesh && child.material) {
-                const origMat = child.userData.origMaterial;
-                if (origMat) {
-                    child.material = origMat;
-                    delete child.userData.origMaterial;
-                }
-            }
-        });
-    }
-    fadedObjects.length = 0; 
-
     if (!player || !Globals.decoGroup) return;
 
-    const direction = new THREE.Vector3().subVectors(player.position, camera.position);
-    const distance = direction.length();
-    direction.normalize();
+    const now = performance.now();
+    if (now - lastOcclusionCheck < 100) return;
+    lastOcclusionCheck = now;
 
-    raycaster.set(camera.position, direction);
-    raycaster.far = distance - 2; 
+    occlusionDir.subVectors(player.position, camera.position);
+    const distance = occlusionDir.length();
+    occlusionDir.normalize();
+
+    raycaster.set(camera.position, occlusionDir);
+    raycaster.far = distance - 2;
 
     const intersects = raycaster.intersectObjects(Globals.decoGroup.children, true);
 
+    const hitSet = new Set();
     for (const hit of intersects) {
         let target = hit.object;
         while (target.parent && target.parent !== Globals.decoGroup) target = target.parent;
+        hitSet.add(target);
+    }
 
-        if (!fadedObjects.includes(target)) {
-            fadedObjects.push(target);
-            target.traverse(child => {
-                if (child.isMesh && child.material) {
-                    if (child.userData.origMaterial === undefined) {
-                        // Sauvegarder la référence du matériel d'origine sur le Mesh
-                        child.userData.origMaterial = child.material;
-                        // Cloner le matériel pour modifier uniquement l'opacité de cette instance
-                        child.material = child.material.clone();
-                    }
-                    child.material.opacity = 0.25; 
-                    child.material.transparent = true; 
-                    child.material.needsUpdate = true;
+    // Restaure les objets qui ne bloquent plus la vue
+    for (let i = fadedObjects.length - 1; i >= 0; i--) {
+        const obj = fadedObjects[i];
+        if (hitSet.has(obj)) continue;
+        obj.traverse(child => {
+            if (child.isMesh && child.userData.origMaterial) {
+                child.material = child.userData.origMaterial;
+            }
+        });
+        fadedObjects.splice(i, 1);
+    }
+
+    // Applique le fondu aux nouveaux objets bloquants
+    for (const target of hitSet) {
+        if (fadedObjects.includes(target)) continue;
+        fadedObjects.push(target);
+        target.traverse(child => {
+            if (child.isMesh && child.material) {
+                if (!child.userData.origMaterial) child.userData.origMaterial = child.material;
+                if (!child.userData.fadeMaterial) {
+                    const fadeMat = child.userData.origMaterial.clone();
+                    fadeMat.opacity = 0.25;
+                    fadeMat.transparent = true;
+                    child.userData.fadeMaterial = fadeMat;
                 }
-            });
-        }
+                child.material = child.userData.fadeMaterial;
+            }
+        });
     }
 }
 

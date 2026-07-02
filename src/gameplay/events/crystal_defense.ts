@@ -188,7 +188,7 @@ export const CrystalDefenseLogic = {
             }
 
             core.scale.setScalar(1 + Math.sin(Date.now()*0.015)*0.2 + shakeIntensity);
-            shakeIntensity *= 0.9;
+            shakeIntensity *= Math.pow(0.9, dt * 60);
             if(shakeIntensity < 0.01) shakeIntensity = 0;
 
             shell.rotation.y -= dt * 2.0;

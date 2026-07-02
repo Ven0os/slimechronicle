@@ -33,6 +33,7 @@ export class SentinelSkills {
         this.spawnTelegraphNetwork(this.enemy.position, cfg.telegraph.type, cfg.telegraph.size, cfg.telegraph.duration, cfg.telegraph.color, () => {
             this.enemy.animState = 'strike_smash';
             setTimeout(() => { 
+                if (this.enemy.dead) return;
                 if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
                 createSkillVisual('shockwave', this.enemy.position, cfg.radius, 0x95a5a6);
                 getAllLivingPlayers().forEach((t) => {

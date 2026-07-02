@@ -242,7 +242,13 @@ export class SlimeLord extends BaseEnemy {
         this.mesh.add(laser);
 
         const sweepInt = setInterval(() => {
-            if(this.dead) { clearInterval(sweepInt); return; }
+            if(this.dead) {
+                clearInterval(sweepInt);
+                this.mesh.remove(laser);
+                laserGeo.dispose();
+                laserMat.dispose();
+                return;
+            }
             elapsed += 0.05;
             
             laser.rotation.y -= 0.15; 
@@ -261,6 +267,8 @@ export class SlimeLord extends BaseEnemy {
             if(elapsed >= duration) {
                 clearInterval(sweepInt);
                 this.mesh.remove(laser);
+                laserGeo.dispose();
+                laserMat.dispose();
                 this.isAttacking = false;
                 this.animState = 'idle';
             }
@@ -288,9 +296,12 @@ export class SlimeLord extends BaseEnemy {
     }
 
     spawnOrb(pos, dir) {
-        const geo = new THREE.SphereGeometry(0.5);
-        const mat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x9400d3, emissiveIntensity: 2.0 });
-        const orb = new THREE.Mesh(geo, mat);
+        // Géométrie/matériau partagés entre tous les orbes (mêmes visuels, zéro fuite).
+        if (!SlimeLord._orbGeo) {
+            SlimeLord._orbGeo = new THREE.SphereGeometry(0.5);
+            SlimeLord._orbMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x9400d3, emissiveIntensity: 2.0 });
+        }
+        const orb = new THREE.Mesh(SlimeLord._orbGeo, SlimeLord._orbMat);
         orb.position.copy(pos);
         orb.userData = { velocity: dir.multiplyScalar(15), life: 3.0 }; 
         Globals.scene.add(orb);
@@ -394,6 +405,7 @@ export class SlimeLord extends BaseEnemy {
 
         // Durée de la phase épique (3 secondes)
         setTimeout(() => {
+            if (this.dead) return; // le boss peut mourir pendant la transition
             this.isCinematic = false;
             this.animState = 'idle';
             

@@ -163,7 +163,9 @@ export class BaseEnemy extends THREE.Group {
         }
 
         // Animate the 3D Eclipse Mark
-        const mark = this.getObjectByName("eclipseMark");
+        // Référence directe + cache des sous-parties : getObjectByName est une
+        // traversée récursive, trop coûteuse par ennemi et par frame.
+        const mark = this._markVisual;
         if (mark) {
             if (Globals.camera) {
                 mark.lookAt(Globals.camera.position);
@@ -171,14 +173,21 @@ export class BaseEnemy extends THREE.Group {
             
             const elapsed = Date.now() * 0.001;
             
+            if (!mark.userData.partsCached) {
+                mark.userData.partsCached = true;
+                mark.userData.flares = mark.getObjectByName("flares");
+                mark.userData.moon = mark.getObjectByName("moonSphere");
+                mark.userData.sunCorona = mark.getObjectByName("sunCorona");
+            }
+
             // Spin the solar flares radiating from the corona
-            const flares = mark.getObjectByName("flares");
+            const flares = mark.userData.flares;
             if (flares) {
                 flares.rotation.z = elapsed * 1.5;
             }
             
             // Orbit the moon sphere in front of the sun corona to make the eclipse shadow slide dynamically
-            const moon = mark.getObjectByName("moonSphere");
+            const moon = mark.userData.moon;
             if (moon) {
                 const orbitRadius = 0.06;
                 const speed = 2.5;
@@ -188,7 +197,7 @@ export class BaseEnemy extends THREE.Group {
             }
             
             // Sun corona breathing scale
-            const sunCorona = mark.getObjectByName("sunCorona");
+            const sunCorona = mark.userData.sunCorona;
             if (sunCorona) {
                 const scale = 1.0 + Math.sin(elapsed * 4.0) * 0.08;
                 sunCorona.scale.set(scale, scale, 1.0);
