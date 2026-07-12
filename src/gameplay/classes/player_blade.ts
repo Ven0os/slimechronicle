@@ -552,7 +552,7 @@ export class Blade extends PlayerBase {
         Globals.camera.position.y -= 1.5;
         setTimeout(() => Globals.camera.position.y = originalY, 150);
 
-        const wave = new THREE.Mesh(new THREE.CylinderGeometry(2, 15, 5, 32, 1, true), new THREE.MeshBasicMaterial({color:0x1abc9c, transparent:true, opacity:0.8, side:THREE.DoubleSide}));
+        const wave = new THREE.Mesh(new THREE.CylinderGeometry(2, 15, 5, 16, 1, true), new THREE.MeshBasicMaterial({color:0x1abc9c, transparent:true, opacity:0.8, side:THREE.DoubleSide}));
         wave.position.copy(this.position);
         this.addLocalVisual(wave, 1.0, (m, t, maxT) => {
             const p = 1 - t/maxT;
@@ -560,7 +560,7 @@ export class Blade extends PlayerBase {
             m.material.opacity = t/maxT;
         });
 
-        for(let i=0; i<30; i++) spawnParticles(this.position.clone().add(new THREE.Vector3((Math.random()-0.5)*12, 0, (Math.random()-0.5)*12)), 0x00ffff, 1);
+        for(let i=0; i<15; i++) spawnParticles(this.position.clone().add(new THREE.Vector3((Math.random()-0.5)*12, 0, (Math.random()-0.5)*12)), 0x00ffff, 1);
 
         createDamageText("TSUNAMI!", this.position, '#00ffff');
         this.bloodShield = Math.min(this.bloodShieldMax, this.bloodShield + 50);

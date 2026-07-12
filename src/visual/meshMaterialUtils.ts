@@ -20,12 +20,16 @@ export function safeSetHex(colorLike, hex) {
 export function disposeObject3D(root) {
   if (!root || typeof root.traverse !== 'function') return;
   root.traverse((obj) => {
-    if (obj.geometry?.dispose) obj.geometry.dispose();
+    if (obj.geometry?.dispose && !obj.geometry.userData?.keep) {
+      obj.geometry.dispose();
+    }
     for (const mat of normalizeMaterials(obj.material)) {
-      if (!mat) continue;
+      if (!mat || mat.userData?.keep) continue;
       for (const key in mat) {
         const val = mat[key];
-        if (val && val.isTexture && typeof val.dispose === 'function') val.dispose();
+        if (val && val.isTexture && typeof val.dispose === 'function' && !val.userData?.keep) {
+          val.dispose();
+        }
       }
       if (typeof mat.dispose === 'function') mat.dispose();
     }

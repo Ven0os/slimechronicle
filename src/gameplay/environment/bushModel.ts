@@ -7,7 +7,10 @@ const materialCache = {};
 
 function getGeometry(key, creator) {
     if (!geometryCache[key]) {
-        geometryCache[key] = creator();
+        const geo = creator();
+        geo.userData = geo.userData || {};
+        geo.userData.keep = true;
+        geometryCache[key] = geo;
     }
     return geometryCache[key];
 }
@@ -15,7 +18,7 @@ function getGeometry(key, creator) {
 function getMaterial(color, isBasic = false) {
     const key = `${color}_${isBasic}`;
     if (!materialCache[key]) {
-        materialCache[key] = isBasic 
+        const mat = isBasic 
             ? new THREE.MeshBasicMaterial({ color: color })
             : new THREE.MeshStandardMaterial({
                 color: color, 
@@ -24,6 +27,9 @@ function getMaterial(color, isBasic = false) {
                 transparent: true,
                 opacity: 1.0
             });
+        mat.userData = mat.userData || {};
+        mat.userData.keep = true;
+        materialCache[key] = mat;
     }
     return materialCache[key];
 }
@@ -42,7 +48,7 @@ export function createBushModel(scale = 1, foliageColor = 0x558B2F) {
     const mat = getMaterial(foliageColor, false);
 
     if (isTall) {
-        const tallGeo = getGeometry('bush_tall', () => new THREE.ConeGeometry(0.5, 1.5, 6));
+        const tallGeo = getGeometry('bush_tall', () => new THREE.ConeGeometry(0.5, 1.5, 4));
         const main = new THREE.Mesh(tallGeo, mat);
         main.position.y = 0.75;
         main.castShadow = true; main.receiveShadow = true;
@@ -54,7 +60,7 @@ export function createBushModel(scale = 1, foliageColor = 0x558B2F) {
         main.castShadow = true; main.receiveShadow = true;
         group.add(main);
 
-        const subCount = 2 + Math.floor(Math.random() * 3);
+        const subCount = 1 + Math.floor(Math.random() * 2);
         const subGeo = getGeometry('bush_sub', () => new THREE.IcosahedronGeometry(0.4, 0));
         for(let i=0; i < subCount; i++) {
             const sub = new THREE.Mesh(subGeo, mat);

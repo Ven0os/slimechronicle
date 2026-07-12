@@ -7,7 +7,10 @@ const materialCache = {};
 
 function getGeometry(key, creator) {
     if (!geometryCache[key]) {
-        geometryCache[key] = creator();
+        const geo = creator();
+        geo.userData = geo.userData || {};
+        geo.userData.keep = true;
+        geometryCache[key] = geo;
     }
     return geometryCache[key];
 }
@@ -15,13 +18,16 @@ function getGeometry(key, creator) {
 function getMaterial(color, roughness, isLeaves = false) {
     const key = `${color}_${roughness}_${isLeaves}`;
     if (!materialCache[key]) {
-        materialCache[key] = new THREE.MeshStandardMaterial({
+        const mat = new THREE.MeshStandardMaterial({
             color: color,
             roughness: roughness,
             flatShading: true,
             transparent: true,
             opacity: 1.0
         });
+        mat.userData = mat.userData || {};
+        mat.userData.keep = true;
+        materialCache[key] = mat;
     }
     return materialCache[key];
 }
@@ -38,7 +44,7 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
     // --- VARIANTES ---
     if (type === 'pine') {
         // === SAPIN (Classique) ===
-        const trunkGeo = getGeometry('pine_trunk', () => new THREE.CylinderGeometry(0.2, 0.4, 1.5, 7));
+        const trunkGeo = getGeometry('pine_trunk', () => new THREE.CylinderGeometry(0.2, 0.4, 1.5, 4));
         const trunkMat = getMaterial(0x5D4037, 1.0);
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
         trunk.position.y = 1.5 / 2;
@@ -49,19 +55,19 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
         const leavesMat = getMaterial(leavesColor, 0.8, true);
 
         // 3 Étages de feuilles
-        const l1Geo = getGeometry('pine_l1', () => new THREE.ConeGeometry(1.3, 1.5, 7));
+        const l1Geo = getGeometry('pine_l1', () => new THREE.ConeGeometry(1.3, 1.5, 4));
         const l1 = new THREE.Mesh(l1Geo, leavesMat);
         l1.position.y = 1.3; l1.castShadow = true; l1.receiveShadow = true;
         l1.userData.isLeaves = true; // Tag pour animation
         group.add(l1);
 
-        const l2Geo = getGeometry('pine_l2', () => new THREE.ConeGeometry(1.0, 1.2, 7));
+        const l2Geo = getGeometry('pine_l2', () => new THREE.ConeGeometry(1.0, 1.2, 4));
         const l2 = new THREE.Mesh(l2Geo, leavesMat);
         l2.position.y = 2.2; l2.castShadow = true; l2.receiveShadow = true;
         l2.userData.isLeaves = true;
         group.add(l2);
 
-        const l3Geo = getGeometry('pine_l3', () => new THREE.ConeGeometry(0.7, 1.0, 7));
+        const l3Geo = getGeometry('pine_l3', () => new THREE.ConeGeometry(0.7, 1.0, 4));
         const l3 = new THREE.Mesh(l3Geo, leavesMat);
         l3.position.y = 3.0; l3.castShadow = true; l3.receiveShadow = true;
         l3.userData.isLeaves = true;
@@ -69,7 +75,7 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
 
     } else if (type === 'oak') {
         // === CHÊNE (Tronc court, Copa ronde) ===
-        const trunkGeo = getGeometry('oak_trunk', () => new THREE.CylinderGeometry(0.3, 0.5, 1.2, 8));
+        const trunkGeo = getGeometry('oak_trunk', () => new THREE.CylinderGeometry(0.3, 0.5, 1.2, 4));
         const trunkMat = getMaterial(0x4E342E, 1.0);
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
         trunk.position.y = 1.2 / 2;
@@ -81,7 +87,7 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
         const leavesMat = getMaterial(leavesColor, 0.9, true);
         
         // Un gros icosaèdre principal + quelques petits
-        const mainGeo = getGeometry('oak_main', () => new THREE.IcosahedronGeometry(1.2, 1));
+        const mainGeo = getGeometry('oak_main', () => new THREE.IcosahedronGeometry(1.2, 0));
         const main = new THREE.Mesh(mainGeo, leavesMat);
         main.position.y = 1.8;
         main.castShadow = true; main.receiveShadow = true;
@@ -90,7 +96,7 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
         
         // Petits clusters
         const subGeo = getGeometry('oak_sub', () => new THREE.IcosahedronGeometry(0.6, 0));
-        for(let i=0; i<4; i++) {
+        for(let i=0; i<3; i++) {
             const sub = new THREE.Mesh(subGeo, leavesMat);
             const ang = (Math.PI/2)*i + Math.random();
             sub.position.set(Math.cos(ang)*0.8, 1.6 + Math.random()*0.5, Math.sin(ang)*0.8);
@@ -103,7 +109,7 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
         // === ARBRE MORT (Juste du bois tordu) ===
         const woodMat = getMaterial(0x3E2723, 1.0);
         
-        const trunkGeo = getGeometry('dead_trunk', () => new THREE.CylinderGeometry(0.2, 0.3, 2, 5));
+        const trunkGeo = getGeometry('dead_trunk', () => new THREE.CylinderGeometry(0.2, 0.3, 2, 4));
         const trunk = new THREE.Mesh(trunkGeo, woodMat);
         trunk.position.y = 1.0;
         trunk.rotation.z = (Math.random()-0.5) * 0.2;

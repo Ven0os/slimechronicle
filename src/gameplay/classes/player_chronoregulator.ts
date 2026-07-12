@@ -32,6 +32,30 @@ import { isServerAuthority, isVisualOnlyMode } from '../../multiplayer/net_comba
 
 const CHRONO_COLOR = () => CONFIG.colors.chronoregulator;
 
+const beamGeometries = new Map();
+function getBeamSharedGeometry(key, creator) {
+  let geo = beamGeometries.get(key);
+  if (!geo) {
+    geo = creator();
+    geo.userData = geo.userData || {};
+    geo.userData.keep = true;
+    beamGeometries.set(key, geo);
+  }
+  return geo;
+}
+
+const beamMaterials = new Map();
+function getBeamSharedMaterial(key, creator) {
+  let mat = beamMaterials.get(key);
+  if (!mat) {
+    mat = creator();
+    mat.userData = mat.userData || {};
+    mat.userData.keep = true;
+    beamMaterials.set(key, mat);
+  }
+  return mat;
+}
+
 export class Chronoregulator extends PlayerBase {
   constructor() {
     super('chronoregulator');
@@ -1164,35 +1188,35 @@ export class Chronoregulator extends PlayerBase {
 
     if (electric) {
       const core = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.03, 1, 4),
-        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 }),
+        getBeamSharedGeometry('elec_core', () => new THREE.CylinderGeometry(0.02, 0.03, 1, 4)),
+        getBeamSharedMaterial('elec_core_mat', () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })),
       );
       const glow = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.09, 0.12, 1, 6),
-        new THREE.MeshBasicMaterial({ color: 0x66ddff, transparent: true, opacity: 0.4 }),
+        getBeamSharedGeometry('elec_glow', () => new THREE.CylinderGeometry(0.09, 0.12, 1, 6)),
+        getBeamSharedMaterial('elec_glow_mat', () => new THREE.MeshBasicMaterial({ color: 0x66ddff, transparent: true, opacity: 0.4 })),
       );
       const corona = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.2, 0.3, 1, 6),
-        new THREE.MeshBasicMaterial({ color: 0x8866ff, transparent: true, opacity: 0.2 }),
+        getBeamSharedGeometry('elec_corona', () => new THREE.CylinderGeometry(0.2, 0.3, 1, 6)),
+        getBeamSharedMaterial('elec_corona_mat', () => new THREE.MeshBasicMaterial({ color: 0x8866ff, transparent: true, opacity: 0.2 })),
       );
       const arcShell = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.28, 0.38, 1, 8),
-        new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.08 }),
+        getBeamSharedGeometry('elec_arcShell', () => new THREE.CylinderGeometry(0.28, 0.38, 1, 8)),
+        getBeamSharedMaterial('elec_arcShell_mat', () => new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.08 })),
       );
       group.add(arcShell, corona, glow, core);
     } else {
       const color = CHRONO_COLOR();
       const core = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.025, 0.035, 1, 6),
-        new THREE.MeshBasicMaterial({ color: synced ? 0xffd93d : 0xffffff, transparent: true, opacity: 0.42 }),
+        getBeamSharedGeometry('norm_core', () => new THREE.CylinderGeometry(0.025, 0.035, 1, 6)),
+        getBeamSharedMaterial(`norm_core_mat_${synced}`, () => new THREE.MeshBasicMaterial({ color: synced ? 0xffd93d : 0xffffff, transparent: true, opacity: 0.42 })),
       );
       const glow = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.07, 0.1, 1, 8),
-        new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: 0.35 }),
+        getBeamSharedGeometry('norm_glow', () => new THREE.CylinderGeometry(0.07, 0.1, 1, 8)),
+        getBeamSharedMaterial('norm_glow_mat', () => new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: 0.35 })),
       );
       const halo = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.26, 1, 8),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.14 }),
+        getBeamSharedGeometry('norm_halo', () => new THREE.CylinderGeometry(0.18, 0.26, 1, 8)),
+        getBeamSharedMaterial(`norm_halo_mat_${color}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.14 })),
       );
       group.add(halo, glow, core);
     }
@@ -1222,11 +1246,9 @@ export class Chronoregulator extends PlayerBase {
     }
 
     const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({
-      color: Math.random() > 0.5 ? 0xc8f7ff : 0xe8f4ff,
-      transparent: true,
-      opacity: 0.35 + Math.random() * 0.1,
-    });
+    const mat = Math.random() > 0.5 
+      ? getBeamSharedMaterial('arc_mat_1', () => new THREE.LineBasicMaterial({ color: 0xc8f7ff, transparent: true, opacity: 0.4 }))
+      : getBeamSharedMaterial('arc_mat_2', () => new THREE.LineBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.4 }));
     const arc = new THREE.Line(geo, mat);
     arc.userData.electric = true;
     Globals.scene.add(arc);

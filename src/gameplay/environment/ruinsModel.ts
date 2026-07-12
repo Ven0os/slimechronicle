@@ -7,7 +7,10 @@ let cachedStoneMat = null;
 
 function getGeometry(key, creator) {
     if (!geometryCache[key]) {
-        geometryCache[key] = creator();
+        const geo = creator();
+        geo.userData = geo.userData || {};
+        geo.userData.keep = true;
+        geometryCache[key] = geo;
     }
     return geometryCache[key];
 }
@@ -19,6 +22,8 @@ function getStoneMaterial() {
             roughness: 0.9,
             flatShading: true
         });
+        cachedStoneMat.userData = cachedStoneMat.userData || {};
+        cachedStoneMat.userData.keep = true;
     }
     return cachedStoneMat;
 }
@@ -57,7 +62,7 @@ export function createRuinsModel(scale = 1, type = 'pillar') {
     } else {
         // === PILIER SOLITAIRE ===
         // Base
-        const baseGeo = getGeometry('ruins_pillar_base', () => new THREE.CylinderGeometry(0.6, 0.8, 0.5, 6));
+        const baseGeo = getGeometry('ruins_pillar_base', () => new THREE.CylinderGeometry(0.6, 0.8, 0.5, 4));
         const base = new THREE.Mesh(baseGeo, stoneMat);
         base.position.y = 0.25;
         base.castShadow = true; base.receiveShadow = true;
@@ -65,7 +70,7 @@ export function createRuinsModel(scale = 1, type = 'pillar') {
 
         // Colonne (plusieurs segments pour faire "usé")
         const colHeight = 2.5;
-        const colGeo = getGeometry('ruins_pillar_col', () => new THREE.CylinderGeometry(0.5, 0.5, colHeight, 6));
+        const colGeo = getGeometry('ruins_pillar_col', () => new THREE.CylinderGeometry(0.5, 0.5, colHeight, 4));
         const col = new THREE.Mesh(colGeo, stoneMat);
         col.position.y = (colHeight / 2) + 0.5;
         col.castShadow = true; col.receiveShadow = true;
@@ -73,7 +78,7 @@ export function createRuinsModel(scale = 1, type = 'pillar') {
 
         // Chapiteau (tête) décalé ou absent
         if(Math.random() > 0.5) {
-            const headGeo = getGeometry('ruins_pillar_head', () => new THREE.CylinderGeometry(0.7, 0.5, 0.4, 6));
+            const headGeo = getGeometry('ruins_pillar_head', () => new THREE.CylinderGeometry(0.7, 0.5, 0.4, 4));
             const head = new THREE.Mesh(headGeo, stoneMat);
             head.position.y = colHeight + 0.7;
             // Un peu de travers

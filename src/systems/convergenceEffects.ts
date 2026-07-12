@@ -718,6 +718,13 @@ export const ConvergenceEffects = {
     return Math.pow(0.8, prismDepth);
   },
 
+  getPrismCritMods(prismDepth: number): { forceCrit: boolean; critDmgMult: number } {
+    if (!this.hasRefinedPrisms() || prismDepth <= 0) {
+      return { forceCrit: false, critDmgMult: 1 };
+    }
+    return { forceCrit: true, critDmgMult: 0.75 };
+  },
+
   getMaxRefinedPrisms(): number {
     return this.hasRefinedPrisms() ? 3 : Infinity;
   },

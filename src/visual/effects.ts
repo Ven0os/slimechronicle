@@ -87,6 +87,10 @@ function getParticleGeo() {
             new THREE.OctahedronGeometry(1, 0),
             new THREE.TetrahedronGeometry(1, 0),
         ];
+        particleGeos.forEach(g => {
+            g.userData = g.userData || {};
+            g.userData.keep = true;
+        });
     }
     const rand = Math.random();
     if (rand < 0.4) return particleGeos[0];
@@ -99,6 +103,8 @@ function getParticleMat(color) {
     let mat = particleMats.get(key);
     if (!mat) {
         mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.95 });
+        mat.userData = mat.userData || {};
+        mat.userData.keep = true;
         particleMats.set(key, mat);
     }
     return mat;
@@ -109,6 +115,9 @@ export function spawnParticles(pos, color, count, sizeMult = 1.0) {
     if (quality === 1) {
         return;
     }
+    // Réduction générale de 40% (30% à 50%)
+    count = Math.max(1, Math.floor(count * 0.6));
+
     if (quality === 2) {
         count = Math.max(1, Math.floor(count * 0.33));
     }
@@ -311,7 +320,7 @@ export function createSkillVisual(type, pos, size, color, dir) {
     }
     // ... Autres visuels existants ...
     else if (type === 'shockwave') {
-        const geo = new THREE.RingGeometry(0.72, 1, 64);
+        const geo = new THREE.RingGeometry(0.72, 1, 24);
         const mat = new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
@@ -349,7 +358,7 @@ export function createSkillVisual(type, pos, size, color, dir) {
     }
     else if (type === 'explosion') {
         // 1. Expanding and Color-Shifting Fireball
-        const geo = new THREE.SphereGeometry(0.2, 16, 16);
+        const geo = new THREE.SphereGeometry(0.2, 8, 8);
         const mat = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
@@ -361,7 +370,7 @@ export function createSkillVisual(type, pos, size, color, dir) {
         Globals.scene.add(mesh);
 
         // 2. Shockwave ring at base
-        const ringGeo = new THREE.RingGeometry(0.1, 0.3, 32);
+        const ringGeo = new THREE.RingGeometry(0.1, 0.3, 16);
         const ringMat = new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
@@ -471,7 +480,7 @@ export function createSkillVisual(type, pos, size, color, dir) {
             metalness: 0.8
         });
 
-        const numSpikes = 6 + Math.floor(Math.random() * 4);
+        const numSpikes = 4 + Math.floor(Math.random() * 3);
         const spikes = [];
 
         for (let i = 0; i < numSpikes; i++) {

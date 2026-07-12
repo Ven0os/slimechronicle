@@ -29,7 +29,7 @@ export function initScene() {
     Globals.scene.add(Globals.dirLight);
 
     // Sol avec régions (couleurs et reliefs)
-    const groundGeo = new THREE.PlaneGeometry(300, 300, 150, 150);
+    const groundGeo = new THREE.PlaneGeometry(300, 300, 100, 100);
     const posAttr = groundGeo.attributes.position;
     const colors = [];
 

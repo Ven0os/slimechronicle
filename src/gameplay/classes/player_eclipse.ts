@@ -40,6 +40,18 @@ import {
   updateEclipseLanceChargeUI,
 } from './eclipse/eclipseLanceChargeUi';
 
+const eclipseGeometries = new Map();
+function getEclipseSharedGeometry(key, creator) {
+  let geo = eclipseGeometries.get(key);
+  if (!geo) {
+    geo = creator();
+    geo.userData = geo.userData || {};
+    geo.userData.keep = true;
+    eclipseGeometries.set(key, geo);
+  }
+  return geo;
+}
+
 export class Eclipse extends PlayerBase {
     // ... (Reste du code inchangé) ...
     constructor() {
@@ -1473,13 +1485,14 @@ export class Eclipse extends PlayerBase {
         const mainSpike = new THREE.Group();
         group.add(mainSpike);
 
-        const segmentsCount = 7; 
+        const segmentsCount = 4; 
         for (let i = 0; i < segmentsCount; i++) {
             const h = i / segmentsCount;
             const size = 0.9 * (1.0 - h * 0.82);
             
-            const rockGeo = new THREE.DodecahedronGeometry(size, 0);
+            const rockGeo = getEclipseSharedGeometry('lunar_rock_geo', () => new THREE.DodecahedronGeometry(1, 0));
             const rock = new THREE.Mesh(rockGeo, rockMat);
+            rock.scale.setScalar(size);
             rock.position.set(
                 (Math.random() - 0.5) * 0.2,
                 i * 0.7 - 1.5,
@@ -1493,8 +1506,9 @@ export class Eclipse extends PlayerBase {
             mainSpike.add(rock);
 
             if (i > 0 && i < segmentsCount - 1) {
-                const crystalGeo = new THREE.ConeGeometry(size * 0.4, size * 1.5, 4);
+                const crystalGeo = getEclipseSharedGeometry('lunar_crystal_geo', () => new THREE.ConeGeometry(0.4, 1.5, 4));
                 const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+                crystal.scale.setScalar(size);
                 const angle = Math.random() * Math.PI * 2;
                 crystal.position.set(
                     Math.cos(angle) * (size * 0.6),
@@ -1510,26 +1524,28 @@ export class Eclipse extends PlayerBase {
 
         // 2. High-detail Glowing Moon Crescent Peak at the top
         const peakGroup = new THREE.Group();
-        peakGroup.position.set(0, 3.2, 0);
+        peakGroup.position.set(0, 2.1, 0);
         mainSpike.add(peakGroup);
 
-        const crescentTip = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.08, 6, 24, Math.PI * 1.3), glowingTipMat);
+        const crescentTipGeo = getEclipseSharedGeometry('lunar_crescent_geo', () => new THREE.TorusGeometry(0.35, 0.08, 6, 16, Math.PI * 1.3));
+        const crescentTip = new THREE.Mesh(crescentTipGeo, glowingTipMat);
         crescentTip.rotation.z = Math.PI / 4;
         peakGroup.add(crescentTip);
 
-        const pierceGeo = new THREE.ConeGeometry(0.12, 0.8, 5);
+        const pierceGeo = getEclipseSharedGeometry('lunar_pierce_geo', () => new THREE.ConeGeometry(0.12, 0.8, 4));
         const pierce = new THREE.Mesh(pierceGeo, glowingTipMat);
         pierce.position.y = 0.3;
         peakGroup.add(pierce);
 
         // 3. Satellite rock shards at base
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
             const dist = 0.6 + Math.random() * 0.4;
             const shardHeight = 0.8 + Math.random() * 0.8;
             
-            const shardGeo = new THREE.ConeGeometry(0.12, shardHeight, 4);
+            const shardGeo = getEclipseSharedGeometry('lunar_shard_geo', () => new THREE.ConeGeometry(0.12, 1.0, 4));
             const shard = new THREE.Mesh(shardGeo, i % 3 === 0 ? rockMat : crystalMat);
+            shard.scale.set(1.0, shardHeight, 1.0);
             shard.position.set(Math.cos(angle) * dist, -1.8 + shardHeight/2, Math.sin(angle) * dist);
             shard.rotation.x = Math.sin(angle) * 0.5 + (Math.random() - 0.5) * 0.3;
             shard.rotation.z = -Math.cos(angle) * 0.5 + (Math.random() - 0.5) * 0.3;
@@ -1542,23 +1558,28 @@ export class Eclipse extends PlayerBase {
         floatingGroup.name = "floatingShards";
         group.add(floatingGroup);
 
-        for (let i = 0; i < 4; i++) {
-            const floatShardGeo = new THREE.OctahedronGeometry(0.1 + Math.random() * 0.08, 0);
+        for (let i = 0; i < 2; i++) {
+            const floatShardGeo = getEclipseSharedGeometry('lunar_float_geo', () => new THREE.OctahedronGeometry(1.0, 0));
             const floatShard = new THREE.Mesh(floatShardGeo, crystalMat);
+            const size = 0.1 + Math.random() * 0.08;
+            floatShard.scale.setScalar(size);
             const radius = 0.9 + Math.random() * 0.3;
-            const angle = (i / 4) * Math.PI * 2;
+            const angle = (i / 2) * Math.PI * 2;
             floatShard.position.set(
                 Math.cos(angle) * radius,
-                0.5 + (Math.random() - 0.5) * 0.6,
+                1.7 + (Math.random() - 0.5) * 0.5,
                 Math.sin(angle) * radius
             );
+            floatShard.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            // Bobbing parameters
             floatShard.userData = {
-                angle: angle,
-                radius: radius,
-                speed: 1.5 + Math.random() * 1.0,
-                yOffset: floatShard.position.y,
-                bobSpeed: 2.0 + Math.random() * 2.0,
-                bobAmp: 0.15
+                bobSpeed: 1.5 + Math.random() * 2.0,
+                bobAmp: 0.08 + Math.random() * 0.08,
+                yOffset: floatShard.position.y
             };
             floatingGroup.add(floatShard);
         }
