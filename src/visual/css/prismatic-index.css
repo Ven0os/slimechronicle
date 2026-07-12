@@ -5,11 +5,11 @@
   align-items: stretch;
   overflow: hidden;
   padding: 0;
-  background: #08080c;
+  background: #020205;
 }
 
 #screen-compendium.menu-screen {
-  background: #08080c;
+  background: #020205;
 }
 
 .prism-index-page {
@@ -20,19 +20,31 @@
   flex-direction: column;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(155, 89, 182, 0.18), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(255, 0, 85, 0.08), transparent 50%),
-    #08080c;
+    radial-gradient(circle at 50% -20%, rgba(139, 92, 246, 0.15) 0%, rgba(10, 10, 15, 0.95) 75%, #020205 100%),
+    radial-gradient(ellipse at 90% 90%, rgba(212, 175, 55, 0.05) 0%, transparent 60%);
+  position: relative;
+}
+
+/* Cosmic background grid */
+.prism-index-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+  background-size: 50px 50px, 100px 100px;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .prism-index-hero {
   flex-shrink: 0;
   position: relative;
   z-index: 2;
-  padding: 32px 32px 0;
-  background:
-    linear-gradient(180deg, rgba(155, 89, 182, 0.08) 0%, transparent 70%),
-    #08080c;
+  padding: 40px 40px 0;
+  background: linear-gradient(180deg, rgba(20, 20, 30, 0.4) 0%, transparent 100%);
 }
 
 .prism-index-hero-inner {
@@ -43,63 +55,62 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 22px;
+  padding-bottom: 24px;
 }
 
 .prism-index-brand {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding-left: 18px;
-  border-left: 3px solid var(--menu-gold);
+  padding-left: 20px;
+  border-left: 3px solid var(--menu-gold, #d4af37);
 }
 
 .prism-index-icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 0, 170, 0.25), rgba(20, 10, 30, 0.9) 65%);
-  border: 1px solid rgba(255, 0, 170, 0.45);
-  box-shadow:
-    0 0 24px rgba(255, 0, 170, 0.25),
-    inset 0 0 18px rgba(255, 0, 170, 0.12);
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 35% 30%, rgba(212, 175, 55, 0.15), rgba(15, 10, 25, 0.8) 75%);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(212, 175, 55, 0.1);
 }
 
 .prism-index-icon-wrap i {
-  font-size: 1.75rem;
-  color: #ff4dc4;
-  filter: drop-shadow(0 0 10px rgba(255, 0, 170, 0.7));
+  font-size: 1.6rem;
+  color: var(--menu-gold, #d4af37);
+  filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
 }
 
 .prism-index-titles {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .prism-index-title {
   font-family: 'Cinzel', serif;
-  font-size: 2rem;
+  font-size: 2.2rem;
+  font-weight: 700;
   margin: 0;
-  letter-spacing: 4px;
+  letter-spacing: 5px;
   text-transform: uppercase;
-  color: var(--menu-gold);
-  text-shadow: var(--text-glow, 0 0 12px rgba(212, 175, 55, 0.35));
-  animation: breathe 4s infinite ease-in-out;
+  color: var(--menu-gold, #d4af37);
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
 }
 
 .prism-index-subtitle {
   margin: 0;
-  font-family: 'Cinzel', serif;
-  font-size: 0.78rem;
-  font-weight: 300;
-  font-style: normal;
-  letter-spacing: 3px;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: #777;
+  color: #64748b;
 }
 
 .prism-index-hero-line {
@@ -109,16 +120,16 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(212, 175, 55, 0.15) 15%,
-    rgba(212, 175, 55, 0.55) 50%,
-    rgba(212, 175, 55, 0.15) 85%,
+    rgba(212, 175, 55, 0.1) 15%,
+    rgba(212, 175, 55, 0.4) 50%,
+    rgba(212, 175, 55, 0.1) 85%,
     transparent 100%
   );
 }
 
 .prism-index-stats {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -126,36 +137,42 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 80px;
-  padding: 10px 16px;
-  border-radius: 4px;
-  background: rgba(10, 10, 14, 0.85);
-  border: 1px solid var(--menu-glass-border, rgba(255, 255, 255, 0.12));
-  transition: border-color 0.25s, box-shadow 0.25s;
+  justify-content: center;
+  min-width: 90px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  background: rgba(10, 10, 15, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .prism-stat-pill:hover {
-  border-color: rgba(212, 175, 55, 0.35);
-  box-shadow: 0 0 12px rgba(212, 175, 55, 0.08);
+  border-color: rgba(212, 175, 55, 0.25);
+  background: rgba(20, 20, 30, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
 }
 
 .prism-stat-pill strong {
-  font-family: 'Cinzel', serif;
-  font-size: 1.15rem;
-  color: #fff;
-  line-height: 1.1;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1;
 }
 
 .prism-stat-pill span {
-  font-size: 0.62rem;
+  font-size: 0.65rem;
+  font-family: 'Lato', sans-serif;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #777;
-  margin-top: 3px;
+  color: #64748b;
+  margin-top: 4px;
 }
 
-.prism-stat-pill.acquired strong { color: #2ecc71; }
-.prism-stat-pill.favorites strong { color: #e74c3c; }
+.prism-stat-pill.acquired strong { color: #10b981; }
+.prism-stat-pill.favorites strong { color: #f43f5e; }
 
 .prism-index-body {
   flex: 1;
@@ -165,29 +182,32 @@
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  padding: 20px 32px 40px;
+  padding: 24px 40px 40px;
   box-sizing: border-box;
+  z-index: 2;
 }
 
+/* Compendium Header Toolbar */
 #screen-compendium .compendium-header {
   width: 100%;
   max-width: none;
-  margin: 0 0 22px 0;
+  margin: 0 0 24px 0;
 }
 
 .prism-index-toolbar {
   margin-bottom: 0;
 }
 
-/* Barre de filtres (injectée par JS) */
 .compendium-controls-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px;
-  background: rgba(12, 12, 18, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  gap: 16px;
+  padding: 18px 20px;
+  background: rgba(10, 10, 15, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .filter-rarity-row,
@@ -195,13 +215,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .filter-bottom-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
   align-items: center;
   justify-content: space-between;
 }
@@ -212,124 +232,141 @@
   gap: 8px;
 }
 
+/* Buttons and Inputs */
 .filter-rarity-btn,
 .filter-type-btn {
   font-family: 'Cinzel', serif;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 5px 12px;
-  border-radius: 6px;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.filter-rarity-btn {
-  border: 1px solid currentColor;
-}
-
-.filter-type-btn {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #888;
+.filter-rarity-btn:hover,
+.filter-type-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
 }
 
 .filter-type-btn.is-active {
-  background: #d4af37;
+  background: linear-gradient(135deg, #d4af37 0%, #a67c1e 100%);
   color: #000;
   border-color: #d4af37;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
+  font-weight: 800;
 }
 
-.filter-rarity-btn[data-rarity="all"] { color: #ecf0f1; border-color: #ecf0f1; }
-.filter-rarity-btn[data-rarity="common"] { color: #bdc3c7; border-color: #bdc3c7; }
-.filter-rarity-btn[data-rarity="rare"] { color: #3498db; border-color: #3498db; }
-.filter-rarity-btn[data-rarity="epic"] { color: #9b59b6; border-color: #9b59b6; }
-.filter-rarity-btn[data-rarity="legendary"] { color: #f1c40f; border-color: #f1c40f; }
-.filter-rarity-btn[data-rarity="mythic"] { color: #ff0055; border-color: #ff0055; }
+.filter-rarity-btn[data-rarity="all"] { color: #f8fafc; border-color: rgba(248, 250, 252, 0.3); }
+.filter-rarity-btn[data-rarity="common"] { color: #94a3b8; border-color: rgba(148, 163, 184, 0.3); }
+.filter-rarity-btn[data-rarity="rare"] { color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); }
+.filter-rarity-btn[data-rarity="epic"] { color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
+.filter-rarity-btn[data-rarity="legendary"] { color: #eab308; border-color: rgba(234, 179, 8, 0.3); }
+.filter-rarity-btn[data-rarity="mythic"] { color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); }
 
-.filter-rarity-btn[data-rarity="all"].is-active { background: #ecf0f1; color: #000; box-shadow: 0 0 12px rgba(236, 240, 241, 0.5); }
-.filter-rarity-btn[data-rarity="common"].is-active { background: #bdc3c7; color: #000; box-shadow: 0 0 12px rgba(189, 195, 199, 0.5); }
-.filter-rarity-btn[data-rarity="rare"].is-active { background: #3498db; color: #fff; box-shadow: 0 0 12px rgba(52, 152, 219, 0.5); }
-.filter-rarity-btn[data-rarity="epic"].is-active { background: #9b59b6; color: #fff; box-shadow: 0 0 12px rgba(155, 89, 182, 0.5); }
-.filter-rarity-btn[data-rarity="legendary"].is-active { background: #f1c40f; color: #000; box-shadow: 0 0 12px rgba(241, 196, 15, 0.5); }
-.filter-rarity-btn[data-rarity="mythic"].is-active { background: #ff0055; color: #fff; box-shadow: 0 0 12px rgba(255, 0, 85, 0.5); }
+.filter-rarity-btn[data-rarity="all"].is-active { background: #f8fafc; color: #000; box-shadow: 0 0 12px rgba(248, 250, 252, 0.4); border-color: #f8fafc; }
+.filter-rarity-btn[data-rarity="common"].is-active { background: #94a3b8; color: #000; box-shadow: 0 0 12px rgba(148, 163, 184, 0.4); border-color: #94a3b8; }
+.filter-rarity-btn[data-rarity="rare"].is-active { background: #3b82f6; color: #fff; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); border-color: #3b82f6; }
+.filter-rarity-btn[data-rarity="epic"].is-active { background: #a855f7; color: #fff; box-shadow: 0 0 12px rgba(168, 85, 247, 0.4); border-color: #a855f7; }
+.filter-rarity-btn[data-rarity="legendary"].is-active { background: #eab308; color: #000; box-shadow: 0 0 12px rgba(234, 179, 8, 0.4); border-color: #eab308; }
+.filter-rarity-btn[data-rarity="mythic"].is-active { background: #f43f5e; color: #fff; box-shadow: 0 0 12px rgba(244, 63, 94, 0.4); border-color: #f43f5e; }
 
 .filter-search-wrap {
   position: relative;
   flex: 1;
-  min-width: 200px;
+  min-width: 240px;
   max-width: 320px;
 }
 
 .filter-search-wrap i {
   position: absolute;
-  left: 10px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
-  font-size: 0.8rem;
+  color: #64748b;
+  font-size: 0.85rem;
   pointer-events: none;
 }
 
 .filter-search-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 12px 8px 32px;
+  padding: 10px 14px 10px 36px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.45);
-  color: #eee;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.5);
+  color: #f8fafc;
   font-family: 'Lato', sans-serif;
   font-size: 0.85rem;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .filter-search-input:focus {
-  border-color: rgba(212, 175, 55, 0.5);
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.1);
+  background: rgba(0, 0, 0, 0.7);
 }
 
-/* Grille index */
+/* Compendium Cards Grid */
 .compendium-grid,
 .fragments-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 20px;
   width: 100%;
 }
 
 .prism-index-empty {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 48px 20px;
-  color: #666;
+  padding: 60px 20px;
+  color: #64748b;
+  font-size: 0.95rem;
   font-style: italic;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  background: rgba(10, 10, 15, 0.3);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
 }
 
-/* Carte compacte index */
+/* Glassmorphic Compendium Card */
 .prism-index-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 220px;
-  padding: 14px 14px 12px;
-  border-radius: 10px;
-  background: linear-gradient(160deg, rgba(22, 22, 30, 0.95), rgba(10, 10, 14, 0.98));
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  min-height: 230px;
+  padding: 18px;
+  border-radius: 12px;
+  
+  /* Volumetric back glow color based on rarity */
+  background: radial-gradient(circle at 50% 30%, rgba(var(--prism-accent-rgb, 148, 163, 184), 0.06) 0%, rgba(15, 15, 22, 0.75) 60%, rgba(8, 8, 12, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   cursor: pointer;
-  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: hidden;
   opacity: 1;
-  animation: prismCardIn 0.3s ease both;
+  animation: prismCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes prismCardIn {
-  from { transform: translateY(10px); opacity: 0.85; }
+  from { transform: translateY(12px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Rarity specific accent parameters */
+.prism-index-card.shard-common { --prism-accent: var(--rarity-common, #94a3b8); --prism-accent-rgb: 148, 163, 184; }
+.prism-index-card.shard-rare { --prism-accent: var(--rarity-rare, #3b82f6); --prism-accent-rgb: 59, 130, 246; }
+.prism-index-card.shard-epic { --prism-accent: var(--rarity-epic, #a855f7); --prism-accent-rgb: 168, 85, 247; }
+.prism-index-card.shard-legendary { --prism-accent: var(--rarity-legendary, #eab308); --prism-accent-rgb: 234, 179, 8; }
+.prism-index-card.shard-mythic { --prism-accent: var(--rarity-mythic, #f43f5e); --prism-accent-rgb: 244, 63, 94; }
+
+/* Thin top border indicator */
 .prism-index-card::before {
   content: '';
   position: absolute;
@@ -337,79 +374,105 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--prism-accent, #666);
+  background: var(--prism-accent, #64748b);
+}
+
+/* Gradient border highlight on hover using masked boundary */
+.prism-index-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(var(--prism-accent-rgb), 0.45) 0%, transparent 60%) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.1;
+  transition: opacity 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .prism-index-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  transform: translateY(-5px);
+  border-color: rgba(var(--prism-accent-rgb), 0.15);
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(var(--prism-accent-rgb), 0.15);
+}
+
+.prism-index-card:hover::after {
+  opacity: 1;
 }
 
 .prism-index-card.is-owned {
-  border-color: rgba(46, 204, 113, 0.25);
+  border-color: rgba(16, 185, 129, 0.2);
 }
-
-.prism-index-card.shard-common { --prism-accent: var(--rarity-common); }
-.prism-index-card.shard-rare { --prism-accent: var(--rarity-rare); }
-.prism-index-card.shard-epic { --prism-accent: var(--rarity-epic); }
-.prism-index-card.shard-legendary { --prism-accent: var(--rarity-legendary); }
-.prism-index-card.shard-mythic { --prism-accent: var(--rarity-mythic); }
 
 .prism-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .prism-card-rarity {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 1.5px;
-  color: var(--prism-accent, #aaa);
+  color: var(--prism-accent, #94a3b8);
+  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
 }
 
 .prism-card-fav {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 1.05rem;
   cursor: pointer;
   padding: 2px 4px;
-  transition: color 0.15s, transform 0.15s;
+  transition: all 0.2s;
+  z-index: 5;
 }
 
-.prism-card-fav.is-fav { color: #e74c3c; }
-.prism-card-fav:hover { transform: scale(1.15); color: #e74c3c; }
+.prism-card-fav.is-fav { color: #f43f5e; text-shadow: 0 0 10px rgba(244, 63, 94, 0.4); }
+.prism-card-fav:hover { transform: scale(1.2); color: #f43f5e; }
 
 .prism-card-icon {
   text-align: center;
-  margin: 4px 0 10px;
+  margin: 6px 0 14px;
 }
 
 .prism-card-icon i {
-  font-size: 2.2rem;
+  font-size: 2.4rem;
   color: var(--prism-accent, #fff);
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--prism-accent) 50%, transparent));
+  filter: drop-shadow(0 0 8px rgba(var(--prism-accent-rgb), 0.4));
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.prism-index-card:hover .prism-card-icon i {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 12px rgba(var(--prism-accent-rgb), 0.6));
 }
 
 .prism-card-name {
   font-family: 'Cinzel', serif;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  color: #f0f0f0;
+  color: #f1f5f9;
   text-align: center;
-  margin: 0 0 6px;
-  line-height: 1.25;
+  margin: 0 0 8px;
+  line-height: 1.3;
 }
 
 .prism-card-desc {
-  font-size: 0.7rem;
-  color: #888;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  color: #94a3b8;
   text-align: center;
-  line-height: 1.45;
-  margin: 0 0 10px;
+  line-height: 1.4;
+  margin: 0 0 14px;
   flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -420,58 +483,63 @@
 .prism-card-stats {
   font-size: 0.72rem;
   font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
   text-align: center;
   line-height: 1.5;
-  padding: 8px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
 }
 
-.prism-stat-pos { color: #2ecc71; font-weight: 800; }
-.prism-stat-neg { color: #e74c3c; font-weight: 800; }
-.prism-stat-label { color: #fff; font-weight: 600; }
-.prism-stat-sep { color: rgba(255, 255, 255, 0.35); font-weight: 400; }
-.prism-stat-enchant { display: block; margin-top: 6px; font-size: 0.65rem; color: #ffd700; font-weight: 700; }
+.prism-stat-pos { color: #10b981; font-weight: 700; }
+.prism-stat-neg { color: #f43f5e; font-weight: 700; }
+.prism-stat-label { color: #f1f5f9; font-weight: 600; }
+.prism-stat-sep { color: rgba(148, 163, 184, 0.4); font-weight: 400; }
+.prism-stat-enchant { display: block; margin-top: 6px; font-size: 0.68rem; color: #fbbf24; font-weight: 700; }
 
 .prism-card-badges {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .prism-badge {
-  font-size: 0.58rem;
+  font-size: 0.6rem;
   font-weight: 800;
+  font-family: 'Rajdhani', sans-serif;
   letter-spacing: 0.5px;
-  padding: 3px 7px;
+  padding: 3px 8px;
   border-radius: 4px;
   text-transform: uppercase;
 }
 
 .prism-badge-owned {
-  color: #2ecc71;
-  border: 1px solid rgba(46, 204, 113, 0.5);
-  background: rgba(46, 204, 113, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .prism-badge-level {
   color: #000;
-  background: linear-gradient(45deg, #d4af37, #f1c40f);
+  background: linear-gradient(135deg, #d4af37, #f1c40f);
+  box-shadow: 0 2px 6px rgba(212, 175, 55, 0.2);
 }
 
+/* Footer Section */
 .prism-index-footer {
   flex-shrink: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 20px 32px 32px;
+  padding: 24px 40px 32px;
   display: flex;
   justify-content: center;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0%, transparent 100%), #08080c;
-  border-top: 1px solid var(--menu-glass-border, rgba(255, 255, 255, 0.1));
+  background: linear-gradient(0deg, rgba(2, 2, 5, 0.6) 0%, transparent 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 2;
 }
 
 .prism-index-back {
@@ -485,9 +553,9 @@
   letter-spacing: 2px;
 }
 
-/* Vue fragments in-game (onglet K) */
+/* Vue fragments in-game (K key tab) */
 .prism-collection-panel {
-  padding: 20px 24px 28px;
+  padding: 24px;
   max-width: 1100px;
   margin: 0 auto;
 }
@@ -496,41 +564,155 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .prism-collection-header i {
-  font-size: 1.4rem;
-  color: #ff00aa;
+  font-size: 1.3rem;
+  color: var(--menu-gold, #d4af37);
+  filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.4));
 }
 
 .prism-collection-header h2 {
   font-family: 'Cinzel', serif;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   letter-spacing: 2px;
   margin: 0;
-  color: var(--menu-gold);
+  color: var(--menu-gold, #d4af37);
 }
 
 .prism-collection-header p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-size: 0.75rem;
-  color: #777;
+  color: #64748b;
 }
 
+/* Responsive fixes */
 @media (max-width: 768px) {
   .prism-index-hero { padding: 24px 16px 0; }
-  .prism-index-title { font-size: 1.45rem; letter-spacing: 2px; }
-  .prism-index-subtitle { font-size: 0.65rem; letter-spacing: 2px; }
-  .prism-index-icon-wrap { width: 52px; height: 52px; }
-  .prism-index-brand { padding-left: 12px; gap: 14px; }
+  .prism-index-title { font-size: 1.6rem; letter-spacing: 3px; }
+  .prism-index-subtitle { font-size: 0.7rem; letter-spacing: 1px; }
+  .prism-index-icon-wrap { width: 50px; height: 50px; }
+  .prism-index-brand { padding-left: 14px; gap: 14px; }
   .prism-index-body { padding: 16px; }
   .prism-index-footer { padding: 16px; }
   .prism-index-back { width: 100%; max-width: 300px; }
   .compendium-grid,
   .fragments-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 12px;
   }
+  .prism-index-card {
+    min-height: 210px;
+    padding: 12px;
+  }
+  .prism-card-icon i {
+    font-size: 2rem;
+  }
+}
+
+/* Enchantment Deep Dive Modal */
+.enchant-deep-dive {
+  display: flex;
+  width: 95vw;
+  max-width: 700px;
+  background: rgba(10, 10, 15, 0.95);
+  border: 1px solid var(--deep-dive-color, var(--menu-gold, #d4af37));
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.8), 
+    0 0 30px rgba(var(--deep-dive-rgb, 212, 175, 55), 0.25);
+  position: relative;
+  backdrop-filter: blur(15px);
+  animation: modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+
+@keyframes modalScaleIn {
+  from { transform: scale(0.9) translate3d(0, 20px, 0); opacity: 0; }
+  to { transform: scale(1) translate3d(0, 0, 0); opacity: 1; }
+}
+
+.enchant-deep-dive-inner {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  position: relative;
+}
+
+.enchant-deep-dive-title-label {
+  font-size: 0.9rem;
+  color: var(--deep-dive-color, var(--menu-gold, #d4af37));
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+}
+
+.enchant-deep-dive-icon {
+  font-size: 6rem;
+  color: var(--deep-dive-color, var(--menu-gold, #d4af37));
+  filter: drop-shadow(0 0 20px rgba(var(--deep-dive-rgb, 212, 175, 55), 0.5));
+  margin-bottom: 30px;
+  animation: deepDiveFloat 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes deepDiveFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+
+.enchant-deep-dive-name {
+  font-family: 'Cinzel', serif;
+  font-size: 2.5rem;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.enchant-deep-dive-desc {
+  margin-top: 16px;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 420px;
+  font-family: 'Lato', sans-serif;
+  line-height: 1.5;
+}
+
+.enchant-deep-dive-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: #fff;
+  font-size: 1.8rem;
+  cursor: pointer;
+  z-index: 20;
+  opacity: 0.6;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  background: rgba(0, 0, 0, 0.4);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.enchant-deep-dive-close:hover {
+  opacity: 1;
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }

@@ -35,96 +35,44 @@ export const UICore = {
         if (id === 'compendium' && this.updateCompendium) this.updateCompendium(); 
         if (id === 'forge' && window.ForgeUI) window.ForgeUI.update();
         if (id === 'options' && STATE.gameOptions) {
-            // Force reset to the first tab (enemies) on screen load
-            const firstTab = document.querySelector('.options-tabs .tab-btn');
-            this.switchOptionsTab('enemies', firstTab);
-
             const setVal = (elId, valId, val, suffix = '') => {
                 const el = document.getElementById(elId);
                 const vel = document.getElementById(valId);
                 if (el) el.value = val;
-                if (vel) vel.innerText = suffix ? parseFloat(val).toFixed(1) + suffix : parseInt(val);
+                if (vel) vel.innerText = suffix ? parseInt(val) + suffix : val;
             };
-            setVal('opt-hp', 'opt-val-hp', STATE.gameOptions.enemyHpMult, 'x');
-            setVal('opt-dmg', 'opt-val-dmg', STATE.gameOptions.enemyDmgMult, 'x');
-            setVal('opt-spawn', 'opt-val-spawn', STATE.gameOptions.enemySpawnRate, 'x');
-            setVal('opt-xp', 'opt-val-xp', STATE.gameOptions.xpMult, 'x');
-            setVal('opt-php', 'opt-val-php', STATE.gameOptions.playerHpMult, 'x');
-            setVal('opt-pdmg', 'opt-val-pdmg', STATE.gameOptions.playerDmgMult, 'x');
-            setVal('opt-lvl', 'opt-val-lvl', STATE.gameOptions.startLevel);
+
+            // Options Graphismes
+            setVal('opt-graphics-resolution', 'opt-val-graphics-resolution', STATE.gameOptions.resolutionScale || 100, '%');
             
-            const chkEvents = document.getElementById('opt-events');
-            if (chkEvents) chkEvents.checked = !!STATE.gameOptions.isEventsActive;
-            
-            setVal('opt-maxmobs', 'opt-val-maxmobs', STATE.gameOptions.maxMobDisplay);
-            setVal('opt-luck-prism', 'opt-val-luck-prism', STATE.gameOptions.luckMultPrismatic, 'x');
-            setVal('opt-luck-mini', 'opt-val-luck-mini', STATE.gameOptions.luckMultMiniBoss, 'x');
+            const densityLabels = ['Désactivé', 'Faible', 'Moyen', 'Élevé'];
+            const densityVal = STATE.gameOptions.decoDensity || 4;
+            setVal('opt-graphics-density', 'opt-val-graphics-density', densityVal);
+            const densSpan = document.getElementById('opt-val-graphics-density');
+            if (densSpan) densSpan.innerText = densityLabels[densityVal - 1];
 
-            // Camps options initialization
-            const setCamp = (type) => {
-                const isEnabled = STATE.gameOptions[`camp_${type}_enabled`] !== false;
-                const weight = STATE.gameOptions[`camp_${type}_weight`] ?? 100;
-                
-                const chk = document.getElementById(`opt-camp-${type}-enabled`);
-                if (chk) chk.checked = isEnabled;
-                
-                const sld = document.getElementById(`opt-camp-${type}-weight`);
-                if (sld) sld.value = weight;
-                
-                const valSpan = document.getElementById(`opt-val-camp-${type}`);
-                if (valSpan) valSpan.innerText = weight + '%';
-                
-                // Initialize card opacity
-                const card = document.getElementById(`camp-card-${type}`);
-                if (card) card.style.opacity = isEnabled ? '1.0' : '0.55';
-            };
+            const waterLabels = ['Basse (Statique)', 'Moyenne (Simple)', 'Haute (Réaliste)'];
+            const waterVal = STATE.gameOptions.waterQuality || 3;
+            setVal('opt-graphics-water', 'opt-val-graphics-water', waterVal);
+            const waterSpan = document.getElementById('opt-val-graphics-water');
+            if (waterSpan) waterSpan.innerText = waterLabels[waterVal - 1];
 
-            setCamp('tent');
-            setCamp('portal');
-            setCamp('barricade');
-            setCamp('obelisk');
-            setCamp('treasure');
-            setCamp('ritual');
-            setCamp('crypt');
-            setCamp('shrine');
-            setCamp('forge');
-            setCamp('frozen');
-            setCamp('ruins');
+            const partLabels = ['Désactivés', 'Réduits (33%)', 'Complets'];
+            const partVal = STATE.gameOptions.particleQuality || 3;
+            setVal('opt-graphics-particles', 'opt-val-graphics-particles', partVal);
+            const partSpan = document.getElementById('opt-val-graphics-particles');
+            if (partSpan) partSpan.innerText = partLabels[partVal - 1];
 
-            // Presets check
-            const presets = {
-                exploration: { hp: 0.5, dmg: 0.5, spawn: 0.8, xp: 1.5, php: 1.5, pdmg: 1.5, lvl: 5, maxmobs: 20, luckprism: 1.5, luckmini: 1.0, events: true },
-                survivant: { hp: 1.0, dmg: 1.0, spawn: 1.0, xp: 1.0, php: 1.0, pdmg: 1.0, lvl: 1, maxmobs: 30, luckprism: 1.0, luckmini: 1.0, events: true },
-                champion: { hp: 2.0, dmg: 2.0, spawn: 1.4, xp: 1.2, php: 1.0, pdmg: 1.0, lvl: 1, maxmobs: 45, luckprism: 1.5, luckmini: 1.5, events: true },
-                cauchemar: { hp: 4.5, dmg: 4.0, spawn: 2.0, xp: 2.0, php: 0.8, pdmg: 0.8, lvl: 1, maxmobs: 60, luckprism: 2.0, luckmini: 2.0, events: true }
-            };
+            const chkFog = document.getElementById('opt-graphics-fog');
+            if (chkFog) chkFog.checked = STATE.gameOptions.isFogActive !== false;
 
-            document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
+            const fpsVal = STATE.gameOptions.fpsLimit || 120;
+            setVal('opt-graphics-fps', 'opt-val-graphics-fps', fpsVal);
+            const fpsSpan = document.getElementById('opt-val-graphics-fps');
+            if (fpsSpan) fpsSpan.innerText = fpsVal === 120 ? 'Illimité' : fpsVal + ' FPS';
 
-            let matchedPreset = null;
-            for (const [name, data] of Object.entries(presets)) {
-                if (
-                    Math.abs(STATE.gameOptions.enemyHpMult - data.hp) < 0.01 &&
-                    Math.abs(STATE.gameOptions.enemyDmgMult - data.dmg) < 0.01 &&
-                    Math.abs(STATE.gameOptions.enemySpawnRate - data.spawn) < 0.01 &&
-                    Math.abs(STATE.gameOptions.xpMult - data.xp) < 0.01 &&
-                    Math.abs(STATE.gameOptions.playerHpMult - data.php) < 0.01 &&
-                    Math.abs(STATE.gameOptions.playerDmgMult - data.pdmg) < 0.01 &&
-                    STATE.gameOptions.startLevel === data.lvl &&
-                    STATE.gameOptions.maxMobDisplay === data.maxmobs &&
-                    Math.abs(STATE.gameOptions.luckMultPrismatic - data.luckprism) < 0.01 &&
-                    Math.abs(STATE.gameOptions.luckMultMiniBoss - data.luckmini) < 0.01 &&
-                    !!STATE.gameOptions.isEventsActive === data.events
-                ) {
-                    matchedPreset = name;
-                    break;
-                }
-            }
-
-            if (matchedPreset) {
-                const activeBtn = document.getElementById('preset-' + matchedPreset);
-                if (activeBtn) activeBtn.classList.add('active');
-            }
+            const chkFps = document.getElementById('opt-graphics-showfps');
+            if (chkFps) chkFps.checked = !!STATE.gameOptions.showFps;
         }
     },
 
@@ -144,7 +92,7 @@ export const UICore = {
     goToOptions: () => { if(window.UI) window.UI.show('options'); },
     backToLanding: () => { if(window.UI) window.UI.show('landing'); },
     
-    saveOptionsAndReturn: function() {
+    saveOptions: function() {
         if (!STATE.gameOptions) STATE.gameOptions = {};
         
         const getVal = (id) => {
@@ -152,44 +100,21 @@ export const UICore = {
             return el ? parseFloat(el.value) : 1.0;
         };
         
-        STATE.gameOptions.enemyHpMult = getVal('opt-hp');
-        STATE.gameOptions.enemyDmgMult = getVal('opt-dmg');
-        STATE.gameOptions.enemySpawnRate = getVal('opt-spawn');
-        STATE.gameOptions.xpMult = getVal('opt-xp');
-        STATE.gameOptions.playerHpMult = getVal('opt-php');
-        STATE.gameOptions.playerDmgMult = getVal('opt-pdmg');
+        STATE.gameOptions.resolutionScale = getVal('opt-graphics-resolution');
+        STATE.gameOptions.decoDensity = getVal('opt-graphics-density');
+        STATE.gameOptions.waterQuality = getVal('opt-graphics-water');
+        STATE.gameOptions.particleQuality = getVal('opt-graphics-particles');
         
-        const lvlEl = document.getElementById('opt-lvl');
-        STATE.gameOptions.startLevel = lvlEl ? parseInt(lvlEl.value) : 1;
+        const chkFog = document.getElementById('opt-graphics-fog');
+        STATE.gameOptions.isFogActive = chkFog ? chkFog.checked : true;
         
-        const chkEvents = document.getElementById('opt-events');
-        STATE.gameOptions.isEventsActive = chkEvents ? chkEvents.checked : true;
+        STATE.gameOptions.fpsLimit = getVal('opt-graphics-fps');
         
-        const maxMobsEl = document.getElementById('opt-maxmobs');
-        STATE.gameOptions.maxMobDisplay = maxMobsEl ? parseInt(maxMobsEl.value) : 30;
+        const chkFps = document.getElementById('opt-graphics-showfps');
+        STATE.gameOptions.showFps = chkFps ? chkFps.checked : false;
         
-        STATE.gameOptions.luckMultPrismatic = getVal('opt-luck-prism');
-        STATE.gameOptions.luckMultMiniBoss = getVal('opt-luck-mini');
-        
-        // Save camp configurations
-        const saveCamp = (type) => {
-            const chk = document.getElementById(`opt-camp-${type}-enabled`);
-            STATE.gameOptions[`camp_${type}_enabled`] = chk ? chk.checked : true;
-            
-            const sld = document.getElementById(`opt-camp-${type}-weight`);
-            STATE.gameOptions[`camp_${type}_weight`] = sld ? parseInt(sld.value) : 100;
-        };
-        saveCamp('tent');
-        saveCamp('portal');
-        saveCamp('barricade');
-        saveCamp('obelisk');
-        saveCamp('treasure');
-        saveCamp('ritual');
-        saveCamp('crypt');
-        saveCamp('shrine');
-        saveCamp('forge');
-        saveCamp('frozen');
-        saveCamp('ruins');
+        // Appliquer immédiatement les réglages graphiques en jeu ou pré-jeu
+        this.applyGraphicsSettings();
 
         // Save to localStorage
         try {
@@ -197,9 +122,26 @@ export const UICore = {
         } catch (e) {
             console.error("Failed to save game options to localStorage", e);
         }
-        
+    },
+
+    saveOptionsAndReturn: function() {
+        this.saveOptions();
         this.toast("Options sauvegardées !");
-        this.show('class');
+        
+        if (Globals.player) {
+            const pm = document.getElementById('pause-menu');
+            this.screens.forEach(s => {
+                const el = document.getElementById(`screen-${s}`);
+                if(el) el.classList.remove('active');
+            });
+            if (pm) {
+                pm.style.display = 'flex';
+            } else {
+                if (!STATE.multiplayer.active) STATE.isPaused = false;
+            }
+        } else {
+            this.show('class');
+        }
     },
 
     applyPreset: function(presetName) {
@@ -367,6 +309,136 @@ export const UICore = {
         } else {
              if(btnStart) { btnStart.style.display = 'block'; btnStart.style.opacity = 1; btnStart.style.cursor = 'pointer'; btnStart.disabled = false; }
              if(btnOptions) btnOptions.style.display = 'flex';
+        }
+    },
+
+    togglePauseMenu: function() {
+        const pm = document.getElementById('pause-menu');
+        if (!pm) return;
+        
+        const isVisible = pm.style.display === 'flex';
+        if (isVisible) {
+            pm.style.display = 'none';
+            if (!STATE.multiplayer.active) STATE.isPaused = false;
+        } else {
+            // Cache tous les écrans
+            this.screens.forEach(s => {
+                const el = document.getElementById(`screen-${s}`);
+                if(el) el.classList.remove('active');
+            });
+            if (CampPreview) CampPreview.dispose();
+            pm.style.display = 'flex';
+            if (!STATE.multiplayer.active) STATE.isPaused = true;
+        }
+    },
+
+    openInGameOptions: function() {
+        const pm = document.getElementById('pause-menu');
+        if (pm) pm.style.display = 'none';
+        
+        this.show('options');
+    },
+
+    closeInGameOptions: function() {
+        this.screens.forEach(s => {
+            const el = document.getElementById(`screen-${s}`);
+            if(el) el.classList.remove('active');
+        });
+        if (CampPreview) CampPreview.dispose();
+        
+        const pm = document.getElementById('pause-menu');
+        if (pm) {
+            pm.style.display = 'flex';
+        } else {
+            if (!STATE.multiplayer.active) STATE.isPaused = false;
+        }
+    },
+
+    quitToMainMenu: function() {
+        if (confirm("Abandonner l'expédition en cours ? Votre progression non sauvegardée sera perdue.")) {
+            location.reload();
+        }
+    },
+
+    applyGraphicsSettings: function() {
+        if (!STATE.gameOptions) return;
+        
+        // 1. Échelle de résolution
+        const resScale = (STATE.gameOptions.resolutionScale || 100) / 100;
+        if (Globals.renderer) {
+            Globals.renderer.setPixelRatio(window.devicePixelRatio * resScale);
+            Globals.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // 2. Végétation & Décors
+        const density = STATE.gameOptions.decoDensity !== undefined ? STATE.gameOptions.decoDensity : 4;
+        if (Globals.decoGroup) {
+            if (density === 1) {
+                Globals.decoGroup.visible = false;
+            } else {
+                Globals.decoGroup.visible = true;
+                let index = 0;
+                Globals.decoGroup.children.forEach(child => {
+                    if (density === 2) {
+                        // Faible : 25% visibles (1 sur 4)
+                        child.visible = index % 4 === 0;
+                    } else if (density === 3) {
+                        // Moyen : 50% visibles (1 sur 2)
+                        child.visible = index % 2 === 0;
+                    } else {
+                        // Élevé : 100% visibles
+                        child.visible = true;
+                    }
+                    index++;
+                });
+            }
+        }
+        
+        // 3. Qualité de l'Eau
+        const waterQ = STATE.gameOptions.waterQuality !== undefined ? STATE.gameOptions.waterQuality : 3;
+        if (Globals.water && Globals.water.material) {
+            if (waterQ === 1) {
+                // Basse : unie opaque et mate
+                Globals.water.material.color.setHex(0x0f5e9c);
+                Globals.water.material.roughness = 1.0;
+                Globals.water.material.metalness = 0.0;
+                Globals.water.material.transparent = false;
+                Globals.water.material.opacity = 1.0;
+            } else if (waterQ === 2) {
+                // Moyenne : transparente simple sans métal
+                Globals.water.material.color.setHex(0x0f5e9c);
+                Globals.water.material.roughness = 0.5;
+                Globals.water.material.metalness = 0.1;
+                Globals.water.material.transparent = true;
+                Globals.water.material.opacity = 0.7;
+            } else {
+                // Haute : réaliste métallique brillante
+                Globals.water.material.color.setHex(0x0f5e9c);
+                Globals.water.material.roughness = 0.1;
+                Globals.water.material.metalness = 0.8;
+                Globals.water.material.transparent = true;
+                Globals.water.material.opacity = 0.85;
+            }
+            Globals.water.material.needsUpdate = true;
+        }
+
+        // 4. Brume (Fog)
+        const fogActive = STATE.gameOptions.isFogActive !== false;
+        if (Globals.scene) {
+            if (fogActive) {
+                if (!Globals.scene.fog) {
+                    Globals.scene.fog = new THREE.FogExp2(0xffffff, 0.005);
+                }
+            } else {
+                Globals.scene.fog = null;
+            }
+        }
+
+        // 5. Compteur FPS
+        const showFps = !!STATE.gameOptions.showFps;
+        const fpsCounter = document.getElementById('fps-counter');
+        if (fpsCounter) {
+            fpsCounter.style.display = showFps ? 'block' : 'none';
         }
     }
 };

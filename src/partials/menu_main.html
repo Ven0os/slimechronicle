@@ -50,465 +50,102 @@
 <div id="screen-options" class="menu-screen options-screen">
     <div class="options-container">
         <header class="options-title-wrap">
-            <h1>OPTIONS DE JEU</h1>
-            <div style="font-size: 0.75rem; color: var(--menu-gold); text-transform: uppercase; margin-top: 4px; letter-spacing: 0.8px; opacity: 0.8;">En multijoueur, seules les options de l'Hôte déterminent les apparitions</div>
+            <h1>OPTIONS GRAPHIQUES</h1>
+            <div style="font-size: 0.75rem; color: var(--menu-gold); text-transform: uppercase; margin-top: 4px; letter-spacing: 0.8px; opacity: 0.8;">Ajustez les paramètres visuels pour optimiser la fluidité</div>
         </header>
 
-        <!-- Presets Section -->
-        <div class="presets-section">
-            <span class="presets-title">Difficulté de l'Expédition</span>
-            <div class="difficulty-presets">
-                <button class="btn-preset" id="preset-exploration" onclick="UI.applyPreset('exploration')">
-                    <span class="preset-tier">TIER I</span>
-                    <span class="preset-name">Recrue</span>
-                </button>
-                <button class="btn-preset" id="preset-survivant" onclick="UI.applyPreset('survivant')">
-                    <span class="preset-tier">TIER II</span>
-                    <span class="preset-name">Survivant</span>
-                </button>
-                <button class="btn-preset" id="preset-champion" onclick="UI.applyPreset('champion')">
-                    <span class="preset-tier">TIER III</span>
-                    <span class="preset-name">Champion</span>
-                </button>
-                <button class="btn-preset" id="preset-cauchemar" onclick="UI.applyPreset('cauchemar')">
-                    <span class="preset-tier">TIER IV</span>
-                    <span class="preset-name">Cauchemar</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Onglets / Catégories -->
-        <div class="options-tabs">
-            <button class="tab-btn active" onclick="UI.switchOptionsTab('enemies', this)">
-                <i class="fas fa-ghost"></i> Ennemis
-            </button>
-            <button class="tab-btn" onclick="UI.switchOptionsTab('player', this)">
-                <i class="fas fa-shield-halved"></i> Joueur
-            </button>
-            <button class="tab-btn" onclick="UI.switchOptionsTab('loot', this)">
-                <i class="fas fa-gem"></i> Destin
-            </button>
-            <button class="tab-btn" onclick="UI.switchOptionsTab('camps', this)">
-                <i class="fas fa-campground"></i> Camps
-            </button>
-        </div>
-        
         <main class="options-scroll-area">
-            <!-- TAB ENEMIES -->
-            <div id="tab-content-enemies" class="tab-content active">
-                <!-- PV des Ennemis -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-heart-crack icon-hp"></i>
-                            <label for="opt-hp">PV des Ennemis</label>
-                        </div>
-                        <span id="opt-val-hp" class="option-value-badge">1.0</span>
+            <!-- Résolution 3D -->
+            <div class="option-row-card">
+                <div class="option-header">
+                    <div class="option-label-wrap">
+                        <i class="fas fa-expand icon-hp" style="color: #3498db;"></i>
+                        <label for="opt-graphics-resolution">Résolution 3D (Rendu)</label>
                     </div>
-                    <input type="range" id="opt-hp" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-hp').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                    <span id="opt-val-graphics-resolution" class="option-value-badge">100%</span>
                 </div>
+                <input type="range" id="opt-graphics-resolution" class="option-slider" min="50" max="100" step="10" value="100" oninput="document.getElementById('opt-val-graphics-resolution').innerText = this.value + '%'; UI.onSliderChange(); UI.applyGraphicsSettings()">
+            </div>
 
-                <!-- Dégâts des Ennemis -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-burst icon-dmg"></i>
-                            <label for="opt-dmg">Dégâts des Ennemis</label>
-                        </div>
-                        <span id="opt-val-dmg" class="option-value-badge">1.0</span>
+            <!-- Détails de l'Environnement -->
+            <div class="option-row-card">
+                <div class="option-header">
+                    <div class="option-label-wrap">
+                        <i class="fas fa-tree icon-hp" style="color: #2ecc71;"></i>
+                        <label for="opt-graphics-density">Végétation & Décors</label>
                     </div>
-                    <input type="range" id="opt-dmg" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-dmg').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                    <span id="opt-val-graphics-density" class="option-value-badge">Élevé</span>
                 </div>
+                <input type="range" id="opt-graphics-density" class="option-slider" min="1" max="4" step="1" value="4" oninput="const labels=['Désactivé', 'Faible', 'Moyen', 'Élevé']; document.getElementById('opt-val-graphics-density').innerText = labels[this.value - 1]; UI.onSliderChange(); UI.applyGraphicsSettings()">
+            </div>
 
-                <!-- Spawns -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-skull-crossbones icon-spawn"></i>
-                            <label for="opt-spawn">Vitesse de Réapparition</label>
-                        </div>
-                        <span id="opt-val-spawn" class="option-value-badge">1.0</span>
+            <!-- Qualité de l'Eau -->
+            <div class="option-row-card">
+                <div class="option-header">
+                    <div class="option-label-wrap">
+                        <i class="fas fa-water icon-hp" style="color: #1abc9c;"></i>
+                        <label for="opt-graphics-water">Qualité de l'Eau</label>
                     </div>
-                    <input type="range" id="opt-spawn" class="option-slider" min="0.2" max="5.0" step="0.2" value="1.0" oninput="document.getElementById('opt-val-spawn').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                    <span id="opt-val-graphics-water" class="option-value-badge">Haute</span>
                 </div>
+                <input type="range" id="opt-graphics-water" class="option-slider" min="1" max="3" step="1" value="3" oninput="const labels=['Basse (Statique)', 'Moyenne (Simple)', 'Haute (Réaliste)']; document.getElementById('opt-val-graphics-water').innerText = labels[this.value - 1]; UI.onSliderChange(); UI.applyGraphicsSettings()">
+            </div>
 
-                <!-- Limite de Monstres -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-ghost icon-maxmobs"></i>
-                            <label for="opt-maxmobs">Limite de Monstres</label>
-                        </div>
-                        <span id="opt-val-maxmobs" class="option-value-badge">30</span>
+            <!-- Effets de Particules -->
+            <div class="option-row-card">
+                <div class="option-header">
+                    <div class="option-label-wrap">
+                        <i class="fas fa-fire icon-hp" style="color: #e67e22;"></i>
+                        <label for="opt-graphics-particles">Effets Particules</label>
                     </div>
-                    <input type="range" id="opt-maxmobs" class="option-slider" min="5" max="100" step="5" value="30" oninput="document.getElementById('opt-val-maxmobs').innerText = parseInt(this.value); UI.onSliderChange()">
+                    <span id="opt-val-graphics-particles" class="option-value-badge">Complets</span>
+                </div>
+                <input type="range" id="opt-graphics-particles" class="option-slider" min="1" max="3" step="1" value="3" oninput="const labels=['Désactivés', 'Réduits (33%)', 'Complets']; document.getElementById('opt-val-graphics-particles').innerText = labels[this.value - 1]; UI.onSliderChange(); UI.applyGraphicsSettings()">
+            </div>
+
+            <!-- Brume Climatique (Fog) -->
+            <div class="option-row-card">
+                <div class="option-switch-wrap">
+                    <div class="option-switch-label">
+                        <i class="fas fa-smog icon-events" style="color: #95a5a6;"></i>
+                        <label for="opt-graphics-fog">Brume Atmosphérique</label>
+                    </div>
+                    <label class="custom-switch">
+                        <input type="checkbox" id="opt-graphics-fog" onchange="UI.onSliderChange(); UI.applyGraphicsSettings()" checked>
+                        <span class="slider-switch"></span>
+                    </label>
                 </div>
             </div>
 
-            <!-- TAB PLAYER -->
-            <div id="tab-content-player" class="tab-content">
-                <!-- PV Maximum du Joueur -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-heart icon-php"></i>
-                            <label for="opt-php">PV Max du Joueur</label>
-                        </div>
-                        <span id="opt-val-php" class="option-value-badge">1.0</span>
+            <!-- Limite FPS -->
+            <div class="option-row-card">
+                <div class="option-header">
+                    <div class="option-label-wrap">
+                        <i class="fas fa-gauge-high icon-hp" style="color: #e74c3c;"></i>
+                        <label for="opt-graphics-fps">Limite FPS</label>
                     </div>
-                    <input type="range" id="opt-php" class="option-slider" min="0.5" max="5.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-php').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
+                    <span id="opt-val-graphics-fps" class="option-value-badge">Illimité</span>
                 </div>
-
-                <!-- Dégâts du Joueur -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-wand-magic-sparkles icon-pdmg"></i>
-                            <label for="opt-pdmg">Dégâts du Joueur</label>
-                        </div>
-                        <span id="opt-val-pdmg" class="option-value-badge">1.0</span>
-                    </div>
-                    <input type="range" id="opt-pdmg" class="option-slider" min="0.5" max="5.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-pdmg').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
-                </div>
-
-                <!-- Niveau de départ -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-arrow-up-right-dots icon-lvl"></i>
-                            <label for="opt-lvl">Niveau de départ</label>
-                        </div>
-                        <span id="opt-val-lvl" class="option-value-badge">1</span>
-                    </div>
-                    <input type="range" id="opt-lvl" class="option-slider" min="1" max="50" step="1" value="1" oninput="document.getElementById('opt-val-lvl').innerText = parseInt(this.value); UI.onSliderChange()">
-                </div>
-
-                <!-- XP -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-star icon-xp"></i>
-                            <label for="opt-xp">Gain d'Expérience (XP)</label>
-                        </div>
-                        <span id="opt-val-xp" class="option-value-badge">1.0</span>
-                    </div>
-                    <input type="range" id="opt-xp" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-xp').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
-                </div>
+                <input type="range" id="opt-graphics-fps" class="option-slider" min="30" max="120" step="30" value="120" oninput="const val=parseInt(this.value); document.getElementById('opt-val-graphics-fps').innerText = val === 120 ? 'Illimité' : val + ' FPS'; UI.onSliderChange(); UI.applyGraphicsSettings()">
             </div>
 
-            <!-- TAB LOOT -->
-            <div id="tab-content-loot" class="tab-content">
-                <!-- Chance Prismatiques -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-gem icon-luck-prism"></i>
-                            <label for="opt-luck-prism">Chance Prismatiques</label>
-                        </div>
-                        <span id="opt-val-luck-prism" class="option-value-badge">1.0</span>
+            <!-- Afficher les FPS -->
+            <div class="option-row-card">
+                <div class="option-switch-wrap">
+                    <div class="option-switch-label">
+                        <i class="fas fa-desktop icon-events" style="color: #f1c40f;"></i>
+                        <label for="opt-graphics-showfps">Afficher le compteur FPS</label>
                     </div>
-                    <input type="range" id="opt-luck-prism" class="option-slider" min="0.5" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-luck-prism').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
-                </div>
-
-                <!-- Chance Mini-Boss -->
-                <div class="option-row-card">
-                    <div class="option-header">
-                        <div class="option-label-wrap">
-                            <i class="fas fa-crown icon-luck-mini"></i>
-                            <label for="opt-luck-mini">Chance Mini-Boss</label>
-                        </div>
-                        <span id="opt-val-luck-mini" class="option-value-badge">1.0</span>
-                    </div>
-                    <input type="range" id="opt-luck-mini" class="option-slider" min="0.0" max="10.0" step="0.5" value="1.0" oninput="document.getElementById('opt-val-luck-mini').innerText = parseFloat(this.value).toFixed(1) + 'x'; UI.onSliderChange()">
-                </div>
-
-                <!-- Activer les Événements Aléatoires -->
-                <div class="option-row-card">
-                    <div class="option-switch-wrap">
-                        <div class="option-switch-label">
-                            <i class="fas fa-bolt icon-events"></i>
-                            <label for="opt-events">Événements Aléatoires</label>
-                        </div>
-                        <label class="custom-switch">
-                            <input type="checkbox" id="opt-events" onchange="UI.onSliderChange()">
-                            <span class="slider-switch"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB CAMPS -->
-            <div id="tab-content-camps" class="tab-content">
-                <div class="camps-options-layout">
-                    <!-- Left column: list of camps -->
-                    <div class="camps-list-panel">
-                        <!-- Global Controls -->
-                        <div class="global-camps-control" style="display: flex; gap: 10px; margin-bottom: 12px; padding: 0 4px; position: sticky; top: 0; background: #0e0a07; z-index: 10;">
-                            <button class="btn-preset" style="flex: 1; padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;color:#fff" onclick="UI.toggleAllCamps(true); return false;">Activer Tout</button>
-                            <button class="btn-preset" style="flex: 1; padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;color:#fff" onclick="UI.toggleAllCamps(false); return false;">Désactiver Tout</button>
-                        </div>
-
-                        <!-- Camp Tent -->
-                        <div class="camp-card selected" onclick="window.CampPreview && window.CampPreview.selectCamp('tent')" id="camp-card-tent">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Camp de Voleurs</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-tent-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('tent')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Contient des voleurs agiles et des shamans. Un camp rustique avec un feu de camp détaillé, des tonneaux et des caisses.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Voleurs, Shamans, Démonistes, Corrompus</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-tent-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-tent').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-tent" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Portal -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('portal')" id="camp-card-portal">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Portail Arcane</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-portal-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('portal')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Gardé par des sorciers arcaniques et sentinelles. Comporte un portail flottant, des runes orbitales et des piliers de pierre.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Démonistes, Sentinelles, Shamans, Corrompus, Voleurs</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-portal-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-portal').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-portal" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Barricade -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('barricade')" id="camp-card-barricade">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Barricade à Pointes</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-barricade-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('barricade')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Fortification en bois renforcée d'acier avec cordages détaillés, gardée par des sentinelles et gardes royaux.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Sentinelles, Voleurs, Démonistes, Shamans, Gardes Royaux</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-barricade-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-barricade').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-barricade" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Obelisk -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('obelisk')" id="camp-card-obelisk">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Obélisque Corrompu</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-obelisk-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('obelisk')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Hanté par des créatures corrompues et des démonistes. Présente un obélisque sombre flottant avec un oeil magique.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Corrompus, Démonistes, Shamans, Voleurs</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-obelisk-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-obelisk').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-obelisk" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Treasure -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('treasure')" id="camp-card-treasure">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Avant-poste au Trésor</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-treasure-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('treasure')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Un coffre précieux orné d'or défendu par les gardes royaux sous leur bannière ondulante.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Gardes Royaux, Sentinelles, Voleurs, Shamans</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-treasure-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-treasure').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-treasure" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Ritual -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('ritual')" id="camp-card-ritual">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Rituel Shamanique</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-ritual-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('ritual')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Un grand rituel de shamans autour d'un chaudron bouillonnant et de totems aux yeux brillants.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Voleurs, Démonistes, Shamans</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-ritual-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-ritual').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-ritual" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Crypt -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('crypt')" id="camp-card-crypt">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Crypte Maudite</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-crypt-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('crypt')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Un sombre tombeau de pierre entouré de tombes avec un sarcophage scellé par une magie violette.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Corrompus, Démonistes, Shamans</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-crypt-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-crypt').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-crypt" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Shrine -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('shrine')" id="camp-card-shrine">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Sanctuaire Druidique</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-shrine-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('shrine')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Un sanctuaire naturel composé de racines anciennes entourant un cristal de forêt vert et magique.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Voleurs, Shamans, Sentinelles</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-shrine-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-shrine').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-shrine" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Forge -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('forge')" id="camp-card-forge">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Fissure Volcanique</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-forge-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('forge')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Une fissure brûlante d'où s'écoule du magma en fusion, dotée d'une enclume de forgeron volcanique.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Sentinelles, Gardes Royaux, Démonistes, Shamans</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-forge-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-forge').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-forge" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Frozen -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('frozen')" id="camp-card-frozen">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Cristal Gelé</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-frozen-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('frozen')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Une flèche de glace éternelle et tranchante, qui scintille d'un éclat glacial et libère du givre.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Sentinelles, Démonistes, Shamans</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-frozen-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-frozen').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-frozen" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Camp Ruins -->
-                        <div class="camp-card" onclick="window.CampPreview && window.CampPreview.selectCamp('ruins')" id="camp-card-ruins">
-                            <div class="camp-card-header">
-                                <span class="camp-card-title">Ruines du Colosse</span>
-                                <label class="custom-switch">
-                                    <input type="checkbox" id="opt-camp-ruins-enabled" onchange="UI.onSliderChange(); window.CampPreview && window.CampPreview.updateCampStatus('ruins')" checked>
-                                    <span class="slider-switch"></span>
-                                </label>
-                            </div>
-                            <div class="camp-card-body">
-                                <p class="camp-desc">Les vestiges d'un ancien colosse en pierre avec une colonne brisée et des yeux de runes dorées scintillantes.</p>
-                                <p class="camp-mobs-list"><strong>Garde :</strong> Gardes Royaux, Voleurs, Shamans</p>
-                                <div class="camp-weight-control">
-                                    <label>Fréquence d'apparition</label>
-                                    <div class="weight-slider-wrap">
-                                        <input type="range" id="opt-camp-ruins-weight" class="option-slider" min="0" max="500" step="5" value="100" oninput="document.getElementById('opt-val-camp-ruins').innerText = this.value + '%'; UI.onSliderChange()">
-                                        <span id="opt-val-camp-ruins" class="weight-badge">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right column: 3D preview panel -->
-                    <div class="camps-preview-panel">
-                        <div class="preview-header">
-                            <i class="fas fa-eye"></i> Aperçu 3D du Camp
-                        </div>
-                        <div id="camp-preview-canvas-container" class="preview-viewport">
-                            <!-- Canvas injected here -->
-                        </div>
-                        <div class="preview-footer" id="camp-preview-title">
-                            Camp de Voleurs
-                        </div>
-                    </div>
+                    <label class="custom-switch">
+                        <input type="checkbox" id="opt-graphics-showfps" onchange="UI.onSliderChange(); UI.applyGraphicsSettings()">
+                        <span class="slider-switch"></span>
+                    </label>
                 </div>
             </div>
         </main>
 
-        <footer style="margin-top: auto;">
+        <footer style="margin-top: auto; padding-top: 15px;">
             <button class="btn-main" style="width: 100%; margin: 0;" onclick="UI.saveOptionsAndReturn()">CONFIRMER & RETOUR</button>
         </footer>
     </div>
-</div>
+</div>

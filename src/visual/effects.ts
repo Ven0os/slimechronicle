@@ -105,6 +105,14 @@ function getParticleMat(color) {
 }
 
 export function spawnParticles(pos, color, count, sizeMult = 1.0) {
+    const quality = STATE.gameOptions?.particleQuality !== undefined ? STATE.gameOptions.particleQuality : 3;
+    if (quality === 1) {
+        return;
+    }
+    if (quality === 2) {
+        count = Math.max(1, Math.floor(count * 0.33));
+    }
+
     for (let i = 0; i < count; i++) {
         // Random shape: Box, Octahedron, or Tetrahedron for realistic debris shards
         const size = (0.06 + Math.random() * 0.14) * sizeMult;

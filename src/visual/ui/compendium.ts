@@ -61,17 +61,12 @@ export const UICompendium = {
         if (!this.allFragmentsList) this.generatePrismaticOptions();
 
         const totalEl = document.getElementById('prism-stat-total');
-        const ownedEl = document.getElementById('prism-stat-owned');
         const favEl = document.getElementById('prism-stat-fav');
-        if (!totalEl && !ownedEl && !favEl) return;
+        if (!totalEl && !favEl) return;
 
         const total = this.allFragmentsList.length;
-        const ownedIds = STATE.collectedFragments
-            ? new Set(STATE.collectedFragments.map(f => f.id))
-            : new Set();
 
         if (totalEl) totalEl.textContent = String(total);
-        if (ownedEl) ownedEl.textContent = String(ownedIds.size);
         if (favEl) favEl.textContent = String(this.getFavorites().length);
     },
 
@@ -151,7 +146,6 @@ export const UICompendium = {
         let enchantLine = '';
 
         const badges = [];
-        if (mode === 'view' && isOwned) badges.push('<span class="prism-badge prism-badge-owned">Acquis</span>');
         if (lvl > 0) badges.push(`<span class="prism-badge prism-badge-level">Niv. ${lvl}</span>`);
 
         card.innerHTML = `
@@ -283,22 +277,29 @@ export const UICompendium = {
             const defaultP = modal.querySelector('p');
             if (defaultP) defaultP.style.display = 'none';
 
+            const hexColor = targetFrag.color || '#d4af37';
+            const rarityRGB = {
+                common: '148, 163, 184',
+                rare: '59, 130, 246',
+                epic: '168, 85, 247',
+                legendary: '234, 179, 8',
+                mythic: '244, 63, 94'
+            }[targetFrag.rarity] || '212, 175, 55';
+
             container.innerHTML = `
-                <div class="enchant-deep-dive" style="display:flex; width:95vw; max-width:700px; background:rgba(10,10,15,0.98); border:1px solid ${targetFrag.color}; border-radius:15px; overflow:hidden; box-shadow:0 0 50px rgba(0,0,0,0.8); position:relative;">
-                    <div style="flex:1; padding:40px; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; position:relative;">
-                        <div style="font-size:0.9rem; color:${targetFrag.color}; letter-spacing:4px; margin-bottom:20px; text-transform:uppercase;">Fragment Prismatic</div>
-                        <i class="${targetFrag.icon}" style="font-size:6rem; color:${targetFrag.color}; filter:drop-shadow(0 0 20px ${targetFrag.color}); margin-bottom:30px;"></i>
-                        <h2 style="font-family:'Cinzel'; font-size:2.5rem; color:#fff; text-align:center;">
+                <div class="enchant-deep-dive" style="--deep-dive-color: ${hexColor}; --deep-dive-rgb: ${rarityRGB};">
+                    <div class="enchant-deep-dive-inner">
+                        <div class="enchant-deep-dive-title-label">Fragment Prismatic</div>
+                        <i class="${targetFrag.icon} enchant-deep-dive-icon"></i>
+                        <h2 class="enchant-deep-dive-name">
                             ${targetFrag.name.replace(/★|x\d+\s*/g, '').trim()}
                         </h2>
-                        <p style="margin-top:16px; color:#aaa; text-align:center; max-width:420px;">${targetFrag.desc}</p>
-                        <div class="prism-card-stats" style="margin-top:20px; font-size:1.05rem; padding:20px 40px;">
+                        <p class="enchant-deep-dive-desc">${targetFrag.desc}</p>
+                        <div class="prism-card-stats" style="margin-top:24px; font-size:1.05rem; padding:16px 36px;">
                             ${this.formatPrismStatHtml(targetFrag.baseStatText || targetFrag.statText.split('<br>')[0])}
                         </div>
                     </div>
-                    <div onclick="document.getElementById('prismatic-modal').click()"
-                         style="position:absolute; top:20px; right:20px; color:#fff; font-size:2rem; cursor:pointer; z-index:20; opacity:0.7; transition:0.2s; background:rgba(0,0,0,0.5); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;"
-                         onmouseover="this.style.opacity=1; this.style.background='rgba(200,50,50,0.8)'" onmouseout="this.style.opacity=0.7; this.style.background='rgba(0,0,0,0.5)'">
+                    <div class="enchant-deep-dive-close" onclick="document.getElementById('prismatic-modal').click()">
                         ×
                     </div>
                 </div>

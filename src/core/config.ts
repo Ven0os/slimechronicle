@@ -85,6 +85,13 @@ export const STATE = {
     ngLevel: 0, // Global (Legacy)
     gameOptions: (() => {
         const defaultOpts = {
+            resolutionScale: 100,
+            decoDensity: 4,
+            waterQuality: 3,
+            particleQuality: 3,
+            isFogActive: true,
+            fpsLimit: 120,
+            showFps: false,
             enemyHpMult: 1.0,
             enemyDmgMult: 1.0,
             enemySpawnRate: 1.0,

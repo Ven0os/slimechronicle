@@ -28,10 +28,6 @@ import { createThemedWorldMap, spawnSafeZoneNPCs } from '@/gameplay/world/worldM
 import { isInSafeZone, isNoMobZone } from '@/gameplay/world/worldZones';
 import * as THREE from 'three';
 
-initScene();
-Input.init();
-TextureManager.load();
-
 declare global {
   interface Window {
     GameLauncher: typeof GameLauncher;
@@ -47,53 +43,93 @@ declare global {
   }
 }
 
-window.GameLauncher = GameLauncher;
-window.Network = Network;
-window.GameLogic = GameLogic;
+export async function initializeGame(onProgress?: (progress: number, detail: string) => void): Promise<void> {
+  window.GameLauncher = GameLauncher;
+  window.Network = Network;
+  window.GameLogic = GameLogic;
 
-window.Debug = {
-  givePrism: (filter = 'random') => {
-    if (!UICompendium.allFragmentsList) UICompendium.generatePrismaticOptions();
-    let t = null;
-    if (filter === 'random') {
-      t = UICompendium.allFragmentsList[Math.floor(Math.random() * UICompendium.allFragmentsList.length)];
-    } else {
-      const m = UICompendium.allFragmentsList.filter(
-        (f: { rarity: string; id: string }) => f.rarity === filter || f.id.includes(filter as string),
-      );
-      if (m.length > 0) t = m[Math.floor(Math.random() * m.length)];
-    }
-    if (t) UI.selectReward(t);
-  },
-  spawnBloodAltar: () =>
-    WorldEvents.spawnBloodAltar(Globals.player.position.clone().add(new THREE.Vector3(5, 0, 0))),
-  spawnGeode: () =>
-    WorldEvents.spawnGeode(Globals.player.position.clone().add(new THREE.Vector3(-5, 0, 0))),
-  spawnCrystalDefense: () =>
-    WorldEvents.spawnCrystalDefense(Globals.player.position.clone().add(new THREE.Vector3(0, 0, 10))),
-  spawnRunePuzzle: () =>
-    WorldEvents.spawnRunePuzzle(Globals.player.position.clone().add(new THREE.Vector3(0, 0, -10))),
-  spawnAncientGong: () =>
-    WorldEvents.spawnAncientGong(Globals.player.position.clone().add(new THREE.Vector3(-5, 0, -5))),
-  spawnElementalPillars: () =>
-    WorldEvents.spawnElementalPillars(Globals.player.position.clone().add(new THREE.Vector3(15, 0, 0))),
-  spawnLaserMirrors: () =>
-    WorldEvents.spawnLaserMirrors(Globals.player.position.clone().add(new THREE.Vector3(0, 0, 15))),
-  spawnLightRitual: () =>
-    WorldEvents.spawnLightRitual(Globals.player.position.clone().add(new THREE.Vector3(0, 0, -15))),
-  spawnGliderRun: () =>
-    WorldEvents.spawnGliderRun(Globals.player.position.clone().add(new THREE.Vector3(10, 0, 10))),
-  spawnMiniBoss: (miniId = 'random', tiers = null) =>
-    GameLogic.spawnMiniBoss(miniId as string, tiers as string | string[] | null),
-};
+  window.Debug = {
+    givePrism: (filter = 'random') => {
+      if (!UICompendium.allFragmentsList) UICompendium.generatePrismaticOptions();
+      let t = null;
+      if (filter === 'random') {
+        t = UICompendium.allFragmentsList[Math.floor(Math.random() * UICompendium.allFragmentsList.length)];
+      } else {
+        const m = UICompendium.allFragmentsList.filter(
+          (f: { rarity: string; id: string }) => f.rarity === filter || f.id.includes(filter as string),
+        );
+        if (m.length > 0) t = m[Math.floor(Math.random() * m.length)];
+      }
+      if (t) UI.selectReward(t);
+    },
+    spawnBloodAltar: () =>
+      WorldEvents.spawnBloodAltar(Globals.player.position.clone().add(new THREE.Vector3(5, 0, 0))),
+    spawnGeode: () =>
+      WorldEvents.spawnGeode(Globals.player.position.clone().add(new THREE.Vector3(-5, 0, 0))),
+    spawnCrystalDefense: () =>
+      WorldEvents.spawnCrystalDefense(Globals.player.position.clone().add(new THREE.Vector3(0, 0, 10))),
+    spawnRunePuzzle: () =>
+      WorldEvents.spawnRunePuzzle(Globals.player.position.clone().add(new THREE.Vector3(0, 0, -10))),
+    spawnAncientGong: () =>
+      WorldEvents.spawnAncientGong(Globals.player.position.clone().add(new THREE.Vector3(-5, 0, -5))),
+    spawnElementalPillars: () =>
+      WorldEvents.spawnElementalPillars(Globals.player.position.clone().add(new THREE.Vector3(15, 0, 0))),
+    spawnLaserMirrors: () =>
+      WorldEvents.spawnLaserMirrors(Globals.player.position.clone().add(new THREE.Vector3(0, 0, 15))),
+    spawnLightRitual: () =>
+      WorldEvents.spawnLightRitual(Globals.player.position.clone().add(new THREE.Vector3(0, 0, -15))),
+    spawnGliderRun: () =>
+      WorldEvents.spawnGliderRun(Globals.player.position.clone().add(new THREE.Vector3(10, 0, 10))),
+    spawnMiniBoss: (miniId = 'random', tiers = null) =>
+      GameLogic.spawnMiniBoss(miniId as string, tiers as string | string[] | null),
+  };
 
-createBoundaries();
-createThemedWorldMap();
-spawnSafeZoneNPCs();
-createAltars();
-createDecorations();
-createAnimatedSky();
-SafeZoneHub.init();
+  const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+  if (onProgress) onProgress(0, 'Initialisation de la scène 3D...');
+  initScene();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(15, 'Configuration des touches...');
+  Input.init();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(30, 'Génération des textures...');
+  TextureManager.load();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(45, 'Définition des limites...');
+  createBoundaries();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(60, 'Génération de la carte...');
+  createThemedWorldMap();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(75, 'Apparition des PNJ...');
+  spawnSafeZoneNPCs();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(85, 'Génération des sanctuaires...');
+  createAltars();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(90, 'Création des décors...');
+  createDecorations();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(95, 'Finalisation de l\'environnement...');
+  createAnimatedSky();
+  SafeZoneHub.init();
+  await yieldToBrowser();
+
+  if (onProgress) onProgress(100, 'Lancement imminent...');
+
+  // Appliquer les paramètres graphiques sauvegardés au démarrage
+  if (UI && typeof UI.applyGraphicsSettings === 'function') {
+    UI.applyGraphicsSettings();
+  }
+}
 
 let questArrow: THREE.Group | null = null;
 
@@ -179,7 +215,20 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') {
     SafeZoneHub.startRecallChanneling();
   }
+  if (e.code === 'Escape') {
     if (Globals.player && !Globals.player.dead) {
+      const optionsScreen = document.getElementById('screen-options');
+      if (optionsScreen && optionsScreen.classList.contains('active')) {
+        UI.closeInGameOptions();
+      } else if (UI.isMenuOpen()) {
+        // Un autre menu bloquant est ouvert, on le laisse se fermer via son propre listener (comme dans skills.ts)
+        return;
+      } else {
+        UI.togglePauseMenu();
+      }
+    }
+  }
+  if (Globals.player && !Globals.player.dead) {
     if (e.code === 'Space') Globals.player.useSkill('space');
     if (e.code === 'ShiftLeft') Globals.player.useSkill('shift');
     if (e.code === 'KeyE') Globals.player.useSkill('e');
@@ -196,15 +245,51 @@ window.addEventListener('keyup', (e) => {
 });
 
 let lastTime = performance.now();
+let lastFrameTime = 0;
 let enemySpawnTimer = 0;
+let frameCount = 0;
+let lastFpsUpdateTime = 0;
+let currentFps = 0;
 
 function animate(): void {
   requestAnimationFrame(animate);
   const now = performance.now();
+
+  // Limiteur de FPS graphique
+  const fpsLimit = STATE.gameOptions?.fpsLimit || 120;
+  if (fpsLimit < 120) {
+    const frameDelay = 1000 / fpsLimit;
+    if (now - lastFrameTime < frameDelay) {
+      return;
+    }
+  }
+  lastFrameTime = now;
+
+  // Calcul des FPS réels
+  frameCount++;
+  if (now - lastFpsUpdateTime >= 1000) {
+    currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdateTime));
+    frameCount = 0;
+    lastFpsUpdateTime = now;
+    
+    const showFps = !!STATE.gameOptions?.showFps;
+    const fpsCounter = document.getElementById('fps-counter');
+    if (fpsCounter) {
+      if (showFps) {
+        fpsCounter.style.display = 'block';
+        fpsCounter.innerText = `${currentFps} FPS`;
+      } else {
+        fpsCounter.style.display = 'none';
+      }
+    }
+  }
+
   const dt = Math.min((now - lastTime) / 1000, 0.1);
   lastTime = now;
 
   if (STATE.isPaused) return;
+
+
 
   handlePassives(dt);
   HUDEnchant.updateLoop(dt);
@@ -303,11 +388,8 @@ function animate(): void {
     Globals.camera.position.y = camTarget.position.y + 14;
     Globals.camera.lookAt(camTarget.position);
   } else {
-    const time = now * 0.0001;
-    const radius = 80;
-    Globals.camera.position.x = Math.cos(time) * radius;
-    Globals.camera.position.z = Math.sin(time) * radius;
-    Globals.camera.position.y = 5;
+    // Vue fixe pré-jeu au lieu d'une rotation continue consommatrice en ressources
+    Globals.camera.position.set(48, 30, 48);
     Globals.camera.lookAt(0, 0, 0);
   }
 

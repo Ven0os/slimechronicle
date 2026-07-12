@@ -4,41 +4,204 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Slime Chronicles</title>
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Lato:wght@300;400;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
       #loading-screen {
         position: fixed;
         inset: 0;
-        background: #000;
+        background: radial-gradient(circle at center, rgba(15, 15, 25, 1) 0%, rgba(0, 0, 0, 1) 100%);
         color: #fff;
         z-index: 9999;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        transition: opacity 0.5s;
-      }
-      #loading-bar-container {
-        width: 300px;
-        height: 10px;
-        background: #333;
-        margin-top: 20px;
-        border-radius: 5px;
+        font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+        transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         overflow: hidden;
-        border: 1px solid #555;
       }
+      
+      /* Subtle moving cosmic grid/background using GPU transform to prevent layout reflows */
+      .bg-grid {
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: -50%;
+        left: -50%;
+        background-image: 
+          radial-gradient(rgba(212, 175, 55, 0.04) 1px, transparent 1px),
+          radial-gradient(rgba(212, 175, 55, 0.01) 1px, transparent 1px);
+        background-size: 40px 40px, 60px 60px;
+        background-position: 0 0, 20px 20px;
+        animation: gridMove 30s linear infinite;
+        opacity: 0.65;
+        pointer-events: none;
+        will-change: transform;
+        transform: translate3d(0, 0, 0);
+      }
+
+      @keyframes gridMove {
+        0% { transform: translate3d(0, 0, 0); }
+        100% { transform: translate3d(120px, 120px, 0); } /* Seamless loop on grid size (lcm of 40 and 60 is 120) */
+      }
+
+      /* Glowing elements in background - GPU accelerated */
+      .bg-glow-1 {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, rgba(212, 175, 55, 0) 70%);
+        top: 20%;
+        left: 20%;
+        filter: blur(50px);
+        animation: floatGlow 12s ease-in-out infinite alternate;
+        pointer-events: none;
+        will-change: transform;
+        transform: translate3d(0, 0, 0);
+      }
+
+      .bg-glow-2 {
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(138, 111, 39, 0.03) 0%, rgba(138, 111, 39, 0) 70%);
+        bottom: 15%;
+        right: 15%;
+        filter: blur(60px);
+        animation: floatGlow 16s ease-in-out infinite alternate-reverse;
+        pointer-events: none;
+        will-change: transform;
+        transform: translate3d(0, 0, 0);
+      }
+
+      @keyframes floatGlow {
+        0% { transform: translate3d(0, 0, 0) scale(1); }
+        100% { transform: translate3d(20px, -20px, 0) scale(1.08); }
+      }
+
+      /* Logo and Title */
+      #loading-logo {
+        width: 130px;
+        height: 130px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.4));
+        animation: floatLogo 4s ease-in-out infinite;
+        margin-bottom: 15px;
+        z-index: 10;
+        will-change: transform;
+      }
+
+      @keyframes floatLogo {
+        0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+        50% { transform: translate3d(0, -6px, 0) rotate(1deg); }
+      }
+
+      #loading-title {
+        font-family: 'Cinzel', serif;
+        font-size: 2.6rem;
+        font-weight: 700;
+        letter-spacing: 6px;
+        margin-bottom: 30px;
+        color: #d4af37; /* var(--menu-gold) */
+        text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+        animation: breathe 4s infinite ease-in-out;
+        text-transform: uppercase;
+        z-index: 10;
+        position: relative;
+      }
+      
+      @keyframes breathe {
+        0%, 100% { text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+        50% { text-shadow: 0 0 25px rgba(212, 175, 55, 0.8); }
+      }
+
+      #loading-title::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 20%;
+        width: 60%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+      }
+
+      /* Loader components */
+      #loading-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 10;
+        width: 100%;
+        max-width: 300px;
+        padding: 0 10px;
+        box-sizing: border-box;
+      }
+
+      #loading-bar-container {
+        width: 100%;
+        height: 6px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08); /* var(--menu-glass-border) */
+        border-left: none;
+        border-right: none;
+        position: relative;
+        overflow: hidden;
+      }
+
       #loading-bar {
         width: 0%;
         height: 100%;
-        background: #00ff00;
-        transition: width 0.1s linear;
-        box-shadow: 0 0 10px #00ff00;
+        background: linear-gradient(90deg, #8a6f27 0%, #d4af37 50%, #f9e49b 100%);
+        transition: width 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.4), 0 0 18px rgba(212, 175, 55, 0.15);
+        position: relative;
       }
+
+      #loading-bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 40px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+        animation: barShine 2s infinite;
+        will-change: transform;
+      }
+
+      @keyframes barShine {
+        0% { transform: translate3d(-60px, 0, 0); }
+        100% { transform: translate3d(160px, 0, 0); }
+      }
+
+      #loading-details {
+        margin-top: 15px;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        text-align: center;
+      }
+
+      #loading-percentage {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #d4af37; /* var(--menu-gold) */
+        margin-top: 4px;
+        letter-spacing: 1px;
+        text-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+      }
+
       .hidden {
         opacity: 0;
         pointer-events: none;
@@ -47,17 +210,26 @@
   </head>
   <body>
     <div id="loading-screen">
-      <h1>CHARGEMENT...</h1>
-      <div id="loading-bar-container">
-        <div id="loading-bar"></div>
+      <div class="bg-grid"></div>
+      <div class="bg-glow-1"></div>
+      <div class="bg-glow-2"></div>
+      
+      <img id="loading-logo" src="/logo.svg" alt="Slime Chronicles Logo" onerror="this.style.display='none'" />
+      <h1 id="loading-title">Slime Chronicles</h1>
+      
+      <div id="loading-wrapper">
+        <div id="loading-bar-container">
+          <div id="loading-bar"></div>
+        </div>
+        <p id="loading-details">Initialisation du système...</p>
+        <span id="loading-percentage">0%</span>
       </div>
-      <p id="loading-details" style="margin-top: 10px; color: #888; font-size: 12px">
-        Initialisation...
-      </p>
     </div>
 
     <div id="game-container"></div>
-    <div id="system-overlays"></div>
+    <div id="system-overlays">
+        <div id="fps-counter" style="position: fixed; top: 12px; right: 12px; z-index: 9999; background: rgba(10, 10, 15, 0.65); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: 6px; padding: 4px 10px; color: #d4af37; font-family: 'Rajdhani', sans-serif; font-size: 0.85rem; font-weight: 700; display: none; backdrop-filter: blur(8px); pointer-events: none; box-shadow: 0 4px 15px rgba(0,0,0,0.6); text-shadow: 0 0 5px rgba(212, 175, 55, 0.5); letter-spacing: 0.5px;">-- FPS</div>
+    </div>
     <div id="ui-layer">
       <div id="menu-main"></div>
       <div id="menu-classes"></div>

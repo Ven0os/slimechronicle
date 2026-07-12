@@ -395,7 +395,20 @@ export function updateOcclusion(camera, player) {
     raycaster.set(camera.position, occlusionDir);
     raycaster.far = distance - 2;
 
-    const intersects = raycaster.intersectObjects(Globals.decoGroup.children, true);
+    // Filter to only check objects within a relevant radius of the player (e.g. 40 units)
+    // to avoid recursive raycasting over all distant decorations in the world.
+    const playerPos = player.position;
+    const nearbyDecos = [];
+    const children = Globals.decoGroup.children;
+    const len = children.length;
+    for (let i = 0; i < len; i++) {
+        const child = children[i];
+        if (child.position.distanceToSquared(playerPos) < 1600) { // 40 * 40 = 1600
+            nearbyDecos.push(child);
+        }
+    }
+
+    const intersects = raycaster.intersectObjects(nearbyDecos, true);
 
     const hitSet = new Set();
     for (const hit of intersects) {

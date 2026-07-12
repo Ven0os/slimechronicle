@@ -13,39 +13,59 @@ import { BuffBar } from '@/ui/buffBar';
 import { loadComponents } from './bootstrap/loadComponents';
 import { AudioSys, TextureManager } from '@/core/ressources';
 
-async function boot(): Promise<void> {
+function updateProgress(percentage: number, text: string) {
   const bar = document.getElementById('loading-bar');
   const details = document.getElementById('loading-details');
+  const percentEl = document.getElementById('loading-percentage');
+  
+  if (bar) bar.style.width = `${percentage}%`;
+  if (details) details.innerText = text;
+  if (percentEl) percentEl.innerText = `${Math.floor(percentage)}%`;
+}
+
+async function boot(): Promise<void> {
   const loadingScreen = document.getElementById('loading-screen');
+  const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-  if (details) details.innerText = "Chargement de l'interface...";
+  // Phase 1: Interface UI elements
+  updateProgress(5, "Initialisation de l'interface...");
   await loadComponents();
-  if (bar) bar.style.width = '20%';
+  await yieldToBrowser();
 
-  if (details) details.innerText = 'Génération des textures...';
-  TextureManager.load();
-  if (bar) bar.style.width = '30%';
-
-  if (details) details.innerText = 'Chargement des effets sonores...';
+  // Phase 2: Audio preloading
+  updateProgress(15, "Chargement des effets sonores...");
   await AudioSys.init((progress) => {
-    if (bar) bar.style.width = `${30 + progress * 70}%`;
-    if (details) details.innerText = `Chargement Audio... ${Math.floor(progress * 100)}%`;
+    // Maps audio progress (0 to 1) to progress range (15 to 45)
+    const currentProgress = 15 + progress * 30;
+    updateProgress(currentProgress, `Chargement audio... ${Math.floor(progress * 100)}%`);
+  });
+  await yieldToBrowser();
+
+  // Phase 3: Game Loop module import
+  updateProgress(48, "Chargement du moteur de jeu...");
+  const { initializeGame, startGameLoop } = await import('./game-loop');
+  await yieldToBrowser();
+
+  // Phase 4: Game initialization (scene, boundaries, map, npcs, altars, decorations)
+  await initializeGame((stepProgress, stepDetail) => {
+    // Maps initializeGame progress (0 to 100) to progress range (50 to 95)
+    const currentProgress = 50 + (stepProgress / 100) * 45;
+    updateProgress(currentProgress, stepDetail);
   });
 
-  if (bar) bar.style.width = '100%';
-  if (details) details.innerText = 'Lancement du jeu...';
+  // Phase 5: Complete
+  updateProgress(100, "Prêt !");
 
-  setTimeout(async () => {
+  setTimeout(() => {
     if (AudioSys.ctx && AudioSys.ctx.state === 'suspended') {
       AudioSys.ctx.resume().catch(() => undefined);
     }
 
     loadingScreen?.classList.add('hidden');
-    setTimeout(() => loadingScreen?.remove(), 500);
+    setTimeout(() => loadingScreen?.remove(), 600);
 
-    const { startGameLoop } = await import('./game-loop');
     startGameLoop();
-  }, 500);
+  }, 400);
 }
 
 window.BuffBar = BuffBar;
