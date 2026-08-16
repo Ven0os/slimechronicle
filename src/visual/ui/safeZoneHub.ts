@@ -282,6 +282,11 @@ export const SafeZoneHub = {
       if (timer) {
         timer.textContent = `${this.channelingTime.toFixed(1)}s`;
       }
+      const fill = document.getElementById('channeling-bar-fill');
+      if (fill) {
+        const pct = Math.min(100, Math.max(0, ((5.0 - this.channelingTime) / 5.0) * 100));
+        fill.style.width = `${pct}%`;
+      }
 
       if (this.channelingTime <= 0) {
         this.completeRecallChanneling();

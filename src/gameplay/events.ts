@@ -73,7 +73,7 @@ export const WorldEvents = {
         else if (r < 0.66) this.spawnAncientGong(pos);
         else if (r < 0.77) this.spawnLaserMirrors(pos);
         else if (r < 0.88) this.spawnLightRitual(pos);
-        else this.spawnGeode(pos);
+        else this.spawnGliderRun(pos);
     },
 
     update: function(dt) {

@@ -89,6 +89,18 @@ export function initScene() {
     Globals.scene.add(water);
     Globals.water = water; // Stocké pour l'animation
 
+    // Gestion du redimensionnement de la fenêtre
+    window.addEventListener('resize', () => {
+        if (!Globals.camera || !Globals.renderer) return;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        Globals.camera.aspect = width / height;
+        Globals.camera.updateProjectionMatrix();
+        const resScale = ((window.STATE?.gameOptions?.resolutionScale) || 100) / 100;
+        Globals.renderer.setPixelRatio(window.devicePixelRatio * resScale);
+        Globals.renderer.setSize(width, height);
+    });
+
     // Exposition globale pour debug si besoin
     window.Globals = Globals;
 }

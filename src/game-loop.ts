@@ -132,10 +132,11 @@ export async function initializeGame(onProgress?: (progress: number, detail: str
 }
 
 let questArrow: THREE.Group | null = null;
+let questArrowMat: THREE.MeshBasicMaterial | null = null;
 
 function createQuestArrowModel(): THREE.Group {
   const group = new THREE.Group();
-  const greenMat = new THREE.MeshBasicMaterial({
+  questArrowMat = new THREE.MeshBasicMaterial({
     color: 0x00ff00,
     transparent: true,
     opacity: 0.8,
@@ -151,7 +152,7 @@ function createQuestArrowModel(): THREE.Group {
   headShape.lineTo(-0.4, -0.5);
   headShape.lineTo(0, 0.5);
   const headGeo = new THREE.ShapeGeometry(headShape);
-  const head = new THREE.Mesh(headGeo, greenMat);
+  const head = new THREE.Mesh(headGeo, questArrowMat);
   head.rotation.x = -Math.PI / 2;
   head.position.z = 0.5;
   arrowMesh.add(head);
@@ -179,13 +180,9 @@ function updateQuestIndicator(dt: number): void {
       questArrow.lookAt(target.position.x, target.position.y, target.position.z);
       const t = Date.now() * 0.005;
       if (questArrow.children[0]) questArrow.children[0].position.z = Math.sin(t) * 0.2;
-      const opacity = 0.6 + Math.sin(t * 0.5) * 0.4;
-      questArrow.traverse((c) => {
-        const mesh = c as THREE.Mesh;
-        if (mesh.material && 'opacity' in (mesh.material as THREE.Material)) {
-          (mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
-        }
-      });
+      if (questArrowMat) {
+        questArrowMat.opacity = 0.6 + Math.sin(t * 0.5) * 0.4;
+      }
     }
   } else {
     questArrow.visible = false;
@@ -289,7 +286,25 @@ function animate(): void {
 
   if (STATE.isPaused) return;
 
+  if (!Globals.player) {
+    const classScreen = document.getElementById('screen-class');
+    const compendiumScreen = document.getElementById('screen-compendium');
+    const isOpaqueScreenActive = (classScreen?.classList.contains('active')) || (compendiumScreen?.classList.contains('active'));
 
+    if (!isOpaqueScreenActive) {
+      if (Globals.water) {
+        Globals.water.position.y = -1.8 + Math.sin(now * 0.001) * 0.05;
+      }
+      if (Globals.camera) {
+        Globals.camera.position.set(48, 30, 48);
+        Globals.camera.lookAt(0, 0, 0);
+      }
+      if (Globals.renderer && Globals.scene && Globals.camera) {
+        Globals.renderer.render(Globals.scene, Globals.camera);
+      }
+    }
+    return;
+  }
 
   handlePassives(dt);
   HUDEnchant.updateLoop(dt);
@@ -297,7 +312,7 @@ function animate(): void {
   WorldEvents.update(dt);
   updateQuestIndicator(dt);
 
-  if (Globals.player && Globals.camera) {
+  if (Globals.camera) {
     updateOcclusion(Globals.camera, Globals.player);
   }
 

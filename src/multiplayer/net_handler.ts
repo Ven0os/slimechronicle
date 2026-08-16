@@ -220,9 +220,6 @@ export function handleNetworkMessage(data) {
     } 
     else if (data.type === 'prismatic-trigger') {
         const rarity = data.rarity || 'common';
-        if (window.Debug && typeof window.Debug.givePrism === 'function') {
-            window.Debug.givePrism(rarity);
-        }
         if (UI.showPrismaticReward) {
             UI.showPrismaticReward(rarity); 
         }

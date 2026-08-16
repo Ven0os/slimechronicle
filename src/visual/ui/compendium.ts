@@ -650,24 +650,43 @@ export const UICompendium = {
         const options = [...commonFragments, ...rareFragments, ...epicFragments, ...legendaryFragments, ...mythicFragments];
         this.allFragmentsList = options;
 
-        const weightedOptions = [];
         const luckPrism = (STATE.gameOptions && STATE.gameOptions.luckMultPrismatic !== undefined) ? STATE.gameOptions.luckMultPrismatic : 1.0;
+        let totalWeight = 0;
         options.forEach(opt => {
             let weight = 1;
             if (opt.rarity === 'common') weight = 1000;
-            if (opt.rarity === 'rare') weight = Math.round(200 * luckPrism);
-            if (opt.rarity === 'epic') weight = Math.round(100 * luckPrism * luckPrism);
-            if (opt.rarity === 'legendary') weight = Math.round(50 * luckPrism * luckPrism * luckPrism);
-            if (opt.rarity === 'mythic') weight = Math.round(10 * luckPrism * luckPrism * luckPrism * luckPrism);
+            else if (opt.rarity === 'rare') weight = Math.round(200 * luckPrism);
+            else if (opt.rarity === 'epic') weight = Math.round(100 * luckPrism * luckPrism);
+            else if (opt.rarity === 'legendary') weight = Math.round(50 * luckPrism * luckPrism * luckPrism);
+            else if (opt.rarity === 'mythic') weight = Math.round(10 * luckPrism * luckPrism * luckPrism * luckPrism);
             opt.weight = weight;
-            for (let i = 0; i < weight; i++) weightedOptions.push(opt);
+            totalWeight += weight;
         });
 
-        this.totalWeight = weightedOptions.length;
+        this.totalWeight = totalWeight;
+
+        const pickRandom = (excludedIds) => {
+            let pool = options;
+            let currentTotal = totalWeight;
+            if (excludedIds.size > 0) {
+                pool = options.filter(o => !excludedIds.has(o.id));
+                currentTotal = pool.reduce((sum, o) => sum + o.weight, 0);
+            }
+            if (pool.length === 0 || currentTotal <= 0) return options[0];
+            let rand = Math.random() * currentTotal;
+            for (const opt of pool) {
+                if (rand < opt.weight) return opt;
+                rand -= opt.weight;
+            }
+            return pool[pool.length - 1];
+        };
+
         const selection = [];
-        while (selection.length < 3) {
-            const pick = weightedOptions[Math.floor(Math.random() * weightedOptions.length)];
-            if (!selection.some(s => s.id === pick.id)) selection.push(pick);
+        const chosenIds = new Set();
+        while (selection.length < Math.min(3, options.length)) {
+            const pick = pickRandom(chosenIds);
+            chosenIds.add(pick.id);
+            selection.push(pick);
         }
         return selection;
     },

@@ -99,9 +99,7 @@ export function dealDamageToEnemy(enemy, baseDmg, opts = {}) {
 
 
     if (shouldApplyMarkedBonus(enemy) && PassiveKeystoneHooks.isEnemyMarked(enemy)) {
-
-        scaled = baseDmg * 1.35;
-
+        scaled *= 1.35;
     }
 
 

@@ -15,6 +15,15 @@ import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt, getPlayableRadiusAt,
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
 import { BuffBar } from '@/ui/buffBar'; 
 
+// Scratch math objects to prevent GC pressure in hot game loops
+const _moveInput = new THREE.Vector3();
+const _targetQuat = new THREE.Quaternion();
+const _upAxis = new THREE.Vector3(0, 1, 0);
+const _scratchDir = new THREE.Vector3();
+const _pushDir = new THREE.Vector3();
+const _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const _intersectPoint = new THREE.Vector3();
+
 export class PlayerBase extends THREE.Group {
     constructor(className) {
         super();
@@ -248,24 +257,23 @@ export class PlayerBase extends THREE.Group {
             this.knockback.multiplyScalar(Math.pow(0.9, dt * 60));
             this.resolveCollisions();
         } else if (!STATE.isPaused && !this.isStunned && !UI.isMenuOpen() && !STATE.cinematicActive) { 
-            const moveInput = new THREE.Vector3();
-            if(Input.keys['KeyW']) moveInput.z -= 1;
-            if(Input.keys['KeyS']) moveInput.z += 1;
-            if(Input.keys['KeyA']) moveInput.x -= 1;
-            if(Input.keys['KeyD']) moveInput.x += 1;
+            _moveInput.set(0, 0, 0);
+            if(Input.keys['KeyW']) _moveInput.z -= 1;
+            if(Input.keys['KeyS']) _moveInput.z += 1;
+            if(Input.keys['KeyA']) _moveInput.x -= 1;
+            if(Input.keys['KeyD']) _moveInput.x += 1;
 
-            if(moveInput.length() > 0) {
+            if(_moveInput.lengthSq() > 0) {
                 this.isMoving = true; 
-                moveInput.normalize();
-                this.position.add(moveInput.clone().multiplyScalar(this.speed * STATE.timeScale * dt)); 
+                _moveInput.normalize();
+                this.position.addScaledVector(_moveInput, this.speed * STATE.timeScale * dt); 
                 this.resolveCollisions();
 
-                const targetAngle = Math.atan2(moveInput.x, moveInput.z);
+                const targetAngle = Math.atan2(_moveInput.x, _moveInput.z);
                 this.netRotation = targetAngle; 
                 
-                const targetQuaternion = new THREE.Quaternion();
-                targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
-                this.mesh.quaternion.slerp(targetQuaternion, 15 * dt);
+                _targetQuat.setFromAxisAngle(_upAxis, targetAngle);
+                this.mesh.quaternion.slerp(_targetQuat, 15 * dt);
             }
         }
 
@@ -383,10 +391,10 @@ export class PlayerBase extends THREE.Group {
         if (!this.isLocalPlayer()) return;
         const net = Network || window.Network;
         if (STATE.multiplayer.active && net) {
-            const dir = new THREE.Vector3(0, 0, 1);
-            if (this.mesh) dir.applyQuaternion(this.mesh.quaternion);
-            else dir.applyQuaternion(this.quaternion); 
-            dir.y = 0; dir.normalize();
+            _scratchDir.set(0, 0, 1);
+            if (this.mesh) _scratchDir.applyQuaternion(this.mesh.quaternion);
+            else _scratchDir.applyQuaternion(this.quaternion); 
+            _scratchDir.y = 0; _scratchDir.normalize();
 
             net.send({
                 type: 'net-action',
@@ -395,7 +403,7 @@ export class PlayerBase extends THREE.Group {
                 key: key,
                 class: this.className,
                 pos: { x: this.position.x, y: this.position.y, z: this.position.z },
-                dir: { x: dir.x, y: dir.y, z: dir.z },
+                dir: { x: _scratchDir.x, y: _scratchDir.y, z: _scratchDir.z },
                 color: CONFIG.colors[this.className]
             });
         }
@@ -412,10 +420,10 @@ export class PlayerBase extends THREE.Group {
 
         if (!this.isLocalPlayer()) return;
 
-        const dir = new THREE.Vector3(0, 0, 1);
-        if (this.mesh) dir.applyQuaternion(this.mesh.quaternion);
-        else dir.applyQuaternion(this.quaternion);
-        dir.y = 0; dir.normalize();
+        _scratchDir.set(0, 0, 1);
+        if (this.mesh) _scratchDir.applyQuaternion(this.mesh.quaternion);
+        else _scratchDir.applyQuaternion(this.quaternion);
+        _scratchDir.y = 0; _scratchDir.normalize();
         
         const net = Network || window.Network;
 
@@ -514,16 +522,16 @@ export class PlayerBase extends THREE.Group {
             const dz = this.position.z - 90;
             const dist = Math.hypot(dx, dz);
             if (dist < 12.1) {
-                const pushDir = new THREE.Vector3(dx, 0, dz);
-                if (pushDir.lengthSq() < 0.001) {
-                    pushDir.set(0, 0, -1);
+                _pushDir.set(dx, 0, dz);
+                if (_pushDir.lengthSq() < 0.001) {
+                    _pushDir.set(0, 0, -1);
                 } else {
-                    pushDir.normalize();
+                    _pushDir.normalize();
                 }
                 // Activer un fort recul
-                this.knockback.copy(pushDir.clone().multiplyScalar(25.0));
-                this.position.x = 90 + pushDir.x * 12.2;
-                this.position.z = 90 + pushDir.z * 12.2;
+                this.knockback.copy(_pushDir).multiplyScalar(25.0);
+                this.position.x = 90 + _pushDir.x * 12.2;
+                this.position.z = 90 + _pushDir.z * 12.2;
                 
                 // Léger pop vertical si le joueur est au sol pour marquer l'impact physique
                 if (this.position.y < 1.0) {
@@ -822,16 +830,17 @@ export class PlayerBase extends THREE.Group {
         if (this.isStunned) return;
         if (UI.isMenuOpen()) return; 
 
+        if (!STATE.raycaster) {
+            STATE.raycaster = new THREE.Raycaster();
+        }
         STATE.raycaster.setFromCamera(STATE.mouse, Globals.camera);
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        const intersection = new THREE.Vector3();
-        STATE.raycaster.ray.intersectPlane(plane, intersection);
-        const dx = intersection.x - this.mesh.position.x;
-        const dz = intersection.z - this.mesh.position.z;
+        STATE.raycaster.ray.intersectPlane(_groundPlane, _intersectPoint);
+        const dx = _intersectPoint.x - this.mesh.position.x;
+        const dz = _intersectPoint.z - this.mesh.position.z;
         
         this.netRotation = Math.atan2(dx, dz);
         
-        this.mesh.lookAt(intersection.x, this.mesh.position.y, intersection.z);
+        this.mesh.lookAt(_intersectPoint.x, this.mesh.position.y, _intersectPoint.z);
     }
     
     updateClassPassives(dt) {}

@@ -23,12 +23,25 @@ export const AudioSys = {
     
     currentBgm: null,
     bgmNode: null, 
+    bgmGainNode: null,
+    bgmBuffers: {},
     initialized: false,
     ctx: null, 
     
     volumes: {
         sfx: 0.4,
         music: 0.25
+    },
+
+    setMusicVolume: function(vol) {
+        this.volumes.music = Math.max(0, Math.min(1, vol));
+        if (this.bgmGainNode && this.ctx) {
+            this.bgmGainNode.gain.setValueAtTime(this.volumes.music, this.ctx.currentTime);
+        }
+    },
+
+    setSfxVolume: function(vol) {
+        this.volumes.sfx = Math.max(0, Math.min(1, vol));
     },
 
     // Modifié pour supporter le préchargement partiel + chargement paresseux (lazy loading)
@@ -236,10 +249,10 @@ export const AudioSys = {
 
     playBgm: function(trackKey) {
         if (!this.ctx) return;
-        if (this.currentBgm === trackKey) return;
+        if (this.currentBgm === trackKey && this.bgmNode) return;
         
         if (this.bgmNode) {
-            this.bgmNode.stop();
+            try { this.bgmNode.stop(); } catch (_) {}
             this.bgmNode = null;
         }
 
@@ -247,6 +260,31 @@ export const AudioSys = {
         if (!url) return;
 
         this.currentBgm = trackKey;
+
+        const startTrack = (audioBuffer) => {
+            if (this.currentBgm !== trackKey) return; 
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
+            const source = this.ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.loop = true;
+            
+            if (!this.bgmGainNode) {
+                this.bgmGainNode = this.ctx.createGain();
+                this.bgmGainNode.connect(this.ctx.destination);
+            }
+            this.bgmGainNode.gain.setValueAtTime(this.volumes.music, this.ctx.currentTime);
+            
+            source.connect(this.bgmGainNode);
+            source.start(0);
+            this.bgmNode = source;
+        };
+
+        if (this.bgmBuffers[trackKey]) {
+            startTrack(this.bgmBuffers[trackKey]);
+            return;
+        }
         
         fetch(url)
             .then(response => {
@@ -255,21 +293,10 @@ export const AudioSys = {
             })
             .then(arrayBuffer => this.ctx.decodeAudioData(arrayBuffer))
             .then(audioBuffer => {
-                if (this.currentBgm !== trackKey) return; 
-                
-                const source = this.ctx.createBufferSource();
-                source.buffer = audioBuffer;
-                source.loop = true;
-                
-                const gainNode = this.ctx.createGain();
-                gainNode.gain.value = this.volumes.music;
-                
-                source.connect(gainNode);
-                gainNode.connect(this.ctx.destination);
-                source.start(0);
-                this.bgmNode = source;
+                this.bgmBuffers[trackKey] = audioBuffer;
+                startTrack(audioBuffer);
             })
-            .catch(e => console.error("Erreur BGM:", e));
+            .catch(e => console.warn("Erreur BGM:", e.message));
     },
 
     // Raccourcis sfx

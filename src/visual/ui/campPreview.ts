@@ -206,6 +206,10 @@ export const CampPreview = {
         const typeOffset = activeCampType === 'frozen' ? 1.0 : (activeCampType === 'obelisk' ? 1.2 : (activeCampType === 'portal' || activeCampType === 'shrine' || activeCampType === 'ruins' ? 0.7 : 0.4));
         camera.lookAt(0, typeOffset, 0);
 
+        if (currentPreviewGroup?.userData?.updateAnim) {
+            currentPreviewGroup.userData.updateAnim(time * 10);
+        }
+
         renderer.render(scene, camera);
     },
 

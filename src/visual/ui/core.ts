@@ -286,9 +286,8 @@ export const UICore = {
 
     selectClass: function(cls, el) {
         document.querySelectorAll('.class-card-accordion').forEach(c => c.classList.remove('selected'));
-        el.classList.add('selected');
+        if (el) el.classList.add('selected');
         STATE.class = cls;
-        if (window.SkillTree?.render) window.SkillTree.render();
         // AudioSys access via global or import needed if used here, removed for modularity simplicity or pass as dependency
         
         // Gestion des boutons Start/Ready et Options

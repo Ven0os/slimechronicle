@@ -4,6 +4,7 @@ import { STATE } from '../core/config';
 import { getGroundLevelAt } from '../gameplay/world/worldZones';
 
 let floatingTexts = [];
+let damageContainer = null;
 
 export function createDamageText(text, pos, color = '#ffffff') {
     if(!Globals.camera) return;
@@ -16,6 +17,8 @@ export function createDamageText(text, pos, color = '#ffffff') {
     const div = document.createElement('div');
     div.innerText = text;
     div.style.position = 'absolute';
+    div.style.left = '0';
+    div.style.top = '0';
     div.style.color = color;
     div.style.fontWeight = 'bold';
     div.style.fontSize = '1.2rem';
@@ -24,7 +27,7 @@ export function createDamageText(text, pos, color = '#ffffff') {
     div.style.userSelect = 'none';
     div.style.whiteSpace = 'nowrap';
     div.style.opacity = '1';
-    div.style.transition = 'opacity 0.5s';
+    div.style.willChange = 'transform, opacity';
     div.className = 'floating-text';
 
     if(String(text).includes("CRIT")) {
@@ -33,8 +36,10 @@ export function createDamageText(text, pos, color = '#ffffff') {
         div.style.zIndex = '1000';
     }
 
-    const container = document.getElementById('damage-text-container') || document.body;
-    container.appendChild(div);
+    if (!damageContainer || !damageContainer.isConnected) {
+        damageContainer = document.getElementById('damage-text-container') || document.body;
+    }
+    damageContainer.appendChild(div);
 
     floatingTexts.push({
         el: div,
@@ -49,6 +54,9 @@ const floatingTextProjection = new THREE.Vector3();
 export function updateFloatingTexts(dt) {
     if (!Globals.camera) return;
 
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         const item = floatingTexts[i];
         item.life -= dt;
@@ -57,18 +65,17 @@ export function updateFloatingTexts(dt) {
         const vector = floatingTextProjection.copy(item.pos);
         vector.project(Globals.camera);
 
-        const x = (vector.x * .5 + .5) * window.innerWidth;
-        const y = (-(vector.y * .5) + .5) * window.innerHeight;
+        const x = (vector.x * .5 + .5) * w;
+        const y = (-(vector.y * .5) + .5) * h;
 
-        item.el.style.left = `${x}px`;
-        item.el.style.top = `${y}px`;
-        item.el.style.transform = `translate(-50%, -50%) scale(${Math.max(0.5, item.life)})`; 
+        const scale = Math.max(0.5, item.life);
+        item.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(2)})`;
 
         if (item.life < 0.5) {
-            item.el.style.opacity = item.life * 2;
+            item.el.style.opacity = (item.life * 2).toFixed(2);
         }
 
-        if (item.life <= 0 || x < -50 || x > window.innerWidth + 50 || y < -50 || y > window.innerHeight + 50) {
+        if (item.life <= 0 || x < -50 || x > w + 50 || y < -50 || y > h + 50) {
             if(item.el.parentNode) item.el.parentNode.removeChild(item.el);
             floatingTexts.splice(i, 1);
         }
