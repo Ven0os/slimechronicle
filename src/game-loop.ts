@@ -241,6 +241,9 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
+// Tolérance du limiteur de FPS : absorbe la gigue du vsync (~1 ms) sans relâcher la limite.
+const FRAME_TOLERANCE_MS = 2;
+
 let lastTime = performance.now();
 let lastFrameTime = 0;
 let enemySpawnTimer = 0;
@@ -252,15 +255,22 @@ function animate(): void {
   requestAnimationFrame(animate);
   const now = performance.now();
 
-  // Limiteur de FPS graphique
+  // Limiteur de FPS graphique.
+  // La marge d'une demi-frame évite de rejeter une frame arrivée juste avant l'échéance :
+  // sans elle, un écran 60 Hz limité à 60 FPS saute une frame sur deux et tombe à 30 FPS.
   const fpsLimit = STATE.gameOptions?.fpsLimit || 120;
   if (fpsLimit < 120) {
     const frameDelay = 1000 / fpsLimit;
-    if (now - lastFrameTime < frameDelay) {
+    if (now - lastFrameTime < frameDelay - FRAME_TOLERANCE_MS) {
       return;
     }
+    // On avance l'échéance d'un pas fixe plutôt que de la caler sur `now`, ce qui éviterait
+    // de dériver et de perdre progressivement des frames.
+    const overshoot = now - lastFrameTime - frameDelay;
+    lastFrameTime = overshoot > frameDelay ? now : now - Math.max(0, overshoot);
+  } else {
+    lastFrameTime = now;
   }
-  lastFrameTime = now;
 
   // Calcul des FPS réels
   frameCount++;
