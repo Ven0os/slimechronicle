@@ -699,10 +699,10 @@ export class Warrior extends PlayerBase {
         createSkillVisual('shockwave', this.position, radius, 0x8e44ad);
         const bonusText = parryBonus > 0 ? `${label} +${Math.floor(parryBonus)}` : label;
         createDamageText(bonusText, this.position, '#ffffff');
-        if (this.isLocalPlayer() && Globals.camera) {
-            const originalY = Globals.camera.position.y;
-            Globals.camera.position.y -= 0.5;
-            setTimeout(() => { if (Globals.camera) Globals.camera.position.y = originalY; }, 100);
+        // La game loop réécrit camera.position à chaque frame : agir dessus directement
+        // n'avait aucun effet visible. On passe par le shake amorti partagé.
+        if (this.isLocalPlayer() && Globals.cameraShake) {
+            Globals.cameraShake.y -= 0.5;
         }
         Globals.enemies.forEach(e => {
             if (e.position.distanceTo(this.position) <= radius) {

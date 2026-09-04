@@ -304,12 +304,9 @@ export class PlayerBase extends THREE.Group {
                     this.justRecalled = false;
                     AudioSys.play('king_land', 0.85);
                     spawnParticles(this.position.clone(), 0x00ffff, 30);
-                    // Secousse de caméra légère
-                    if (Globals.camera) {
-                        const origY = Globals.camera.position.y;
-                        Globals.camera.position.y -= 0.6;
-                        setTimeout(() => Globals.camera.position.y = origY, 150);
-                    }
+                    // Secousse de caméra légère. Écrire dans camera.position était sans effet :
+                    // la game loop la recalcule intégralement à chaque frame.
+                    if (Globals.cameraShake) Globals.cameraShake.y -= 0.6;
                 }
             }
         } else {

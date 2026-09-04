@@ -6,7 +6,12 @@ import { getGroundLevelAt } from '../gameplay/world/worldZones';
 let floatingTexts = [];
 let damageContainer = null;
 
-export function createDamageText(text, pos, color = '#ffffff') {
+const FLOATING_TEXT_BASE_STYLE =
+    'position:absolute;left:0;top:0;font-weight:bold;text-shadow:0 0 5px #000;'
+    + 'pointer-events:none;user-select:none;white-space:nowrap;opacity:1;'
+    + 'will-change:transform, opacity;';
+
+export function createDamageText(text, pos, color = '#ffffff', duration = 1.5) {
     if(!Globals.camera) return;
     
     const offsetPos = pos.clone();
@@ -16,25 +21,14 @@ export function createDamageText(text, pos, color = '#ffffff') {
 
     const div = document.createElement('div');
     div.innerText = text;
-    div.style.position = 'absolute';
-    div.style.left = '0';
-    div.style.top = '0';
-    div.style.color = color;
-    div.style.fontWeight = 'bold';
-    div.style.fontSize = '1.2rem';
-    div.style.textShadow = '0 0 5px #000';
-    div.style.pointerEvents = 'none';
-    div.style.userSelect = 'none';
-    div.style.whiteSpace = 'nowrap';
-    div.style.opacity = '1';
-    div.style.willChange = 'transform, opacity';
+    // Une seule écriture de style au lieu d'une douzaine : ces textes sont créés en rafale
+    // à chaque coup porté pendant les combats.
+    const isCrit = String(text).includes("CRIT");
+    div.style.cssText = FLOATING_TEXT_BASE_STYLE
+        + (isCrit
+            ? 'font-size:2rem;color:#ffff00;z-index:1000;'
+            : `font-size:1.2rem;color:${color};`);
     div.className = 'floating-text';
-
-    if(String(text).includes("CRIT")) {
-        div.style.fontSize = '2rem';
-        div.style.color = '#ffff00';
-        div.style.zIndex = '1000';
-    }
 
     if (!damageContainer || !damageContainer.isConnected) {
         damageContainer = document.getElementById('damage-text-container') || document.body;
@@ -44,7 +38,7 @@ export function createDamageText(text, pos, color = '#ffffff') {
     floatingTexts.push({
         el: div,
         pos: offsetPos,
-        life: 1.5,
+        life: duration,
         velocity: new THREE.Vector3(0, 1.5, 0)
     });
 }
@@ -68,7 +62,9 @@ export function updateFloatingTexts(dt) {
         const x = (vector.x * .5 + .5) * w;
         const y = (-(vector.y * .5) + .5) * h;
 
-        const scale = Math.max(0.5, item.life);
+        // Borné à 1.5 : les annonces de boss durent plusieurs secondes et seraient
+        // sinon affichées à une taille démesurée au moment de leur apparition.
+        const scale = Math.min(1.5, Math.max(0.5, item.life));
         item.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(2)})`;
 
         if (item.life < 0.5) {

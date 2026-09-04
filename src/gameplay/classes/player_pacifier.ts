@@ -530,9 +530,9 @@ export class Pacifier extends PlayerBase {
 
     triggerImpact() {
         this.position.y = 0;
-        const originalY = Globals.camera.position.y;
-        Globals.camera.position.y -= 1.0;
-        setTimeout(() => Globals.camera.position.y = originalY, 150);
+        // La game loop réécrit camera.position à chaque frame : agir dessus directement
+        // n'avait aucun effet visible. On passe par le shake amorti partagé.
+        if (Globals.cameraShake) Globals.cameraShake.y -= 1.0;
         const mods = ConstellationEngine.getVampJumpModifiers();
         createSkillVisual('explosion', this.position, mods.radius, 0xff0000);
         spawnParticles(this.position, 0x8a0b0b, 30);
