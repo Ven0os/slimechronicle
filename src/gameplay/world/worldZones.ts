@@ -50,15 +50,100 @@ export function getPlayableRadiusAt(x: number, z: number): number {
   return 112 + borderNoise; // Coastal playable limit in shallow water
 }
 
-// Constantes hissées hors de getGroundLevelAt : la fonction est appelée des dizaines
-// de fois par frame (joueur + chaque ennemi), on évite l'allocation de ces tableaux à chaque appel.
-const GROUND_REGIONS = [
-  { id: 'mountain', cx: 80, cz: 80, weight: 1.0 },
-  { id: 'cold', cx: -60, cz: 60, weight: 1.0 },
-  { id: 'desert', cx: -60, cz: -60, weight: 1.0 },
-  { id: 'temperate', cx: 10, cz: -20, weight: 2.2 },
+export type BiomeId = 'mountain' | 'cold' | 'desert' | 'temperate';
+
+export interface BiomeDefinition {
+  id: BiomeId;
+  label: string;
+  /** Centre d'influence du biome et poids de son rayonnement. */
+  cx: number;
+  cz: number;
+  weight: number;
+  /** Couleur du sol, mélangée avec celle des biomes voisins aux frontières. */
+  groundColor: THREE.Color;
+  /** Relief local en unités monde. */
+  height: (x: number, z: number) => number;
+  /** Teinte et densité de la brume lorsque le joueur traverse ce biome. */
+  fogColor: THREE.Color;
+  fogDensity: number;
+}
+
+/**
+ * Définition centralisée des biomes. Les centres, poids et couleurs vivaient auparavant
+ * en double, dans le calcul du relief d'un côté et celui de la couleur du sol de l'autre,
+ * avec le risque permanent de les voir diverger. Tout ce qui caractérise un biome tient
+ * désormais ici, et les fonctions ci-dessous ne font que le consommer.
+ *
+ * Ces constantes sont figées au niveau du module : getGroundLevelAt est appelée des
+ * dizaines de fois par frame et ne doit rien allouer.
+ */
+export const BIOMES: readonly BiomeDefinition[] = [
+  {
+    id: 'mountain',
+    label: 'Cimes Ardoise',
+    cx: 80, cz: 80, weight: 1.0,
+    groundColor: new THREE.Color(0x323b49),
+    height: (x, z) => 1.4 * (Math.sin(x * 0.08) * Math.cos(z * 0.08)) + 0.5 * Math.sin(x * 0.2),
+    fogColor: new THREE.Color(0xb9c4d4),
+    fogDensity: 0.0060,
+  },
+  {
+    id: 'cold',
+    label: 'Toundra Gelée',
+    cx: -60, cz: 60, weight: 1.0,
+    groundColor: new THREE.Color(0xe0ecef),
+    height: (x, z) => 0.6 * (Math.sin(x * 0.07) + Math.cos(z * 0.07)),
+    fogColor: new THREE.Color(0xd8e8f5),
+    fogDensity: 0.0072,
+  },
+  {
+    id: 'desert',
+    label: 'Dunes Brûlées',
+    cx: -60, cz: -60, weight: 1.0,
+    groundColor: new THREE.Color(0xdfc593),
+    height: (x, z) => 0.8 * Math.sin(x * 0.06 + z * 0.06),
+    fogColor: new THREE.Color(0xf0dcae),
+    fogDensity: 0.0055,
+  },
+  {
+    id: 'temperate',
+    label: 'Plaines Verdoyantes',
+    cx: 10, cz: -20, weight: 2.2,
+    groundColor: new THREE.Color(0x1fb53a),
+    height: (x, z) => 0.25 * Math.sin(x * 0.04) * Math.cos(z * 0.04),
+    fogColor: new THREE.Color(0xdff0e0),
+    fogDensity: 0.0045,
+  },
 ] as const;
-const groundWeights = new Array(GROUND_REGIONS.length).fill(0);
+
+const groundWeights = new Array(BIOMES.length).fill(0);
+
+/** Exposant de mélange : plus il est élevé, plus la frontière entre biomes est nette. */
+const BIOME_BLEND_POWER = 9.0;
+
+/**
+ * Renseigne `groundWeights` avec l'influence normalisée de chaque biome au point donné,
+ * distorsion ondulante comprise. Partagé par le relief, la couleur et l'ambiance pour
+ * garantir que les trois s'accordent exactement sur la position des frontières.
+ */
+function computeBiomeWeights(x: number, z: number): void {
+  const distValX = x + Math.sin(z * 0.15) * 8.0;
+  const distValZ = z + Math.cos(x * 0.15) * 8.0;
+
+  let totalWeight = 0;
+  for (let i = 0; i < BIOMES.length; i++) {
+    const r = BIOMES[i];
+    const rdx = distValX - r.cx;
+    const rdz = distValZ - r.cz;
+    const score = Math.hypot(rdx, rdz) / r.weight;
+    const w = 1.0 / Math.pow(score + 0.1, BIOME_BLEND_POWER);
+    groundWeights[i] = w;
+    totalWeight += w;
+  }
+  for (let i = 0; i < BIOMES.length; i++) {
+    groundWeights[i] /= totalWeight;
+  }
+}
 
 export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }): number {
   const dx = pos.x - 90;
@@ -75,38 +160,11 @@ export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }):
     return 0.0;
   }
   
-  // 1. Organic, wavy region distortion
-  const noiseX = Math.sin(z * 0.15) * 8.0;
-  const noiseZ = Math.cos(x * 0.15) * 8.0;
-  const distValX = x + noiseX;
-  const distValZ = z + noiseZ;
-  
-  let totalWeight = 0;
-  for (let i = 0; i < GROUND_REGIONS.length; i++) {
-    const r = GROUND_REGIONS[i];
-    const rdx = distValX - r.cx;
-    const rdz = distValZ - r.cz;
-    const distVal = Math.hypot(rdx, rdz);
-    const score = distVal / r.weight;
-    const w = 1.0 / Math.pow(score + 0.1, 9.0); // Power 9.0 for very marked biome changes!
-    groundWeights[i] = w;
-    totalWeight += w;
-  }
-  
+  computeBiomeWeights(x, z);
+
   let baseHeight = 0.0;
-  for (let i = 0; i < GROUND_REGIONS.length; i++) {
-    const wNorm = groundWeights[i] / totalWeight;
-    let rh = 0.0;
-    if (GROUND_REGIONS[i].id === 'mountain') {
-      rh = 1.4 * (Math.sin(x * 0.08) * Math.cos(z * 0.08)) + 0.5 * Math.sin(x * 0.2);
-    } else if (GROUND_REGIONS[i].id === 'desert') {
-      rh = 0.8 * Math.sin(x * 0.06 + z * 0.06);
-    } else if (GROUND_REGIONS[i].id === 'cold') {
-      rh = 0.6 * (Math.sin(x * 0.07) + Math.cos(z * 0.07));
-    } else {
-      rh = 0.25 * Math.sin(x * 0.04) * Math.cos(z * 0.04);
-    }
-    baseHeight += rh * wNorm;
+  for (let i = 0; i < BIOMES.length; i++) {
+    baseHeight += BIOMES[i].height(x, z) * groundWeights[i];
   }
   
   // 2. Flattening factors for boss and spawn platform areas
@@ -151,72 +209,72 @@ export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }):
   return finalHeight;
 }
 
-export function getRegionAt(x: number, z: number): 'mountain' | 'cold' | 'desert' | 'temperate' {
-  // Wavy distortion to break symmetry
-  const noiseX = Math.sin(z * 0.15) * 8.0;
-  const noiseZ = Math.cos(x * 0.15) * 8.0;
-  const distValX = x + noiseX;
-  const distValZ = z + noiseZ;
+export function getRegionAt(x: number, z: number): BiomeId {
+  // Distorsion ondulante pour casser la symétrie
+  const distValX = x + Math.sin(z * 0.15) * 8.0;
+  const distValZ = z + Math.cos(x * 0.15) * 8.0;
 
-  let bestId = 'temperate';
+  let bestId: BiomeId = 'temperate';
   let minScore = Infinity;
-  
-  for (const r of GROUND_REGIONS) {
+
+  for (const r of BIOMES) {
     const dx = distValX - r.cx;
     const dz = distValZ - r.cz;
-    const distVal = Math.hypot(dx, dz);
-    const score = distVal / r.weight;
+    const score = Math.hypot(dx, dz) / r.weight;
     if (score < minScore) {
       minScore = score;
       bestId = r.id;
     }
   }
-  
-  return bestId as 'mountain' | 'cold' | 'desert' | 'temperate';
+
+  return bestId;
 }
+
+/**
+ * Influence de chaque biome au point donné, du plus fort au plus faible, sous forme
+ * normalisée. Sert à mélanger les ambiances aux frontières plutôt que de basculer
+ * brutalement d'un décor à l'autre.
+ */
+export function sampleBiomeWeights(x: number, z: number, out: number[]): number[] {
+  computeBiomeWeights(x, z);
+  for (let i = 0; i < BIOMES.length; i++) out[i] = groundWeights[i];
+  return out;
+}
+
+const BOSS_SAND_COLOR = new THREE.Color(0xdfc593);
+/**
+ * Couleur réutilisée d'un appel à l'autre : getRegionColorAt est invoquée une fois par
+ * sommet du terrain (plus de dix mille fois au chargement). Les appelants doivent lire
+ * les composantes immédiatement plutôt que conserver la référence.
+ */
+const _regionColor = new THREE.Color();
 
 export function getRegionColorAt(x: number, z: number): THREE.Color {
   // Le sol de la zone du boss doit être entièrement en sable
   const distToBoss = Math.hypot(x - BOSS_ZONE.cx, z - BOSS_ZONE.cz);
   if (distToBoss < BOSS_ZONE.radius + 6.0) {
-    return new THREE.Color(0xdfc593); // Sand yellow
+    return _regionColor.copy(BOSS_SAND_COLOR);
   }
 
-  // Wavy distortion to break symmetry
-  const noiseX = Math.sin(z * 0.15) * 8.0;
-  const noiseZ = Math.cos(x * 0.15) * 8.0;
-  const distValX = x + noiseX;
-  const distValZ = z + noiseZ;
+  computeBiomeWeights(x, z);
 
-  const regions = [
-    { id: 'mountain', cx: 80, cz: 80, weight: 1.0, color: new THREE.Color(0x323b49) }, // Slate/mountain grey-blue
-    { id: 'cold', cx: -60, cz: 60, weight: 1.0, color: new THREE.Color(0xe0ecef) }, // Snowy/icy white-blue
-    { id: 'desert', cx: -60, cz: -60, weight: 1.0, color: new THREE.Color(0xdfc593) }, // Sandy yellow
-    { id: 'temperate', cx: 10, cz: -20, weight: 2.2, color: new THREE.Color(0x1fb53a) } // Green is much greener! (0x1fb53a)
-  ];
-  
-  let totalWeight = 0;
-  const weights: number[] = [];
-  
-  for (const r of regions) {
-    const dx = distValX - r.cx;
-    const dz = distValZ - r.cz;
-    const distVal = Math.hypot(dx, dz);
-    const score = distVal / r.weight;
-    const w = 1.0 / Math.pow(score + 0.1, 9.0); // Power 9.0 for very marked biome changes!
-    weights.push(w);
-    totalWeight += w;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < BIOMES.length; i++) {
+    const w = groundWeights[i];
+    const c = BIOMES[i].groundColor;
+    r += c.r * w;
+    g += c.g * w;
+    b += c.b * w;
   }
-  
-  const finalColor = new THREE.Color(0, 0, 0);
-  for (let i = 0; i < regions.length; i++) {
-    const wNorm = weights[i] / totalWeight;
-    finalColor.r += regions[i].color.r * wNorm;
-    finalColor.g += regions[i].color.g * wNorm;
-    finalColor.b += regions[i].color.b * wNorm;
-  }
-  
-  return finalColor;
+
+  // Modulation déterministe de la luminosité : sans elle le terrain est un aplat parfait
+  // qui trahit la géométrie. Basée sur la position, donc identique chez tous les joueurs
+  // en multijoueur, contrairement à un tirage aléatoire.
+  const mottle = 1
+    + Math.sin(x * 0.62) * Math.cos(z * 0.47) * 0.05
+    + Math.sin((x + z) * 0.21) * 0.028;
+
+  return _regionColor.setRGB(r * mottle, g * mottle, b * mottle);
 }
 
 export function isInBossZone(pos: THREE.Vector3): boolean {

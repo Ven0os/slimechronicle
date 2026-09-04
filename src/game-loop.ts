@@ -4,7 +4,7 @@ import { AudioSys, TextureManager } from '@/core/ressources';
 import { Input } from '@/core/input';
 import { UI, UICompendium } from '@/visual/ui';
 import { Network } from '@/multiplayer/network';
-import { initScene } from '@/core/scene';
+import { initScene, updateSunShadow } from '@/core/scene';
 import { GameLogic, GameLauncher } from '@/gameplay/logic';
 import {
   createBoundaries,
@@ -432,6 +432,11 @@ function animate(): void {
     Globals.cameraShake.y *= shakeDecay;
     Globals.cameraShake.z *= shakeDecay;
   }
+
+  // Le soleil suit l'action plutôt que la caméra : le tremblement d'écran ne doit pas
+  // faire vibrer les ombres portées.
+  const shadowFocus = camTarget ? camTarget.position : Globals.camera.position;
+  updateSunShadow(shadowFocus.x, shadowFocus.z);
 
   Globals.renderer.render(Globals.scene, Globals.camera);
 }

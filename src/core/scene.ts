@@ -3,16 +3,55 @@ import { CONFIG } from './config';
 import { Globals } from './globals';
 import { getRegionColorAt, getGroundLevelAt, BOSS_ZONE } from '../gameplay/world/worldZones';
 
+/** Demi-largeur, en unités monde, de la zone couverte par la carte d'ombres. */
+const SHADOW_HALF_EXTENT = 45;
+/** Direction (normalisée) depuis laquelle le soleil éclaire la scène. */
+const SUN_DIR = new THREE.Vector3(50, 100, 50).normalize();
+const SUN_DISTANCE = 120;
+
+/**
+ * Recentre le soleil sur le joueur pour garder une carte d'ombres nette sur une carte
+ * de 300 unités. La cible est alignée sur la grille des texels : sans cela, les ombres
+ * grouillent visiblement dès que la caméra se déplace.
+ */
+export function updateSunShadow(focusX: number, focusZ: number) {
+    const light = Globals.dirLight;
+    if (!light || !light.castShadow) return;
+
+    const texelSize = (SHADOW_HALF_EXTENT * 2) / light.shadow.mapSize.x;
+    const snappedX = Math.round(focusX / texelSize) * texelSize;
+    const snappedZ = Math.round(focusZ / texelSize) * texelSize;
+
+    light.target.position.set(snappedX, 0, snappedZ);
+    light.target.updateMatrixWorld();
+    light.position.set(
+        snappedX + SUN_DIR.x * SUN_DISTANCE,
+        SUN_DIR.y * SUN_DISTANCE,
+        snappedZ + SUN_DIR.z * SUN_DISTANCE
+    );
+}
+
 export function initScene() {
     Globals.scene = new THREE.Scene();
     Globals.scene.background = new THREE.Color(CONFIG.colors.skyNormal);
     Globals.scene.fog = new THREE.FogExp2(0xffffff, 0.005);
 
     Globals.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    Globals.renderer = new THREE.WebGLRenderer({ antialias: true });
+    Globals.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     Globals.renderer.setSize(window.innerWidth, window.innerHeight);
 
-    Globals.renderer.shadowMap.enabled = false;
+    // L'échelle de résolution n'était appliquée qu'au redimensionnement : au lancement le
+    // rendu restait en ratio 1, donc flou sur les écrans à forte densité de pixels.
+    const initialResScale = ((window.STATE?.gameOptions?.resolutionScale) || 100) / 100;
+    Globals.renderer.setPixelRatio(window.devicePixelRatio * initialResScale);
+
+    // Tone mapping « Neutral » (Khronos PBR Neutral) plutôt qu'ACES : il maîtrise les hautes
+    // lumières des matériaux émissifs sans délaver les couleurs vives du jeu.
+    Globals.renderer.toneMapping = THREE.NeutralToneMapping;
+    Globals.renderer.toneMappingExposure = 1.15;
+
+    Globals.renderer.shadowMap.enabled = true;
+    Globals.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const container = document.getElementById('game-container');
     if (container.firstChild) container.removeChild(container.firstChild);
@@ -25,8 +64,20 @@ export function initScene() {
 
     Globals.dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     Globals.dirLight.position.set(50, 100, 50);
-    Globals.dirLight.castShadow = false;
+    Globals.dirLight.castShadow = true;
+    // La carte fait 300 unités de côté : couvrir le tout donnerait des ombres en escalier.
+    // Le frustum reste donc serré autour du joueur et suit la caméra (voir updateSunShadow).
+    Globals.dirLight.shadow.mapSize.set(2048, 2048);
+    Globals.dirLight.shadow.camera.near = 1;
+    Globals.dirLight.shadow.camera.far = 260;
+    Globals.dirLight.shadow.camera.left = -SHADOW_HALF_EXTENT;
+    Globals.dirLight.shadow.camera.right = SHADOW_HALF_EXTENT;
+    Globals.dirLight.shadow.camera.top = SHADOW_HALF_EXTENT;
+    Globals.dirLight.shadow.camera.bottom = -SHADOW_HALF_EXTENT;
+    Globals.dirLight.shadow.bias = -0.0006;
+    Globals.dirLight.shadow.normalBias = 0.02;
     Globals.scene.add(Globals.dirLight);
+    Globals.scene.add(Globals.dirLight.target);
 
     // Sol avec régions (couleurs et reliefs)
     const groundGeo = new THREE.PlaneGeometry(300, 300, 100, 100);
@@ -71,7 +122,8 @@ export function initScene() {
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = false;
+    ground.receiveShadow = true;
+    Globals.ground = ground;
     Globals.scene.add(ground);
 
     // Mer / Océan
