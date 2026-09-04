@@ -80,9 +80,15 @@ export function createAltars() {
     Globals.menhirs.push(seal);
 }
 
+// Appelée à chaque frame par la game loop : on ne retouche le DOM que si l'état change,
+// au lieu de refaire un getElementById et une écriture de style 60 à 144 fois par seconde.
+let menhirHudHidden = false;
 export function updateMenhirVisuals() {
+    if (menhirHudHidden) return;
     const hud = document.getElementById('menhir-hud');
-    if(hud) hud.style.display = 'none';
+    if (!hud) return;
+    hud.style.display = 'none';
+    menhirHudHidden = true;
 }
 
 let skyParticles;

@@ -381,13 +381,18 @@ function animate(): void {
   }
   // Physique particules normalisée sur 60 FPS pour rester identique quel que soit le framerate.
   const particleStep = dt * 60;
+  // Ces trois facteurs sont les mêmes pour toutes les particules de la frame : les calculer
+  // une fois évite un Math.pow par particule (elles se comptent en centaines en combat).
+  const particleShrink = Math.pow(0.95, particleStep);
+  const particleGravity = 0.01 * particleStep;
+  const particleSpin = 0.1 * particleStep;
   for (let i = Globals.particles.length - 1; i >= 0; i--) {
     const p = Globals.particles[i];
     p.life -= dt;
     p.mesh.position.addScaledVector(p.vel, particleStep);
-    p.vel.y -= 0.01 * particleStep;
-    p.mesh.rotation.x += 0.1 * particleStep;
-    p.mesh.scale.multiplyScalar(Math.pow(0.95, particleStep));
+    p.vel.y -= particleGravity;
+    p.mesh.rotation.x += particleSpin;
+    p.mesh.scale.multiplyScalar(particleShrink);
     if (p.life <= 0) {
       Globals.scene.remove(p.mesh);
       Globals.particles.splice(i, 1);

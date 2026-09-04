@@ -1819,14 +1819,17 @@ export const GameLogic = {
     },
 
     updateActiveCamps: function(dt) {
-        if (!Globals.activeCamps) return;
-        
+        if (!Globals.activeCamps || !Globals.activeCamps.length) return;
+
         const time = Date.now() * 0.003;
+        // Un seul Set par frame : la version précédente relançait un scan linéaire de
+        // Globals.enemies pour chaque mob de chaque camp, à chaque frame.
+        const liveEnemies = new Set(Globals.enemies);
         for (let i = Globals.activeCamps.length - 1; i >= 0; i--) {
             const camp = Globals.activeCamps[i];
-            
+
             // Check if all mobs in this camp are dead or removed from Globals.enemies
-            const allDead = camp.mobs.every(m => m.dead || !Globals.enemies.includes(m));
+            const allDead = camp.mobs.every(m => m.dead || !liveEnemies.has(m));
             
             if (allDead) {
                 // Despawn building with a shrink animation
