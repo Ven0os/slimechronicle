@@ -19,6 +19,7 @@ import {
 import { updateMiniBossUi } from './minions/mini_boss_ui';
 import { damagePlayer } from '../../multiplayer/net_combat';
 import { dampFactor } from '@/core/smoothing';
+import { disposeObject3D } from '../../visual/meshMaterialUtils';
 
 let enemyIdCounter = 0;
 
@@ -538,8 +539,9 @@ export class BaseEnemy extends THREE.Group {
                 if(idx > -1) Globals.telegraphs.splice(idx, 1);
             }
             Globals.scene.remove(t);
-            if(t.geometry) t.geometry.dispose();
-            if(t.material) t.material.dispose();
+            // Les télégraphes sont des groupes (anneau + remplissage) : ne libérer que la
+            // racine laissait leurs enfants en mémoire GPU à chaque mort d'ennemi.
+            disposeObject3D(t);
         });
         this.activeTelegraphs = [];
     }

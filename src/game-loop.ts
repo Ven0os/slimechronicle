@@ -12,6 +12,8 @@ import {
   createAltars,
   updateMenhirVisuals,
   createAnimatedSky,
+  updateAnimatedSky,
+  updateEnvironmentAnimations,
   createDecorations,
   updateOcclusion,
 } from '@/gameplay/environment';
@@ -359,6 +361,10 @@ function animate(): void {
   }
   GameLogic.checkBossVictory();
   GameLogic.updateActiveCamps(dt);
+  // Ces deux systèmes existaient déjà mais n'étaient appelés nulle part : les particules
+  // du ciel restaient figées et le balancement des arbres au vent ne démarrait jamais.
+  updateAnimatedSky(dt);
+  updateEnvironmentAnimations(dt);
   updateTelegraphs(dt);
   updateSkillVisuals(dt);
   updateMenhirVisuals();
