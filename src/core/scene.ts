@@ -2,6 +2,7 @@
 import { CONFIG } from './config';
 import { Globals } from './globals';
 import { getRegionColorAt, getGroundLevelAt, BOSS_ZONE } from '../gameplay/world/worldZones';
+import { initAtmosphere, snapAtmosphere } from '../visual/atmosphere';
 
 /** Demi-largeur, en unités monde, de la zone couverte par la carte d'ombres. */
 const SHADOW_HALF_EXTENT = 45;
@@ -152,6 +153,10 @@ export function initScene() {
         Globals.renderer.setPixelRatio(window.devicePixelRatio * resScale);
         Globals.renderer.setSize(width, height);
     });
+
+    // Dôme céleste dégradé et brume liée aux biomes (remplace le fond de couleur unie).
+    initAtmosphere();
+    snapAtmosphere();
 
     // Exposition globale pour debug si besoin
     window.Globals = Globals;

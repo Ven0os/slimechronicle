@@ -5,6 +5,7 @@ import { Input } from '@/core/input';
 import { UI, UICompendium } from '@/visual/ui';
 import { Network } from '@/multiplayer/network';
 import { initScene, updateSunShadow } from '@/core/scene';
+import { updateAtmosphere } from '@/visual/atmosphere';
 import { GameLogic, GameLauncher } from '@/gameplay/logic';
 import {
   createBoundaries,
@@ -437,6 +438,7 @@ function animate(): void {
   // faire vibrer les ombres portées.
   const shadowFocus = camTarget ? camTarget.position : Globals.camera.position;
   updateSunShadow(shadowFocus.x, shadowFocus.z);
+  updateAtmosphere(dt, shadowFocus.x, shadowFocus.z);
 
   Globals.renderer.render(Globals.scene, Globals.camera);
 }

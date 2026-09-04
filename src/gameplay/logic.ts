@@ -7,6 +7,7 @@ import { Network } from '@/multiplayer/network';
 import { Player } from './player';
 import { Enemy } from './enemy';
 import { createDamageText } from '../visual/effects';
+import { setAtmosphereMode } from '../visual/atmosphere';
 import { createAltars } from './environment';
 import { removeBossArenaBarrier } from './environment/royal_seal';
 import { ConstellationEngine } from '@/systems/constellationEngine';
@@ -1087,23 +1088,16 @@ export const GameLogic = {
     
     setAmbiance: function(type) {
         if (!Globals.scene) return;
-        
-        // Note: ground devrait être accessible via Globals si on veut le modifier ici, 
-        // ou on le cherche dans la scène.
-        const ground = Globals.scene.children.find(c => c.geometry && c.geometry.type === 'PlaneGeometry');
 
-        if (type === 'dark') {
-            Globals.scene.fog = new THREE.FogExp2(0x050505, 0.04);
-            Globals.scene.background = new THREE.Color(0x050505);
-            Globals.dirLight.intensity = 0.2;
-            Globals.hemiLight.intensity = 0.2;
-            if(ground) ground.material.color.setHex(0x555555);
-        } else {
-            Globals.scene.fog = new THREE.FogExp2(0xffffff, 0.005);
-            Globals.scene.background = new THREE.Color(CONFIG.colors.skyNormal);
-            Globals.dirLight.intensity = 1.2;
-            Globals.hemiLight.intensity = 1.0;
-            if(ground) ground.material.color.setHex(0xffffff);
+        // Ciel, brume et lumières sont pilotés par le module d'atmosphère, qui amène la
+        // scène vers l'ambiance demandée au lieu de la faire basculer d'un seul coup.
+        setAtmosphereMode(type === 'dark' ? 'dark' : 'normal');
+
+        // Le sol s'assombrit encore directement : sa teinte vient des couleurs par sommet
+        // du terrain, que le module d'atmosphère ne touche pas.
+        const ground = Globals.ground;
+        if (ground?.material) {
+            ground.material.color.setHex(type === 'dark' ? 0x555555 : 0xffffff);
         }
     },
 
