@@ -61,6 +61,11 @@ export interface BiomeDefinition {
   weight: number;
   /** Couleur du sol, mélangée avec celle des biomes voisins aux frontières. */
   groundColor: THREE.Color;
+  /**
+   * Seconde teinte du sol, mêlée à la première par plaques irrégulières. Sans elle le
+   * terrain est un aplat uniforme qui écrase tout le relief.
+   */
+  groundColorAlt: THREE.Color;
   /** Relief local en unités monde. */
   height: (x: number, z: number) => number;
   /** Teinte et densité de la brume lorsque le joueur traverse ce biome. */
@@ -83,6 +88,7 @@ export const BIOMES: readonly BiomeDefinition[] = [
     label: 'Cimes Ardoise',
     cx: 80, cz: 80, weight: 1.0,
     groundColor: new THREE.Color(0x323b49),
+    groundColorAlt: new THREE.Color(0x59606e),
     height: (x, z) => 1.4 * (Math.sin(x * 0.08) * Math.cos(z * 0.08)) + 0.5 * Math.sin(x * 0.2),
     fogColor: new THREE.Color(0xb9c4d4),
     fogDensity: 0.0060,
@@ -92,6 +98,7 @@ export const BIOMES: readonly BiomeDefinition[] = [
     label: 'Toundra Gelée',
     cx: -60, cz: 60, weight: 1.0,
     groundColor: new THREE.Color(0xe0ecef),
+    groundColorAlt: new THREE.Color(0xa8c4d6),
     height: (x, z) => 0.6 * (Math.sin(x * 0.07) + Math.cos(z * 0.07)),
     fogColor: new THREE.Color(0xd8e8f5),
     fogDensity: 0.0072,
@@ -101,6 +108,7 @@ export const BIOMES: readonly BiomeDefinition[] = [
     label: 'Dunes Brûlées',
     cx: -60, cz: -60, weight: 1.0,
     groundColor: new THREE.Color(0xdfc593),
+    groundColorAlt: new THREE.Color(0xc09a5f),
     height: (x, z) => 0.8 * Math.sin(x * 0.06 + z * 0.06),
     fogColor: new THREE.Color(0xf0dcae),
     fogDensity: 0.0055,
@@ -110,6 +118,7 @@ export const BIOMES: readonly BiomeDefinition[] = [
     label: 'Plaines Verdoyantes',
     cx: 10, cz: -20, weight: 2.2,
     groundColor: new THREE.Color(0x1fb53a),
+    groundColorAlt: new THREE.Color(0x4e8c2f),
     height: (x, z) => 0.25 * Math.sin(x * 0.04) * Math.cos(z * 0.04),
     fogColor: new THREE.Color(0xdff0e0),
     fogDensity: 0.0045,
@@ -258,23 +267,38 @@ export function getRegionColorAt(x: number, z: number): THREE.Color {
 
   computeBiomeWeights(x, z);
 
+  // Plaques de terrain : chaque biome alterne entre ses deux teintes sur des zones de
+  // quelques dizaines d'unités, ce qui remplace l'aplat uniforme par un sol vivant.
+  const patch = patchNoise(x, z);
+
   let r = 0, g = 0, b = 0;
   for (let i = 0; i < BIOMES.length; i++) {
     const w = groundWeights[i];
-    const c = BIOMES[i].groundColor;
-    r += c.r * w;
-    g += c.g * w;
-    b += c.b * w;
+    if (w < 0.0015) continue;
+    const main = BIOMES[i].groundColor;
+    const alt = BIOMES[i].groundColorAlt;
+    r += (main.r + (alt.r - main.r) * patch) * w;
+    g += (main.g + (alt.g - main.g) * patch) * w;
+    b += (main.b + (alt.b - main.b) * patch) * w;
   }
 
-  // Modulation déterministe de la luminosité : sans elle le terrain est un aplat parfait
-  // qui trahit la géométrie. Basée sur la position, donc identique chez tous les joueurs
-  // en multijoueur, contrairement à un tirage aléatoire.
+  // Grain fin par-dessus les plaques, pour éviter que les facettes du terrain paraissent
+  // lisses. Entièrement déterministe : tous les joueurs voient le même sol en multijoueur,
+  // ce qu'un tirage aléatoire ne garantirait pas.
   const mottle = 1
-    + Math.sin(x * 0.62) * Math.cos(z * 0.47) * 0.05
-    + Math.sin((x + z) * 0.21) * 0.028;
+    + Math.sin(x * 0.62) * Math.cos(z * 0.47) * 0.06
+    + Math.sin((x + z) * 0.21) * 0.035;
 
   return _regionColor.setRGB(r * mottle, g * mottle, b * mottle);
+}
+
+/** Bruit déterministe borné à [0, 1], à plusieurs échelles, sans allocation. */
+function patchNoise(x: number, z: number): number {
+  const n =
+    Math.sin(x * 0.128 + Math.cos(z * 0.107) * 2.1) * 0.50 +
+    Math.sin(z * 0.171 + Math.cos(x * 0.074) * 1.7) * 0.34 +
+    Math.sin((x + z) * 0.312) * 0.16;
+  return n * 0.5 + 0.5;
 }
 
 export function isInBossZone(pos: THREE.Vector3): boolean {

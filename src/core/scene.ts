@@ -32,6 +32,34 @@ export function updateSunShadow(focusX: number, focusZ: number) {
     );
 }
 
+/**
+ * Applique le niveau d'ombres choisi dans les options.
+ * 1 = aucune, 2 = carte réduite (machines modestes), 3 = carte pleine résolution.
+ */
+export function applyShadowQuality(level: number) {
+    const renderer = Globals.renderer;
+    const light = Globals.dirLight;
+    if (!renderer || !light) return;
+
+    const enabled = level >= 2;
+    renderer.shadowMap.enabled = enabled;
+    light.castShadow = enabled;
+
+    const size = level >= 3 ? 2048 : 1024;
+    if (light.shadow.mapSize.x !== size) {
+        light.shadow.mapSize.set(size, size);
+        // La carte déjà allouée garde son ancienne taille : il faut la libérer pour que
+        // Three.js en recrée une à la nouvelle résolution.
+        if (light.shadow.map) {
+            light.shadow.map.dispose();
+            light.shadow.map = null;
+        }
+    }
+
+    if (Globals.ground) Globals.ground.receiveShadow = enabled;
+    renderer.shadowMap.needsUpdate = true;
+}
+
 export function initScene() {
     Globals.scene = new THREE.Scene();
     Globals.scene.background = new THREE.Color(CONFIG.colors.skyNormal);
