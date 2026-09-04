@@ -518,6 +518,9 @@ export class BaseEnemy extends THREE.Group {
     }
 
     applyStun(duration) {
+        // Choix assumé : aucun étourdissement n'est réellement appliqué aux ennemis,
+        // l'équilibrage actuel repose là-dessus. Seule la résistance des mini-boss est
+        // calculée, prête à servir si le contrôle des ennemis est activé un jour.
         if (this.isMiniBoss && this.miniBossStats?.ccResist > 0) {
             duration *= 1 - this.miniBossStats.ccResist;
             if (duration < 0.05) return;
