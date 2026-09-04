@@ -57,6 +57,9 @@ export class RogueSkills {
         const cfg = this.enemy.config.fanOfKnives;
 
         setTimeout(() => {
+            // Un rogue tué pendant son armement lançait quand même sa volée de couteaux.
+            if (this.enemy.dead) return;
+
             this.enemy.animState = 'strike_throw';
             if(cfg.sound && AudioSys.play) AudioSys.play(cfg.sound); 
 

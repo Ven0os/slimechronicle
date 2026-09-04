@@ -156,7 +156,9 @@ export class Pacifier extends PlayerBase {
     }
 
     updateClassPassives(dt) {
-        super.updateBuffs(dt); 
+        // PlayerBase.update() appelle déjà updateBuffs(dt) juste avant updateClassPassives :
+        // le rappeler ici faisait s'écouler buffs et debuffs deux fois plus vite que pour
+        // les autres classes.
         if(this.drainActiveTime > 0) this.drainActiveTime -= dt;
         const resourceEl = document.getElementById('class-resource');
         if (resourceEl) {
@@ -285,6 +287,9 @@ export class Pacifier extends PlayerBase {
             clawAnim();
 
             setTimeout(() => {
+                // Le coup était encore porté si le joueur mourait entre le geste et l'impact.
+                if (this.dead) return;
+
                 const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
                 dir.y = 0; dir.normalize();
                 if (shouldSendSkillIntent()) {
@@ -492,6 +497,9 @@ export class Pacifier extends PlayerBase {
             };
             snapAnim();
             setTimeout(() => {
+                // Le Verdict frappait encore la zone si le joueur mourait pendant l'élan.
+                if (this.dead) return;
+
                 createSkillVisual('shockwave', this.position, 10, 0xff0000); createDamageText("VERDICT", this.position, '#f00');
                 Globals.enemies.forEach(e => {
                     if(e.position.distanceTo(this.position) <= 10) {

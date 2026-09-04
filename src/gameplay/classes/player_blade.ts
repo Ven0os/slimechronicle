@@ -367,6 +367,9 @@ export class Blade extends PlayerBase {
         slashAnim();
 
         setTimeout(() => {
+            // Le coup était encore porté si le joueur mourait entre le geste et l'impact.
+            if (this.dead) return;
+
             const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
             dir.y = 0; dir.normalize();
 

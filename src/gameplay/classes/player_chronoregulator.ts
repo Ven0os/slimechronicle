@@ -1588,7 +1588,13 @@ export class Chronoregulator extends PlayerBase {
 
     this.faceMouse();
     if (STATE.multiplayer.active && this.isLocalPlayer() && !isServerAuthority()) {
-      NetChrono.sendBeamAimIntent(this.getAimDir());
+      // Une intention de visée par frame saturait la liaison P2P (60 à 144 paquets/s).
+      // 20 Hz suffit : c'est déjà la cadence des mises à jour de monde.
+      const nowMs = performance.now();
+      if (nowMs - (this._lastBeamAimSentAt || 0) >= 50) {
+        this._lastBeamAimSentAt = nowMs;
+        NetChrono.sendBeamAimIntent(this.getAimDir());
+      }
     }
     this.addFracture(dt, this.getBeamHitOrigin(), this.getAimDir());
     if (!this.isBeaming) return;

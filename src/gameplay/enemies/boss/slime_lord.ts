@@ -174,6 +174,9 @@ export class SlimeLord extends BaseEnemy {
         if(AudioSys.play) AudioSys.play('boss_teleport', 1.0); 
 
         setTimeout(() => {
+            // Le boss se repositionnait même vaincu pendant la dispersion.
+            if (this.dead) return;
+
             const angle = Math.random() * Math.PI * 2;
             const dist = 15 + Math.random() * 10;
             const newPos = target.position.clone().add(new THREE.Vector3(Math.cos(angle)*dist, 0, Math.sin(angle)*dist));

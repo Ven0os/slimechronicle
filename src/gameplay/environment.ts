@@ -11,6 +11,7 @@ import { createCliffModel } from './environment/cliffModel';
 
 import * as THREE from 'three';
 import { BOSS_ZONE, getRegionAt, getGroundLevelAt } from './world/worldZones';
+import { disposeObject3D } from '../visual/meshMaterialUtils';
 
 const animatedObjects = []; 
 
@@ -143,6 +144,10 @@ export function updateAnimatedSky(dt) {
 export function clearDecorations() {
     if (Globals.decoGroup) {
         Globals.scene.remove(Globals.decoGroup);
+        // Les décors représentent des centaines de meshes : sans libération, chaque
+        // reconstruction de carte (rejoindre une partie) laissait tout en mémoire GPU.
+        // disposeObject3D épargne les géométries/matériaux mis en cache (userData.keep).
+        disposeObject3D(Globals.decoGroup);
         Globals.decoGroup = null;
     }
     if(Globals.obstacles) {

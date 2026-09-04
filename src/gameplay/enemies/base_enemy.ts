@@ -542,6 +542,10 @@ export class BaseEnemy extends THREE.Group {
     }
 
     takeDamage(amount, opts = {}) {
+        // Un ennemi déjà mort ou en animation de mort continuait d'encaisser des coups :
+        // chiffres de dégâts, sons et passifs se déclenchaient sur un cadavre.
+        if (this.dead || this.isDying) return;
+
         if (this.gnomeShieldTimer && this.gnomeShieldTimer > 0) {
             amount *= 0.5;
         }
