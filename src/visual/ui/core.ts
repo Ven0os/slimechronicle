@@ -386,6 +386,10 @@ export const UICore = {
                 Globals.decoGroup.visible = true;
                 let index = 0;
                 Globals.decoGroup.children.forEach(child => {
+                    if (child.userData.isLandmark) {
+                        child.visible = density >= 2;
+                        return;
+                    }
                     if (density === 2) {
                         // Faible : 25% visibles (1 sur 4)
                         child.visible = index % 4 === 0;
@@ -399,6 +403,15 @@ export const UICore = {
                     index++;
                 });
             }
+        }
+        if (Globals.detailLayer) {
+            Globals.detailLayer.visible = density >= 3;
+        }
+        if (Globals.backdropGroup) {
+            Globals.backdropGroup.visible = density >= 2;
+        }
+        if (Globals.sakuraPetals && Globals.sakuraPetals.mesh) {
+            Globals.sakuraPetals.mesh.visible = density >= 2;
         }
         
         // 2b. Ombres portées

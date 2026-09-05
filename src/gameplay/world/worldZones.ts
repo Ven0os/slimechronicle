@@ -15,6 +15,265 @@ export const BOSS_ZONE = {
   ground: 0x2a1018,
 };
 
+// --- WORLD DESIGN (couche d'identité, n'écrase pas les biomes) ---
+export const ARENA = {
+  id: 'arena',
+  cx: 8,
+  cz: -12,
+  coreRadius: 28,
+  radius: 42,
+};
+
+export const WORLD_ZONES = [
+  { id: 'arena', cx: 8, cz: -12, radius: 42, falloff: 16, density: 0.22, r: 0.28, g: 0.42, b: 0.18, strength: 0.22 },
+  { id: 'forest', cx: 18, cz: 48, radius: 38, falloff: 14, density: 0.82, r: 0.07, g: 0.26, b: 0.09, strength: 0.28 },
+  { id: 'ruins', cx: -38, cz: -18, radius: 36, falloff: 14, density: 0.62, r: 0.38, g: 0.32, b: 0.26, strength: 0.30 },
+  { id: 'rocky', cx: 55, cz: 55, radius: 32, falloff: 12, density: 0.72, r: 0.22, g: 0.25, b: 0.30, strength: 0.26 },
+  { id: 'corrupted', cx: -62, cz: -62, radius: 28, falloff: 12, density: 0.52, r: 0.22, g: 0.08, b: 0.16, strength: 0.34 },
+  // Rose sakura + verts clairs (SE de l'arène)
+  { id: 'sakura_grove', cx: 58, cz: -48, radius: 48, falloff: 20, density: 0.78, r: 0.95, g: 0.72, b: 0.82, strength: 0.42 },
+] as const;
+
+/** Camp japonais — rive nord du lac (plus de maisons). */
+export const SAKURA_CAMP = {
+  id: 'sakura_camp',
+  cx: 58,
+  cz: -48,
+  radius: 8,
+  combatClearRadius: 18,
+};
+
+/** Lac ovale au sud du camp. Le pont (taiko-bashi) le traverse selon l'axe Z. */
+export const SAKURA_LAKE = {
+  cx: 58,
+  cz: -64,
+  rx: 14,
+  rz: 8.2,
+  waterY: -0.28,
+  bridgeHalf: 8.7,
+  bridgeHalfWidth: 1.42,
+  deckY: 0.14,
+  bridgeArch: 2.05,
+};
+
+export function sakuraLakeU(x: number, z: number): number {
+  const dx = (x - SAKURA_LAKE.cx) / SAKURA_LAKE.rx;
+  const dz = (z - SAKURA_LAKE.cz) / SAKURA_LAKE.rz;
+  return dx * dx + dz * dz;
+}
+
+export function isOnSakuraBridge(x: number, z: number): boolean {
+  return Math.abs(z - SAKURA_LAKE.cz) <= SAKURA_LAKE.bridgeHalf
+    && Math.abs(x - SAKURA_LAKE.cx) < SAKURA_LAKE.bridgeHalfWidth;
+}
+
+/** Couloir pont + torii : rien ne doit boucher la sortie. */
+export function isNearSakuraCrossing(x: number, z: number): boolean {
+  const along = z - SAKURA_LAKE.cz;
+  const across = Math.abs(x - SAKURA_LAKE.cx);
+  return Math.abs(along) <= SAKURA_LAKE.bridgeHalf + 5.5 && across < 4.4;
+}
+
+export function sakuraBridgeWalkY(z: number): number {
+  const t = (z - SAKURA_LAKE.cz) / SAKURA_LAKE.bridgeHalf;
+  const tt = Math.max(-1, Math.min(1, t));
+  return SAKURA_LAKE.deckY + SAKURA_LAKE.bridgeArch * (1 - tt * tt) + 0.04;
+}
+
+export function isInSakuraLake(x: number, z: number): boolean {
+  return sakuraLakeU(x, z) < 1 && !isOnSakuraBridge(x, z);
+}
+
+export const WORLD_PATHS = [
+  { pts: [[68, 68], [40, 28], [12, 0]], width: 3.2, falloff: 4.6 },
+  { pts: [[0, -8], [-22, -14], [-48, -28]], width: 3.0, falloff: 4.2 },
+  { pts: [[8, 8], [14, 32], [20, 52]], width: 2.8, falloff: 4.0 },
+  { pts: [[-42, -32], [-55, -50], [-68, -68]], width: 2.6, falloff: 3.8 },
+  { pts: [[20, 0], [38, 28], [52, 48]], width: 2.8, falloff: 4.0 },
+  // Arène → Torii d'entrée → Camp sakura → Sanctuaire / jardin
+  { pts: [[18, -18], [32, -28], [44, -38], [58, -48]], width: 3.6, falloff: 5.2 },
+  { pts: [[58, -48], [70, -58], [78, -50]], width: 2.8, falloff: 4.0 },
+  { pts: [[58, -48], [46, -42], [38, -36]], width: 2.6, falloff: 3.8 },
+];
+
+export const LANDMARK_SITES = [
+  { id: 'giant_tree', subtype: 'giant_tree', x: 22, z: 52, s: 3.8 },
+  { id: 'ancient_altar', subtype: 'altar', x: -42, z: -22, s: 2.2 },
+  { id: 'crystal_spire', subtype: 'crystal', x: -58, z: -70, s: 2.4 },
+  { id: 'stone_monument', subtype: 'monument', x: 58, z: 48, s: 2.6 },
+  { id: 'broken_portal', subtype: 'portal', x: -28, z: -8, s: 2.0 },
+  { id: 'fallen_colossus', subtype: 'statue', x: -16, z: -30, s: 2.3 },
+  { id: 'mystic_grove', subtype: 'grove', x: 6, z: 36, s: 1.8 },
+  { id: 'watch_cliff', subtype: 'watch', x: 72, z: 32, s: 2.8 },
+  { id: 'ancient_sakura', subtype: 'ancient_sakura', x: 76, z: -78, s: 2.4 },
+];
+
+export const DECO_CLUSTERS = [
+  { kind: 'forest', x: 20, z: 50, radius: 22, count: 18 },
+  { kind: 'forest', x: -8, z: 55, radius: 16, count: 12 },
+  { kind: 'forest', x: 38, z: 22, radius: 14, count: 10 },
+  { kind: 'ruins', x: -40, z: -20, radius: 20, count: 10 },
+  { kind: 'ruins', x: -22, z: -38, radius: 14, count: 7 },
+  { kind: 'rocky', x: 58, z: 52, radius: 18, count: 12 },
+  { kind: 'rocky', x: 42, z: 70, radius: 12, count: 8 },
+  { kind: 'corrupted', x: -60, z: -58, radius: 16, count: 10 },
+  { kind: 'sakura', x: 58, z: -48, radius: 32, count: 28 },
+  { kind: 'sakura', x: 74, z: -34, radius: 18, count: 14 },
+  { kind: 'sakura', x: 80, z: -52, radius: 16, count: 16 },
+  { kind: 'sakura', x: 44, z: -62, radius: 16, count: 12 },
+];
+
+export function createSeededRng(seed: number): () => number {
+  let s = seed >>> 0;
+  return function rng() {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function isInArenaCore(x: number, z: number): boolean {
+  return Math.hypot(x - ARENA.cx, z - ARENA.cz) < ARENA.coreRadius;
+}
+
+export function isInSakuraCamp(x: number, z: number): boolean {
+  return Math.hypot(x - SAKURA_CAMP.cx, z - SAKURA_CAMP.cz) < SAKURA_CAMP.radius;
+}
+
+export function isInSakuraGrove(x: number, z: number): boolean {
+  return getWorldZoneAt(x, z) === 'sakura_grove';
+}
+
+export function getWorldZoneAt(x: number, z: number): string {
+  let bestId = 'wild';
+  let bestScore = Infinity;
+  for (const zone of WORLD_ZONES) {
+    const d = Math.hypot(x - zone.cx, z - zone.cz);
+    const score = d / zone.radius;
+    if (score < bestScore) {
+      bestScore = score;
+      bestId = zone.id;
+    }
+  }
+  return bestScore < 1.35 ? bestId : 'wild';
+}
+
+export function getDecoDensityAt(x: number, z: number): number {
+  if (isInArenaCore(x, z)) return 0.08;
+  let density = 0.32;
+  let weight = 0.35;
+  for (const zone of WORLD_ZONES) {
+    const d = Math.hypot(x - zone.cx, z - zone.cz);
+    const outer = zone.radius + zone.falloff;
+    if (d > outer) continue;
+    let t = 1;
+    if (d > zone.radius) t = 1 - (d - zone.radius) / zone.falloff;
+    density += zone.density * t;
+    weight += t;
+  }
+  const distFromCenter = Math.hypot(x, z);
+  if (distFromCenter > 110) {
+    const border = Math.min(1, (distFromCenter - 110) / 22);
+    density += 0.55 * border;
+    weight += border;
+  }
+  return Math.min(0.95, density / weight);
+}
+
+function distToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  if (len2 < 1e-8) return Math.hypot(px - ax, pz - az);
+  let t = ((px - ax) * dx + (pz - az) * dz) / len2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  return Math.hypot(px - (ax + t * dx), pz - (az + t * dz));
+}
+
+export function getPathDistanceAt(x: number, z: number): number {
+  let best = 999;
+  for (const path of WORLD_PATHS) {
+    for (let i = 0; i < path.pts.length - 1; i++) {
+      const d = distToSegment(x, z, path.pts[i][0], path.pts[i][1], path.pts[i + 1][0], path.pts[i + 1][1]);
+      if (d < best) best = d;
+    }
+  }
+  return best;
+}
+
+export function isNearPath(x: number, z: number, extra = 0): boolean {
+  let best = 999;
+  let limit = 3.2;
+  for (const path of WORLD_PATHS) {
+    for (let i = 0; i < path.pts.length - 1; i++) {
+      const d = distToSegment(x, z, path.pts[i][0], path.pts[i][1], path.pts[i + 1][0], path.pts[i + 1][1]);
+      if (d < best) {
+        best = d;
+        limit = path.width + extra;
+      }
+    }
+  }
+  return best < limit;
+}
+
+function applyZoneTint(color: THREE.Color, x: number, z: number): void {
+  for (let i = 0; i < WORLD_ZONES.length; i++) {
+    const zone = WORLD_ZONES[i];
+    const d = Math.hypot(x - zone.cx, z - zone.cz);
+    const outer = zone.radius + zone.falloff;
+    if (d > outer) continue;
+    let t = 1;
+    if (d > zone.radius) t = 1 - (d - zone.radius) / zone.falloff;
+    t *= zone.strength;
+    color.r += (zone.r - color.r) * t;
+    color.g += (zone.g - color.g) * t;
+    color.b += (zone.b - color.b) * t;
+  }
+}
+
+function applyPathTint(color: THREE.Color, x: number, z: number): void {
+  let best = 999;
+  let bestWidth = 3.0;
+  let bestFall = 4.2;
+  for (let p = 0; p < WORLD_PATHS.length; p++) {
+    const path = WORLD_PATHS[p];
+    for (let i = 0; i < path.pts.length - 1; i++) {
+      const d = distToSegment(x, z, path.pts[i][0], path.pts[i][1], path.pts[i + 1][0], path.pts[i + 1][1]);
+      if (d < best) {
+        best = d;
+        bestWidth = path.width;
+        bestFall = path.falloff;
+      }
+    }
+  }
+  const outer = bestWidth + bestFall;
+  if (best > outer) return;
+  let t = 1;
+  if (best > bestWidth) t = 1 - (best - bestWidth) / bestFall;
+  t *= 0.55;
+  color.r += (0.45 - color.r) * t;
+  color.g += (0.34 - color.g) * t;
+  color.b += (0.20 - color.b) * t;
+}
+
+function applyLakeTint(color: THREE.Color, x: number, z: number): void {
+  const u = sakuraLakeU(x, z);
+  if (u < 1) {
+    color.r += (0.10 - color.r) * 0.82;
+    color.g += (0.28 - color.g) * 0.82;
+    color.b += (0.30 - color.b) * 0.82;
+    return;
+  }
+  if (u < 1.22) {
+    const t = 1 - (Math.sqrt(u) - 1) / (Math.sqrt(1.22) - 1);
+    color.r += (0.32 - color.r) * 0.55 * t;
+    color.g += (0.38 - color.g) * 0.55 * t;
+    color.b += (0.24 - color.b) * 0.55 * t;
+  }
+}
+
 export interface MobSpawnType {
   id: string;
   mobs: string[];
@@ -47,7 +306,7 @@ export function isInSafeZone(pos: THREE.Vector3): boolean {
 export function getPlayableRadiusAt(x: number, z: number): number {
   const angle = Math.atan2(z, x);
   const borderNoise = Math.sin(angle * 5) * 12 + Math.cos(angle * 3) * 6;
-  return 112 + borderNoise; // Coastal playable limit in shallow water
+  return 148 + borderNoise; // Coastal playable limit in shallow water
 }
 
 export type BiomeId = 'mountain' | 'cold' | 'desert' | 'temperate';
@@ -154,7 +413,7 @@ function computeBiomeWeights(x: number, z: number): void {
   }
 }
 
-export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }): number {
+export function getTerrainHeightAt(pos: THREE.Vector3 | { x: number, z: number }): number {
   const dx = pos.x - 90;
   const dz = pos.z - 90;
   const dist = Math.hypot(dx, dz);
@@ -192,8 +451,8 @@ export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }):
   const distFromCenter = Math.hypot(x, z);
   const angle = Math.atan2(z, x);
   const borderNoise = Math.sin(angle * 5) * 12 + Math.cos(angle * 3) * 6;
-  const shoreStart = 95 + borderNoise;
-  const shoreEnd = 118 + borderNoise;
+  const shoreStart = 128 + borderNoise;
+  const shoreEnd = 158 + borderNoise;
   
   if (distFromCenter > shoreStart) {
     let factor = Math.min(1.0, (distFromCenter - shoreStart) / (shoreEnd - shoreStart));
@@ -214,8 +473,25 @@ export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }):
     
     finalHeight = finalHeight + (-4.5 - finalHeight) * Math.pow(factor, 1.5);
   }
+
+  // Lac sakura : cuvette continue (le pont est un mesh, pas une chaussée de terre)
+  {
+    const u = sakuraLakeU(x, z);
+    if (u < 1) {
+      const t = 1 - Math.sqrt(Math.max(0, u));
+      finalHeight = -1.35 * t * t;
+    } else if (u < 1.28) {
+      const t = 1 - (Math.sqrt(u) - 1) / (Math.sqrt(1.28) - 1);
+      finalHeight = finalHeight * (1 - t) + (-0.1) * t;
+    }
+  }
   
   return finalHeight;
+}
+
+export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }): number {
+  if (isOnSakuraBridge(pos.x, pos.z)) return sakuraBridgeWalkY(pos.z);
+  return getTerrainHeightAt(pos);
 }
 
 export function getRegionAt(x: number, z: number): BiomeId {
@@ -289,7 +565,11 @@ export function getRegionColorAt(x: number, z: number): THREE.Color {
     + Math.sin(x * 0.62) * Math.cos(z * 0.47) * 0.06
     + Math.sin((x + z) * 0.21) * 0.035;
 
-  return _regionColor.setRGB(r * mottle, g * mottle, b * mottle);
+  _regionColor.setRGB(r * mottle, g * mottle, b * mottle);
+  applyZoneTint(_regionColor, x, z);
+  applyPathTint(_regionColor, x, z);
+  applyLakeTint(_regionColor, x, z);
+  return _regionColor;
 }
 
 /** Bruit déterministe borné à [0, 1], à plusieurs échelles, sans allocation. */
@@ -306,12 +586,24 @@ export function isInBossZone(pos: THREE.Vector3): boolean {
 }
 
 export function isNoMobZone(pos: THREE.Vector3): boolean {
-  // Prevent mob spawning in safe zone, boss zone, or deep underwater (where Y < -1.0)
-  return isInSafeZone(pos) || isInBossZone(pos) || getGroundLevelAt(pos) < -1.0;
+  // Prevent mob spawning in safe zone, boss zone, sakura camp, lake, or deep underwater
+  return (
+    isInSafeZone(pos) ||
+    isInBossZone(pos) ||
+    isInSakuraCamp(pos.x, pos.z) ||
+    isInSakuraLake(pos.x, pos.z) ||
+    getGroundLevelAt(pos) < -1.0
+  );
 }
 
 export function isValidEventPos(pos: THREE.Vector3): boolean {
-  return !isInSafeZone(pos) && !isInBossZone(pos) && getGroundLevelAt(pos) >= -1.0;
+  return (
+    !isInSafeZone(pos) &&
+    !isInBossZone(pos) &&
+    !isInSakuraCamp(pos.x, pos.z) &&
+    !isInSakuraLake(pos.x, pos.z) &&
+    getGroundLevelAt(pos) >= -1.0
+  );
 }
 
 export function pickMobSpawnType(level = 1): MobSpawnType {
@@ -331,7 +623,7 @@ export function randomWildSpawnPos(): THREE.Vector3 {
   // Mobs spawn inside the circular combat area (r up to 100) avoiding safe zones, boss zones, and deep sea
   for (let i = 0; i < 64; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = Math.random() * 100;
+    const r = Math.random() * 138;
     const x = Math.cos(angle) * r;
     const z = Math.sin(angle) * r;
     const pos = new THREE.Vector3(x, 0, z);

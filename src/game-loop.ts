@@ -16,6 +16,8 @@ import {
   updateEnvironmentAnimations,
   createDecorations,
   updateOcclusion,
+  updateBackdropParallax,
+  updateSakuraPetals,
 } from '@/gameplay/environment';
 import {
   updateSkillVisuals,
@@ -327,6 +329,7 @@ function animate(): void {
 
   if (Globals.camera) {
     updateOcclusion(Globals.camera, Globals.player);
+    updateBackdropParallax(Globals.camera);
   }
 
   if (STATE.multiplayer.active) {
@@ -365,6 +368,7 @@ function animate(): void {
   // du ciel restaient figées et le balancement des arbres au vent ne démarrait jamais.
   updateAnimatedSky(dt);
   updateEnvironmentAnimations(dt);
+  updateSakuraPetals(dt);
   updateTelegraphs(dt);
   updateSkillVisuals(dt);
   updateMenhirVisuals();

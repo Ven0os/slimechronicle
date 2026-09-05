@@ -32,6 +32,26 @@ function getMaterial(color, roughness, isLeaves = false) {
     return materialCache[key];
 }
 
+const PINE_GREEN = 0x2E7D32;
+
+function isAllowedPineColor(hex) {
+    if (hex == null) return false;
+    const r = (hex >> 16) & 255;
+    const g = (hex >> 8) & 255;
+    const b = hex & 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    // Neige / givre : clair, peu saturé, pas rose
+    if (max > 180 && (max - min) < 55 && g >= r - 12) return true;
+    // Conifère : le vert domine
+    if (g >= r && g >= b * 0.75) return true;
+    return false;
+}
+
+function pineLeavesColor(foliageCol) {
+    return isAllowedPineColor(foliageCol) ? foliageCol : PINE_GREEN;
+}
+
 export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
     const group = new THREE.Group();
     group.userData.isEnvironment = true; 
@@ -51,7 +71,7 @@ export function createTreeModel(scale = 1, type = 'pine', foliageCol = null) {
         trunk.castShadow = true; trunk.receiveShadow = true;
         group.add(trunk);
 
-        const leavesColor = foliageCol || 0x2E7D32;
+        const leavesColor = pineLeavesColor(foliageCol);
         const leavesMat = getMaterial(leavesColor, 0.8, true);
 
         // 3 Étages de feuilles

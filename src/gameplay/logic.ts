@@ -1487,6 +1487,23 @@ export const GameLogic = {
                 continue;
             }
 
+            let blockedByDecor = false;
+            if (Globals.obstacles) {
+                for (const o of Globals.obstacles) {
+                    if (!o || !o.position) continue;
+                    const dx = candidate.x - o.position.x;
+                    const dz = candidate.z - o.position.z;
+                    const keepout = (o.radius || 0) + 3.5;
+                    if (dx * dx + dz * dz < keepout * keepout) {
+                        blockedByDecor = true;
+                        break;
+                    }
+                }
+            }
+            if (blockedByDecor) {
+                continue;
+            }
+
             if (Globals.player) {
                 if (candidate.distanceTo(Globals.player.position) < minDistanceToPlayer) {
                     continue;
