@@ -4,7 +4,7 @@ import { AudioSys, TextureManager } from '@/core/ressources';
 import { Input } from '@/core/input';
 import { UI, UICompendium } from '@/visual/ui';
 import { Network } from '@/multiplayer/network';
-import { initScene, updateSunShadow } from '@/core/scene';
+import { initScene, updateSunShadow, updateVisibilityCulling } from '@/core/scene';
 import { updateAtmosphere } from '@/visual/atmosphere';
 import { GameLogic, GameLauncher } from '@/gameplay/logic';
 import {
@@ -445,6 +445,10 @@ function animate(): void {
   const shadowFocus = camTarget ? camTarget.position : Globals.camera.position;
   updateSunShadow(shadowFocus.x, shadowFocus.z);
   updateAtmosphere(dt, shadowFocus.x, shadowFocus.z);
+
+  // Après le placement de la caméra, sinon le champ de vision testé serait celui de
+  // l'image précédente.
+  updateVisibilityCulling();
 
   Globals.renderer.render(Globals.scene, Globals.camera);
 }

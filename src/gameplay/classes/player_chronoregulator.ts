@@ -4,6 +4,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createDamageText, createSkillVisual, createTelegraph, spawnParticles } from '../../visual/effects';
 import { disposeObject3D } from '../../visual/meshMaterialUtils';
+import { setDisplayIfChanged, getCachedElement } from '../../visual/domUtils';
 import { Globals } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
 import { PassiveKeystoneHooks } from '../../systems/passiveKeystoneHooks';
@@ -2036,9 +2037,9 @@ export class Chronoregulator extends PlayerBase {
       this.updateConvergenceSkillVisual(false);
     }
 
-    const resourceEl = document.getElementById('class-resource');
+    const resourceEl = getCachedElement('class-resource');
     if (resourceEl && this.isLocalPlayer()) {
-      resourceEl.style.display = 'none';
+      setDisplayIfChanged(resourceEl, 'none');
     }
   }
 

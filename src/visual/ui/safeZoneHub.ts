@@ -334,9 +334,18 @@ export const SafeZoneHub = {
 
     const isMenuOpen = !!(window.UI && typeof window.UI.isMenuOpen === 'function' && window.UI.isMenuOpen());
 
-    const recallHud = document.getElementById('recall-hud');
-    if (recallHud) {
-      recallHud.style.display = (STATE.leftSafeZone && !isMenuOpen) ? 'flex' : 'none';
+    // Élément et valeur mis en cache : cet affichage ne change qu'en entrant ou sortant de
+    // la zone sûre, alors qu'il était relu et réécrit à chaque image.
+    if (!this._recallHud || !this._recallHud.isConnected) {
+      this._recallHud = document.getElementById('recall-hud');
+      this._recallDisplay = null;
+    }
+    if (this._recallHud) {
+      const display = (STATE.leftSafeZone && !isMenuOpen) ? 'flex' : 'none';
+      if (this._recallDisplay !== display) {
+        this._recallDisplay = display;
+        this._recallHud.style.display = display;
+      }
     }
   },
 

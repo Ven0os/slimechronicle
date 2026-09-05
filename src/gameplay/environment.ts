@@ -462,6 +462,8 @@ export function updateOcclusion(camera, player) {
 export function updateEnvironmentAnimations(dt) {
     const time = Date.now() * 0.001; 
     for (const obj of animatedObjects) {
-        if (obj.animate) obj.animate(time);
+        // Le balancement d'un arbre hors champ ne se voit pas : le culling de visibilité
+        // sert aussi de filtre ici, ce qui limite l'animation aux décors réellement à l'écran.
+        if (obj.visible && obj.animate) obj.animate(time);
     }
 }

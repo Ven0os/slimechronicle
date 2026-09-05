@@ -3,7 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
-import { setHtmlIfChanged } from '../../visual/domUtils';
+import { setHtmlIfChanged, setDisplayIfChanged, getCachedElement } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -249,7 +249,7 @@ export class Mage extends PlayerBase {
     }
 
     updateClassPassives(dt) {
-        const resourceEl = document.getElementById('class-resource');
+        const resourceEl = getCachedElement('class-resource');
         if (resourceEl) {
             const cdr = Math.floor((1.0 - ConstellationEngine.getSkillCdMult('space')) * 100);
             setHtmlIfChanged(resourceEl, `
@@ -263,7 +263,7 @@ export class Mage extends PlayerBase {
                     </div>
                 </div>
             `);
-            resourceEl.style.display = 'block';
+            setDisplayIfChanged(resourceEl, 'block');
         }
     }
 

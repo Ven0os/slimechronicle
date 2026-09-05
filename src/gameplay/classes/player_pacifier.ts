@@ -3,7 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
-import { setHtmlIfChanged } from '../../visual/domUtils';
+import { setHtmlIfChanged, setDisplayIfChanged, getCachedElement } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -160,7 +160,7 @@ export class Pacifier extends PlayerBase {
         // le rappeler ici faisait s'écouler buffs et debuffs deux fois plus vite que pour
         // les autres classes.
         if(this.drainActiveTime > 0) this.drainActiveTime -= dt;
-        const resourceEl = document.getElementById('class-resource');
+        const resourceEl = getCachedElement('class-resource');
         if (resourceEl) {
             const hemocycleActive = ConstellationEngine.isApexPassiveActive('bloodPact', 'pacifier');
             const hemo = hemocycleActive ? ConvergenceEffects.getHemocycleSummary(this) : null;
@@ -187,7 +187,7 @@ export class Pacifier extends PlayerBase {
                     </div>
                 </div>
             `);
-            resourceEl.style.display = 'block';
+            setDisplayIfChanged(resourceEl, 'block');
         }
     }
 

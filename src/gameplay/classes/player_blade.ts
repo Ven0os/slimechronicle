@@ -3,7 +3,7 @@ import { PlayerBase } from '../player_base';
 import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
-import { setHtmlIfChanged } from '../../visual/domUtils';
+import { setHtmlIfChanged, setDisplayIfChanged, getCachedElement } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -277,7 +277,7 @@ export class Blade extends PlayerBase {
     }
 
     updateClassPassives(dt) {
-        const resourceEl = document.getElementById('class-resource');
+        const resourceEl = getCachedElement('class-resource');
         if (resourceEl) {
             if (ConstellationEngine.isApexPassiveActive('eternalThirst', 'blade')) {
                 const summary = ConvergenceEffects.getBladeBreakpointSummary(this);
@@ -302,7 +302,7 @@ export class Blade extends PlayerBase {
                         </div>
                     </div>
                 `);
-                resourceEl.style.display = 'block';
+                setDisplayIfChanged(resourceEl, 'block');
                 return;
             }
             const mult = this.getPassiveMultiplier();
@@ -321,7 +321,7 @@ export class Blade extends PlayerBase {
                     </div>
                 </div>
             `);
-            resourceEl.style.display = 'block';
+            setDisplayIfChanged(resourceEl, 'block');
         }
     }
 

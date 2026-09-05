@@ -32,6 +32,55 @@ export function updateSunShadow(focusX: number, focusZ: number) {
     );
 }
 
+const _cullFrustum = new THREE.Frustum();
+const _cullMatrix = new THREE.Matrix4();
+const _cullSphere = new THREE.Sphere();
+/** Rayons englobants approximatifs, volontairement généreux pour éviter tout pop-in. */
+const ENEMY_CULL_RADIUS = 4;
+const DECO_CULL_RADIUS = 8;
+
+/**
+ * Masque les ennemis et décors situés hors du champ de la caméra.
+ *
+ * Three.js élimine déjà les objets hors écran, mais il le fait mesh par mesh : chaque
+ * personnage étant assemblé à partir d'une centaine de petits meshes, la scène en compte
+ * plusieurs milliers dont il recalcule la matrice et teste le volume englobant à chaque
+ * image, y compris pour des ennemis très loin derrière la caméra. Tester une seule sphère
+ * à la racine et masquer tout le sous-arbre supprime ce travail d'un bloc : `visible` à
+ * faux fait ignorer la branche entière, aussi bien au rendu qu'à la passe d'ombres.
+ *
+ * Le gameplay n'est pas concerné : les ennemis masqués continuent d'exécuter leur update,
+ * leur IA et leurs déplacements exactement comme avant.
+ */
+export function updateVisibilityCulling() {
+    const camera = Globals.camera;
+    if (!camera) return;
+
+    // matrixWorldInverse n'est rafraîchi que par render() ; sans cet appel le frustum
+    // accuserait une image de retard et ferait clignoter les objets en bord d'écran.
+    camera.updateMatrixWorld();
+    _cullMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _cullFrustum.setFromProjectionMatrix(_cullMatrix);
+
+    const enemies = Globals.enemies;
+    for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
+        _cullSphere.center.copy(e.position);
+        _cullSphere.radius = ENEMY_CULL_RADIUS * (e.scaleVal || 1);
+        e.visible = _cullFrustum.intersectsSphere(_cullSphere);
+    }
+
+    if (Globals.decoGroup) {
+        const decos = Globals.decoGroup.children;
+        for (let i = 0; i < decos.length; i++) {
+            const d = decos[i];
+            _cullSphere.center.copy(d.position);
+            _cullSphere.radius = DECO_CULL_RADIUS;
+            d.visible = _cullFrustum.intersectsSphere(_cullSphere);
+        }
+    }
+}
+
 /**
  * Applique le niveau d'ombres choisi dans les options.
  * 1 = aucune, 2 = carte réduite (machines modestes), 3 = carte pleine résolution.
