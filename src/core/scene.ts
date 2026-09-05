@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { CONFIG } from './config';
 import { Globals } from './globals';
-import { getRegionColorAt, getGroundLevelAt, BOSS_ZONE } from '../gameplay/world/worldZones';
+import { getRegionColorAt, getTerrainHeightAt, BOSS_ZONE } from '../gameplay/world/worldZones';
 import { initAtmosphere, snapAtmosphere } from '../visual/atmosphere';
 
 /** Demi-largeur, en unités monde, de la zone couverte par la carte d'ombres. */
@@ -112,7 +112,7 @@ export function applyShadowQuality(level: number) {
 export function initScene() {
     Globals.scene = new THREE.Scene();
     Globals.scene.background = new THREE.Color(CONFIG.colors.skyNormal);
-    Globals.scene.fog = new THREE.FogExp2(0xffffff, 0.005);
+    Globals.scene.fog = new THREE.FogExp2(0xffffff, 0.0036);
 
     Globals.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     Globals.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -158,7 +158,7 @@ export function initScene() {
     Globals.scene.add(Globals.dirLight.target);
 
     // Sol avec régions (couleurs et reliefs)
-    const groundGeo = new THREE.PlaneGeometry(300, 300, 100, 100);
+    const groundGeo = new THREE.PlaneGeometry(420, 420, 160, 160);
     const posAttr = groundGeo.attributes.position;
     const colors = [];
 
@@ -167,7 +167,7 @@ export function initScene() {
         const vy = posAttr.getY(i);
         
         // Relief de l'île (hauteur physique calculée en X, Z = -Y local)
-        let height = getGroundLevelAt({ x: vx, z: -vy });
+        let height = getTerrainHeightAt({ x: vx, z: -vy });
         
         // Emplacement du spawn platform : on le garde plat à y=0 car createThemedWorldMap dessine le mesh Cylinder
         const distToSpawnCenter = Math.hypot(vx - 90, -vy - 90);
@@ -205,7 +205,7 @@ export function initScene() {
     Globals.scene.add(ground);
 
     // Mer / Océan
-    const waterGeo = new THREE.PlaneGeometry(600, 600);
+    const waterGeo = new THREE.PlaneGeometry(800, 800);
     const waterMat = new THREE.MeshStandardMaterial({
         color: 0x0f5e9c, // Bleu marin profond et éclatant
         roughness: 0.1,
