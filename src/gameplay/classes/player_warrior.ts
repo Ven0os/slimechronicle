@@ -7,7 +7,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
-import { setHtmlIfChanged } from '../../visual/domUtils';
+import { setHtmlIfChanged, setDisplayIfChanged, getCachedElement } from '../../visual/domUtils';
 import { disposeObject3D } from '../../visual/meshMaterialUtils';
 
 import { Network } from '../../multiplayer/network';
@@ -283,7 +283,7 @@ export class Warrior extends PlayerBase {
 
 
     updateClassPassives(dt) {
-        const resourceEl = document.getElementById('class-resource');
+        const resourceEl = getCachedElement('class-resource');
         const charge = ConstellationEngine.getStoredParryCharge();
         if (resourceEl) {
             const runicSummary = ConvergenceEffects.getRunicJudgmentSummary(this);
@@ -301,7 +301,7 @@ export class Warrior extends PlayerBase {
                         </div>
                     </div>
                 `);
-                resourceEl.style.display = 'block';
+                setDisplayIfChanged(resourceEl, 'block');
             } else if (charge > 0) {
                 setHtmlIfChanged(resourceEl, `
                     <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
@@ -314,9 +314,9 @@ export class Warrior extends PlayerBase {
                         </div>
                     </div>
                 `);
-                resourceEl.style.display = 'block';
+                setDisplayIfChanged(resourceEl, 'block');
             } else {
-                resourceEl.style.display = 'none';
+                setDisplayIfChanged(resourceEl, 'none');
             }
         }
     }

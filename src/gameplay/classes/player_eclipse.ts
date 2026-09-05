@@ -5,7 +5,7 @@ import { CONFIG, STATE } from '../../core/config';
 import { AudioSys } from '../../core/ressources';
 import { createSkillVisual, createDamageText, spawnParticles } from '../../visual/effects';
 import { disposeObject3D } from '../../visual/meshMaterialUtils';
-import { setHtmlIfChanged } from '../../visual/domUtils';
+import { setHtmlIfChanged, setDisplayIfChanged, getCachedElement } from '../../visual/domUtils';
 import { Network } from '../../multiplayer/network';
 import { Globals, GameActions } from '../../core/globals';
 import { ConstellationEngine } from '../../systems/constellationEngine';
@@ -770,7 +770,7 @@ export class Eclipse extends PlayerBase {
             this._ascensionHpLossTriggered = false;
         }
 
-        const resourceEl = document.getElementById('class-resource');
+        const resourceEl = getCachedElement('class-resource');
         if (resourceEl) {
             const sunColor = this.eclipse.sun >= 100 ? '#ffcc00' : '#ffa800'; 
             const moonColor = this.eclipse.moon >= 100 ? '#a3b1cc' : '#5dade2'; 
@@ -810,7 +810,7 @@ export class Eclipse extends PlayerBase {
                 `;
             }
             setHtmlIfChanged(resourceEl, html);
-            resourceEl.style.display = 'block';
+            setDisplayIfChanged(resourceEl, 'block');
         }
     }
 

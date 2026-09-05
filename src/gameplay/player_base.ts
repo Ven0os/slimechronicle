@@ -340,7 +340,7 @@ export class PlayerBase extends THREE.Group {
         if (!els || !els.btn.isConnected) {
             const btn = document.querySelector(`.skill-icon#skill-${k}`);
             if (!btn) return null;
-            els = { btn, text: document.getElementById(`cd-${k}`), overlay: null, hidden: false };
+            els = { btn, text: document.getElementById(`cd-${k}`), overlay: null, hidden: false, textShown: false, lastPct: -1 };
             this._cdEls[k] = els;
         }
         return els;
@@ -359,6 +359,10 @@ export class PlayerBase extends THREE.Group {
                     if (els.text) els.text.style.display = 'none';
                     if (els.overlay) els.overlay.style.height = '0%';
                     els.hidden = true;
+                    // Sans cette remise à zéro, les gardes d'écriture croiraient l'affichage
+                    // déjà correct et la prochaine recharge resterait invisible.
+                    els.textShown = false;
+                    els.lastPct = 0;
                 }
             }
         }
@@ -461,10 +465,20 @@ export class PlayerBase extends THREE.Group {
             }
             els.overlay = overlay;
         }
-        els.overlay.style.height = pct + '%';
+        // Le pourcentage est arrondi avant écriture : sur un bouton de cette taille un
+        // dixième de pourcent est invisible, mais l'écrire relançait un calcul de style à
+        // chaque image pendant toute la recharge.
+        const pctRounded = Math.round(pct);
+        if (els.lastPct !== pctRounded) {
+            els.lastPct = pctRounded;
+            els.overlay.style.height = pctRounded + '%';
+        }
         els.hidden = false;
         if (els.text) {
-            els.text.style.display = 'flex';
+            if (!els.textShown) {
+                els.textShown = true;
+                els.text.style.display = 'flex';
+            }
             const secs = Math.ceil(this.cooldowns[k]);
             // Écriture DOM seulement quand la valeur affichée change
             if (els.lastSecs !== secs) {
