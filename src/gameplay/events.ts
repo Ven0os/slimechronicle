@@ -62,18 +62,8 @@ export const WorldEvents = {
     },
 
     _spawnRandomEvent() {
-        const pos = this.findSafeSpawnPos();
-        if (!isValidEventPos(pos)) return;
-        const r = Math.random();
-        if (r < 0.11) this.spawnBloodAltar(pos);
-        else if (r < 0.22) this.spawnGeode(pos);
-        else if (r < 0.33) this.spawnCrystalDefense(pos);
-        else if (r < 0.44) this.spawnRunePuzzle(pos);
-        else if (r < 0.55) this.spawnElementalPillars(pos);
-        else if (r < 0.66) this.spawnAncientGong(pos);
-        else if (r < 0.77) this.spawnLaserMirrors(pos);
-        else if (r < 0.88) this.spawnLightRitual(pos);
-        else this.spawnGliderRun(pos);
+        // Spawn d'événements temporairement désactivé
+        return;
     },
 
     update: function(dt) {
@@ -103,7 +93,7 @@ export const WorldEvents = {
 
         if (this.interactables.length > 0) return;
 
-        const isEventsActive = (STATE.gameOptions && STATE.gameOptions.isEventsActive !== undefined) ? STATE.gameOptions.isEventsActive : true;
+        const isEventsActive = (STATE.gameOptions && STATE.gameOptions.isEventsActive !== undefined) ? STATE.gameOptions.isEventsActive : false;
         if (isEventsActive && Math.random() < 0.00035) {
             this._spawnRandomEvent();
         }

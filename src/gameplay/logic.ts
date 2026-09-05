@@ -1487,6 +1487,12 @@ export const GameLogic = {
                 continue;
             }
 
+            // Eviter de spawn trop près du spawn platform (distance < 50) pour laisser une zone dégagée
+            const distToSpawn = Math.hypot(candidate.x - 90, candidate.z - 90);
+            if (distToSpawn < 50) {
+                continue;
+            }
+
             let blockedByDecor = false;
             if (Globals.obstacles) {
                 for (const o of Globals.obstacles) {
@@ -1530,6 +1536,9 @@ export const GameLogic = {
 
         if (!centerPos) {
             centerPos = randomWildSpawnPos(); // Fallback
+            if (Math.hypot(centerPos.x - 90, centerPos.z - 90) < 50) {
+                centerPos = new THREE.Vector3(0, 0, 0);
+            }
         }
 
         // Spawn building structure at the center

@@ -11,7 +11,7 @@ import { NetSkills } from '../multiplayer/net_skills';
 import { isServerAuthority } from '../multiplayer/net_combat';
 import { dealDamageToEnemy } from './combat/damage_helpers';
 import { ConstellationEngine } from '@/systems/constellationEngine';
-import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt, getPlayableRadiusAt, BOSS_ZONE } from './world/worldZones';
+import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt, getPlayableRadiusAt, BOSS_ZONE, isOnSakuraBridge, sakuraBridgeWalkY } from './world/worldZones';
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
 import { BuffBar } from '@/ui/buffBar'; 
 import { dampFactor } from '@/core/smoothing';
@@ -287,6 +287,15 @@ export class PlayerBase extends THREE.Group {
         const isRecallChanneling = window.SafeZoneHub && window.SafeZoneHub.channelingTime > 0;
 
         if (!isRecallChanneling) {
+            // Collision sous le pont sakura : si le joueur saute depuis le lit du lac, bloquer la tête sous le tablier
+            if (isOnSakuraBridge(this.position.x, this.position.z)) {
+                const bridgeY = sakuraBridgeWalkY(this.position.z);
+                if (this.position.y < bridgeY - 0.35 && this.position.y + 1.4 > bridgeY - 0.2) {
+                    if (this.verticalVelocity && this.verticalVelocity > 0) this.verticalVelocity = 0;
+                    this.position.y = Math.min(this.position.y, bridgeY - 1.6);
+                }
+            }
+
             if (this.position.y > groundLevel || (this.verticalVelocity && this.verticalVelocity !== 0)) {
                 this.verticalVelocity = (this.verticalVelocity || 0) - 25 * dt;
                 this.position.y += this.verticalVelocity * dt;

@@ -29,8 +29,8 @@ function mesh(geo, material, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz
     m.position.set(x, y, z);
     m.rotation.set(rx, ry, rz);
     m.scale.set(sx, sy, sz);
-    m.castShadow = false;
-    m.receiveShadow = false;
+    m.castShadow = true;
+    m.receiveShadow = true;
     return m;
 }
 

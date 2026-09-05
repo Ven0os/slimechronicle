@@ -380,29 +380,38 @@ export const UICore = {
         // 2. Végétation & Décors
         const density = STATE.gameOptions.decoDensity !== undefined ? STATE.gameOptions.decoDensity : 4;
         if (Globals.decoGroup) {
-            if (density === 1) {
-                Globals.decoGroup.visible = false;
-            } else {
-                Globals.decoGroup.visible = true;
-                let index = 0;
-                Globals.decoGroup.children.forEach(child => {
-                    if (child.userData.isLandmark) {
-                        child.visible = density >= 2;
-                        return;
-                    }
-                    if (density === 2) {
-                        // Faible : 25% visibles (1 sur 4)
-                        child.visible = index % 4 === 0;
-                    } else if (density === 3) {
-                        // Moyen : 50% visibles (1 sur 2)
-                        child.visible = index % 2 === 0;
-                    } else {
-                        // Élevé : 100% visibles
-                        child.visible = true;
-                    }
-                    index++;
-                });
-            }
+            // Le groupe principal reste toujours visible pour afficher les objets qui possèdent une collision physique
+            Globals.decoGroup.visible = true;
+            let nonColliderIndex = 0;
+            Globals.decoGroup.children.forEach(child => {
+                // Règle absolue : les objets avec collision (arbres, gros rochers, falaises, ruines, ponts...)
+                // et les landmarks ne doivent JAMAIS être masqués pour éviter les murs invisibles
+                if (child.userData.hasCollision || child.userData.isLandmark || child.userData.isBridge) {
+                    child.userData.densityAllowed = true;
+                    child.visible = true;
+                    return;
+                }
+
+                // Pour les décors purement cosmétiques sans collision (buissons, cailloux s < 1, bambous...)
+                let allowed = true;
+                if (density === 1) {
+                    // Désactivé : masquer les décors sans collision
+                    allowed = false;
+                } else if (density === 2) {
+                    // Faible : 25% visibles (1 sur 4)
+                    allowed = nonColliderIndex % 4 === 0;
+                    nonColliderIndex++;
+                } else if (density === 3) {
+                    // Moyen : 50% visibles (1 sur 2)
+                    allowed = nonColliderIndex % 2 === 0;
+                    nonColliderIndex++;
+                } else {
+                    // Élevé : 100% visibles
+                    allowed = true;
+                }
+                child.userData.densityAllowed = allowed;
+                child.visible = allowed;
+            });
         }
         if (Globals.detailLayer) {
             Globals.detailLayer.visible = density >= 3;

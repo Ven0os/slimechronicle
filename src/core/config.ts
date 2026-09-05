@@ -100,7 +100,7 @@ export const STATE = {
             playerHpMult: 1.0,
             playerDmgMult: 1.0,
             startLevel: 1,
-            isEventsActive: true,
+            isEventsActive: false,
             maxMobDisplay: 30,
             luckMultPrismatic: 1.0,
             luckMultMiniBoss: 1.0,

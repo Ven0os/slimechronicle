@@ -60,8 +60,8 @@ function mesh(geo, material, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz
     m.position.set(x, y, z);
     m.rotation.set(rx, ry, rz);
     m.scale.set(sx, sy, sz);
-    m.castShadow = false;
-    m.receiveShadow = false;
+    m.castShadow = true;
+    m.receiveShadow = true;
     return m;
 }
 
@@ -343,8 +343,13 @@ export function createJapaneseBridge(scale = 1) {
         group.add(mesh(box(width + 0.45, 0.16, 0.55), stone, 0, 0.22, z * 0.97));
     }
 
+    group.userData.isEnvironment = true;
+    group.userData.hasCollision = true;
+    group.userData.isLandmark = true;
+    group.userData.isBridge = true;
+    group.userData.cullRadius = 30;
     group.scale.setScalar(scale);
-    return emptyResult(group);
+    return { group, obstacles: [] };
 }
 
 export function createCampBanner(scale = 1) {

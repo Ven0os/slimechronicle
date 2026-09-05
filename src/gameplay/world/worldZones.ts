@@ -489,8 +489,16 @@ export function getTerrainHeightAt(pos: THREE.Vector3 | { x: number, z: number }
   return finalHeight;
 }
 
-export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, z: number }): number {
-  if (isOnSakuraBridge(pos.x, pos.z)) return sakuraBridgeWalkY(pos.z);
+export function getGroundLevelAt(pos: THREE.Vector3 | { x: number, y?: number, z: number }): number {
+  if (isOnSakuraBridge(pos.x, pos.z)) {
+    const bridgeY = sakuraBridgeWalkY(pos.z);
+    // Si l'entité est sous le pont (pos.y inférieur au tablier), son sol reste le lit du lac
+    // et elle n'est pas téléportée au-dessus.
+    if (typeof (pos as any).y === 'number' && (pos as any).y < bridgeY - 0.35) {
+      return getTerrainHeightAt(pos);
+    }
+    return bridgeY;
+  }
   return getTerrainHeightAt(pos);
 }
 
@@ -620,14 +628,15 @@ export function pickMobSpawnType(level = 1): MobSpawnType {
 export const pickSpawnZone = pickMobSpawnType;
 
 export function randomWildSpawnPos(): THREE.Vector3 {
-  // Mobs spawn inside the circular combat area (r up to 100) avoiding safe zones, boss zones, and deep sea
+  // Mobs spawn inside the circular combat area (r up to 100) avoiding safe zones, boss zones, deep sea, and spawn perimeter
   for (let i = 0; i < 64; i++) {
     const angle = Math.random() * Math.PI * 2;
     const r = Math.random() * 138;
     const x = Math.cos(angle) * r;
     const z = Math.sin(angle) * r;
     const pos = new THREE.Vector3(x, 0, z);
-    if (!isNoMobZone(pos)) return pos;
+    // Garder au moins 50 unités de distance du spawn (90, 90) pour ne jamais l'assiéger
+    if (!isNoMobZone(pos) && Math.hypot(pos.x - 90, pos.z - 90) >= 50) return pos;
   }
   return new THREE.Vector3(0, 0, 0);
 }

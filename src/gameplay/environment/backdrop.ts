@@ -71,35 +71,7 @@ export function createBackdrop(rng: () => number): THREE.Group {
     }
 
     // === 1. ANNEAU DE MONTAGNES LOINTAINES ===
-    const peakGeos = [
-        getGeometry('backdrop_peak_5', () => new THREE.ConeGeometry(1, 1, 5)),
-        getGeometry('backdrop_peak_6', () => new THREE.ConeGeometry(1, 1, 6)),
-        getGeometry('backdrop_peak_7', () => new THREE.ConeGeometry(1, 1, 7))
-    ];
-
-    const peakCount = 26 + Math.floor(rng() * 5); // 26 à 30 sommets
-    const step = (Math.PI * 2) / peakCount;
-
-    for (let i = 0; i < peakCount; i++) {
-        // Espacement angulaire irrégulier pour casser la régularité de l'anneau
-        const angle = i * step + (rng() - 0.5) * step * 0.9;
-
-        const pick = rng();
-        const layer = pick < 0.38 ? MOUNTAIN_LAYERS[0] : (pick < 0.72 ? MOUNTAIN_LAYERS[1] : MOUNTAIN_LAYERS[2]);
-
-        const mat = getBackdropMaterial(washedColor(layer.color, layer.wash));
-        const peak = addMesh(peakGeos[Math.floor(rng() * peakGeos.length)], mat);
-        if (!peak) break;
-
-        const radius = layer.rMin + rng() * (layer.rMax - layer.rMin);
-        const height = layer.hMin + rng() * (layer.hMax - layer.hMin);
-        const base = layer.bMin + rng() * (layer.bMax - layer.bMin);
-
-        // Base enfoncée sous la mer pour ne jamais laisser voir un vide sous le relief
-        peak.position.set(Math.cos(angle) * radius, -4 + height / 2, Math.sin(angle) * radius);
-        peak.scale.set(base * (0.85 + rng() * 0.3), height, base * (0.85 + rng() * 0.3));
-        peak.rotation.y = rng() * Math.PI * 2;
-    }
+    // Supprimé : les montagnes en arrière-plan ont été retirées comme demandé.
 
     // === 2. SILHOUETTES DE RUINES LOINTAINES ===
     const ruinMat = getBackdropMaterial(0x5a6a80);

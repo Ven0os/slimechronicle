@@ -63,8 +63,8 @@ function addMesh(group, geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, isLeaves = fa
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
     m.scale.set(sx, sy, sz);
-    m.castShadow = false;
-    m.receiveShadow = false;
+    m.castShadow = true;
+    m.receiveShadow = true;
     if (isLeaves) m.userData.isLeaves = true;
     group.add(m);
     return m;
@@ -91,36 +91,7 @@ export function createCherryTreeModel(scale = 1, variant = 'medium', foliageCol 
     trunk.rotation.y = Math.random() * Math.PI;
     if (variant === 'ancient') trunk.rotation.z = 0.06;
 
-    if (variant === 'ancient') {
-        const splitGeo = getGeometry('cherry_split', () => new THREE.CylinderGeometry(0.22, 0.38, 1.6, 5));
-        const splitA = addMesh(group, splitGeo, trunkMat, 0.35, cfg.trunkH * 0.72, 0.1, 1, 1, 1);
-        splitA.rotation.z = -0.45;
-        const splitB = addMesh(group, splitGeo, trunkMat, -0.4, cfg.trunkH * 0.7, -0.15, 0.85, 0.9, 0.85);
-        splitB.rotation.z = 0.4;
-        splitB.rotation.x = 0.12;
-
-        const rootGeo = getGeometry('cherry_root', () => new THREE.CylinderGeometry(0.18, 0.32, 1.1, 4));
-        for (let i = 0; i < 4; i++) {
-            const ang = (i / 4) * Math.PI * 2 + 0.2;
-            const root = addMesh(group, rootGeo, trunkMat, Math.cos(ang) * 0.7, 0.18, Math.sin(ang) * 0.7, 1.3, 0.45, 1.1);
-            root.rotation.z = Math.cos(ang) * 0.85;
-            root.rotation.x = Math.sin(ang) * 0.85;
-        }
-    }
-
-    const branchGeo = getGeometry('cherry_branch', () => new THREE.CylinderGeometry(0.05, 0.11, 1.15, 4));
-    for (let i = 0; i < cfg.branches; i++) {
-        const ang = (i / Math.max(1, cfg.branches)) * Math.PI * 2 + Math.random() * 0.4;
-        const y = cfg.trunkH * (0.45 + (i % 3) * 0.14);
-        const br = addMesh(
-            group, branchGeo, branchMat,
-            Math.cos(ang) * 0.25, y, Math.sin(ang) * 0.25,
-            1, 0.7 + cfg.spread * 0.25, 1
-        );
-        br.rotation.z = Math.cos(ang) * (0.7 + (variant === 'ancient' ? 0.35 : 0.15));
-        br.rotation.y = ang;
-        br.rotation.x = Math.sin(ang) * 0.25;
-    }
+    // Tronc principal épuré sans excroissances ni morceaux saillants
 
     const mainGeo = getGeometry('cherry_canopy_main', () => new THREE.IcosahedronGeometry(1.0, 0));
     const subGeo = getGeometry('cherry_canopy_sub', () => new THREE.IcosahedronGeometry(0.55, 0));

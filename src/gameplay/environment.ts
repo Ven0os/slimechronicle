@@ -272,6 +272,7 @@ export function createDecorations(importedData = null) {
             
             // Collision tronc simple
             addCompositeObstacle(x, z, ry, 0, 0, 0.5 * s); 
+            object3D.userData.hasCollision = true;
             
             if(!subtype) subtype = treeType; 
             if(!color) color = foliageCol; 
@@ -297,6 +298,7 @@ export function createDecorations(importedData = null) {
             // Petits cailloux : cosmétique uniquement
             if (s >= 1.0) {
                 addCompositeObstacle(x, z, ry, 0, 0, 0.7 * s);
+                object3D.userData.hasCollision = true;
             }
             
             if(!color) color = rockCol;
@@ -319,6 +321,7 @@ export function createDecorations(importedData = null) {
             object3D.position.set(x, groundY, z);
             object3D.rotation.y = ry;
             // PAS DE COLLISION POUR LES BUISSONS (On marche dedans)
+            object3D.userData.hasCollision = false;
             
             if(!color) color = bushCol;
         }
@@ -336,6 +339,7 @@ export function createDecorations(importedData = null) {
             } else {
                 addCompositeObstacle(x, z, ry, 0, 0, 0.8 * s);
             }
+            object3D.userData.hasCollision = true;
 
             if(!subtype) subtype = ruinsType;
         }
@@ -352,6 +356,7 @@ export function createDecorations(importedData = null) {
             object3D.position.set(x, groundY + s * 1.1, z);
             object3D.rotation.y = ry;
             addCompositeObstacle(x, z, ry, 0, 0, 1.35 * s);
+            object3D.userData.hasCollision = true;
             if (!color) color = cliffCol;
         }
         else if (type === 'sakura') {
@@ -360,8 +365,9 @@ export function createDecorations(importedData = null) {
             const groundY = getGroundLevelAt({ x, z });
             object3D.position.set(x, groundY, z);
             object3D.rotation.y = ry;
-            if (variant === 'ancient' || variant === 'large') {
-                addCompositeObstacle(x, z, ry, 0, 0, 0.55 * s);
+            if (variant === 'ancient' || variant === 'large' || variant === 'medium') {
+                addCompositeObstacle(x, z, ry, 0, 0, (variant === 'medium' ? 0.4 : 0.55) * s);
+                object3D.userData.hasCollision = true;
             }
             registerTreePetals(x, groundY, z, variant, s);
             if (!subtype) subtype = variant;
@@ -369,6 +375,7 @@ export function createDecorations(importedData = null) {
         else if (type === 'bamboo') {
             const built = createBambooCluster(s);
             object3D = built.group;
+            object3D.userData.hasCollision = false;
             const groundY = getGroundLevelAt({ x, z });
             object3D.position.set(x, groundY, z);
             object3D.rotation.y = ry;
@@ -376,7 +383,15 @@ export function createDecorations(importedData = null) {
         else if (type === 'jp') {
             const built = buildJapaneseProp(subtype, s);
             object3D = built.group;
-            object3D.userData.isLandmark = object3D.userData.isLandmark || (built.obstacles && built.obstacles.length > 0);
+            const hasObs = (built.obstacles && built.obstacles.length > 0) || subtype === 'bridge';
+            object3D.userData.hasCollision = hasObs || object3D.userData.hasCollision;
+            object3D.userData.isLandmark = object3D.userData.isLandmark || hasObs;
+            if (subtype === 'bridge') {
+                object3D.userData.hasCollision = true;
+                object3D.userData.isLandmark = true;
+                object3D.userData.isBridge = true;
+                object3D.userData.cullRadius = 30;
+            }
             let groundY = getGroundLevelAt({ x, z });
             if (subtype === 'lake' || subtype === 'pond') groundY = SAKURA_LAKE.waterY;
             else if (subtype === 'bridge') groundY = 0;
@@ -392,6 +407,7 @@ export function createDecorations(importedData = null) {
             if (landmarkType === 'ancient_sakura') {
                 object3D = createCherryTreeModel(s, 'ancient', color);
                 object3D.userData.isLandmark = true;
+                object3D.userData.hasCollision = true;
                 const groundY = getGroundLevelAt({ x, z });
                 object3D.position.set(x, groundY, z);
                 object3D.rotation.y = ry;
@@ -401,6 +417,7 @@ export function createDecorations(importedData = null) {
                 const built = createToriiModel(Math.min(1.15, s), 'entry');
                 object3D = built.group;
                 object3D.userData.isLandmark = true;
+                object3D.userData.hasCollision = true;
                 const groundY = getGroundLevelAt({ x, z });
                 object3D.position.set(x, groundY, z);
                 object3D.rotation.y = ry;
@@ -411,6 +428,8 @@ export function createDecorations(importedData = null) {
             } else {
                 const built = createLandmarkModel(landmarkType, s, color);
                 object3D = built.group;
+                object3D.userData.isLandmark = true;
+                object3D.userData.hasCollision = true;
                 const groundY = getGroundLevelAt({ x, z });
                 object3D.position.set(x, groundY, z);
                 object3D.rotation.y = ry;

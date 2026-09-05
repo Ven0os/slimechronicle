@@ -74,8 +74,12 @@ export function updateVisibilityCulling() {
         const decos = Globals.decoGroup.children;
         for (let i = 0; i < decos.length; i++) {
             const d = decos[i];
+            if (d.userData.densityAllowed === false) {
+                d.visible = false;
+                continue;
+            }
             _cullSphere.center.copy(d.position);
-            _cullSphere.radius = DECO_CULL_RADIUS;
+            _cullSphere.radius = typeof d.userData.cullRadius === 'number' ? d.userData.cullRadius : DECO_CULL_RADIUS;
             d.visible = _cullFrustum.intersectsSphere(_cullSphere);
         }
     }
