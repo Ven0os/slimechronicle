@@ -2,11 +2,17 @@
 import { Globals } from '../core/globals';
 import { STATE } from '../core/config';
 import { getGroundLevelAt } from '../gameplay/world/worldZones';
+import { disposeObject3D } from './meshMaterialUtils';
 
 let floatingTexts = [];
 let damageContainer = null;
 
-export function createDamageText(text, pos, color = '#ffffff') {
+const FLOATING_TEXT_BASE_STYLE =
+    'position:absolute;left:0;top:0;font-weight:bold;text-shadow:0 0 5px #000;'
+    + 'pointer-events:none;user-select:none;white-space:nowrap;opacity:1;'
+    + 'will-change:transform, opacity;';
+
+export function createDamageText(text, pos, color = '#ffffff', duration = 1.5) {
     if(!Globals.camera) return;
     
     const offsetPos = pos.clone();
@@ -16,25 +22,14 @@ export function createDamageText(text, pos, color = '#ffffff') {
 
     const div = document.createElement('div');
     div.innerText = text;
-    div.style.position = 'absolute';
-    div.style.left = '0';
-    div.style.top = '0';
-    div.style.color = color;
-    div.style.fontWeight = 'bold';
-    div.style.fontSize = '1.2rem';
-    div.style.textShadow = '0 0 5px #000';
-    div.style.pointerEvents = 'none';
-    div.style.userSelect = 'none';
-    div.style.whiteSpace = 'nowrap';
-    div.style.opacity = '1';
-    div.style.willChange = 'transform, opacity';
+    // Une seule écriture de style au lieu d'une douzaine : ces textes sont créés en rafale
+    // à chaque coup porté pendant les combats.
+    const isCrit = String(text).includes("CRIT");
+    div.style.cssText = FLOATING_TEXT_BASE_STYLE
+        + (isCrit
+            ? 'font-size:2rem;color:#ffff00;z-index:1000;'
+            : `font-size:1.2rem;color:${color};`);
     div.className = 'floating-text';
-
-    if(String(text).includes("CRIT")) {
-        div.style.fontSize = '2rem';
-        div.style.color = '#ffff00';
-        div.style.zIndex = '1000';
-    }
 
     if (!damageContainer || !damageContainer.isConnected) {
         damageContainer = document.getElementById('damage-text-container') || document.body;
@@ -44,7 +39,7 @@ export function createDamageText(text, pos, color = '#ffffff') {
     floatingTexts.push({
         el: div,
         pos: offsetPos,
-        life: 1.5,
+        life: duration,
         velocity: new THREE.Vector3(0, 1.5, 0)
     });
 }
@@ -68,7 +63,9 @@ export function updateFloatingTexts(dt) {
         const x = (vector.x * .5 + .5) * w;
         const y = (-(vector.y * .5) + .5) * h;
 
-        const scale = Math.max(0.5, item.life);
+        // Borné à 1.5 : les annonces de boss durent plusieurs secondes et seraient
+        // sinon affichées à une taille démesurée au moment de leur apparition.
+        const scale = Math.min(1.5, Math.max(0.5, item.life));
         item.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(2)})`;
 
         if (item.life < 0.5) {
@@ -274,12 +271,25 @@ export function updateSkillVisuals(dt) {
             v.mesh.rotation.z -= 8.0 * dt; // Rotation rapide
             v.mesh.material.opacity = v.life * 2.0; // Fade out
             v.mesh.scale.multiplyScalar(Math.pow(1.05, dt * 60)); // Légère expansion (indépendante du FPS)
+        } else if (v.type === 'nova') {
+            // Progression de 0 à 1 : l'onde part vite puis ralentit, la lueur centrale
+            // s'éteint plus tôt que l'anneau pour laisser une traîne.
+            const t = 1 - Math.max(0, v.life) / v.maxLife;
+            const ease = 1 - Math.pow(1 - t, 3);
+            v.ring.scale.setScalar(0.15 + ease * v.size);
+            v.ring.material.opacity = (1 - t) * 0.85;
+            // Le flash central garde une taille fixe : indexé sur le rayon du sort, il
+            // recouvrait le personnage sur les grandes déflagrations.
+            v.core.scale.setScalar(0.25 + ease * 0.75);
+            v.core.material.opacity = Math.max(0, 1 - t * 2.5) * 0.4;
+            v.mesh.rotation.y += dt * 1.2;
         }
 
         if (v.life <= 0) {
             Globals.scene.remove(v.mesh);
-            if(v.mesh.geometry) v.mesh.geometry.dispose();
-            if(v.mesh.material) v.mesh.material.dispose();
+            // disposeObject3D plutôt qu'un dispose direct : certains visuels sont des
+            // groupes, et leurs enfants restaient sinon en mémoire GPU.
+            disposeObject3D(v.mesh);
             skillVisuals.splice(i, 1);
         }
     }
@@ -324,6 +334,55 @@ export function createSkillVisual(type, pos, size, color, dir) {
              life: 0.25, // Durée très courte
              type: 'melee_slash'
          });
+    }
+    else if (type === 'nova') {
+        // Six compétences demandaient déjà ce visuel, qui n'avait jamais été écrit : leurs
+        // explosions se résumaient à quelques particules. Animé par la boucle de jeu, donc
+        // suspendu avec elle, contrairement aux effets qui pilotent leur propre rendu.
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const ring = new THREE.Mesh(
+            new THREE.RingGeometry(0.78, 1.0, 48),
+            new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.85,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+            })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        // L'onde est plaquée au terrain, pas à la hauteur de l'impact, sinon elle flotte
+        // au-dessus du sol quand le sort part d'un personnage.
+        ring.position.y = getGroundLevelAt(pos) - pos.y + 0.12;
+        group.add(ring);
+
+        // Fondu normal, contrairement à l'anneau : en additif la sphère vire au blanc pur
+        // sur les décors clairs et la teinte du sort disparaît.
+        const core = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 16, 12),
+            new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.35,
+                depthWrite: false,
+            })
+        );
+        core.position.y = ring.position.y + 0.7;
+        group.add(core);
+
+        Globals.scene.add(group);
+        skillVisuals.push({
+            mesh: group,
+            ring,
+            core,
+            size: Math.max(1, size || 4),
+            life: 0.5,
+            maxLife: 0.5,
+            type: 'nova',
+        });
     }
     // ... Autres visuels existants ...
     else if (type === 'shockwave') {

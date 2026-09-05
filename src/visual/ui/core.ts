@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { STATE } from '@/core/config';
 import { Globals } from '@/core/globals';
+import { applyShadowQuality } from '@/core/scene';
 import { CampPreview } from './campPreview';
 
 export const UICore = {
@@ -57,6 +58,12 @@ export const UICore = {
             const waterSpan = document.getElementById('opt-val-graphics-water');
             if (waterSpan) waterSpan.innerText = waterLabels[waterVal - 1];
 
+            const shadowLabels = ['Désactivées', 'Douces (Rapide)', 'Élevées'];
+            const shadowVal = STATE.gameOptions.shadowQuality || 3;
+            setVal('opt-graphics-shadows', 'opt-val-graphics-shadows', shadowVal);
+            const shadowSpan = document.getElementById('opt-val-graphics-shadows');
+            if (shadowSpan) shadowSpan.innerText = shadowLabels[shadowVal - 1];
+
             const partLabels = ['Désactivés', 'Réduits (33%)', 'Complets'];
             const partVal = STATE.gameOptions.particleQuality || 3;
             setVal('opt-graphics-particles', 'opt-val-graphics-particles', partVal);
@@ -103,6 +110,7 @@ export const UICore = {
         STATE.gameOptions.resolutionScale = getVal('opt-graphics-resolution');
         STATE.gameOptions.decoDensity = getVal('opt-graphics-density');
         STATE.gameOptions.waterQuality = getVal('opt-graphics-water');
+        STATE.gameOptions.shadowQuality = getVal('opt-graphics-shadows');
         STATE.gameOptions.particleQuality = getVal('opt-graphics-particles');
         
         const chkFog = document.getElementById('opt-graphics-fog');
@@ -393,6 +401,9 @@ export const UICore = {
             }
         }
         
+        // 2b. Ombres portées
+        applyShadowQuality(STATE.gameOptions.shadowQuality !== undefined ? STATE.gameOptions.shadowQuality : 3);
+
         // 3. Qualité de l'Eau
         const waterQ = STATE.gameOptions.waterQuality !== undefined ? STATE.gameOptions.waterQuality : 3;
         if (Globals.water && Globals.water.material) {

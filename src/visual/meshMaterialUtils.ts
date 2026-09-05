@@ -36,6 +36,18 @@ export function disposeObject3D(root) {
   });
 }
 
+/**
+ * Fait projeter une ombre à tous les meshes d'une entité. Les personnages ne reçoivent
+ * pas d'ombre sur eux-mêmes : leurs volumes sont petits et l'auto-ombrage ne produirait
+ * que de l'acné de surface pour un gain visuel nul.
+ */
+export function enableShadowCasting(root) {
+  if (!root || typeof root.traverse !== 'function') return;
+  root.traverse((obj) => {
+    if (obj.isMesh) obj.castShadow = true;
+  });
+}
+
 export function applyToMeshMaterials(root, callback) {
   if (!root || typeof root.traverse !== 'function') return;
   root.traverse((obj) => {

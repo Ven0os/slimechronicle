@@ -88,6 +88,7 @@ export const STATE = {
             resolutionScale: 100,
             decoDensity: 4,
             waterQuality: 3,
+            shadowQuality: 3,
             particleQuality: 3,
             isFogActive: true,
             fpsLimit: 120,

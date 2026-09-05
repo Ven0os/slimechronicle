@@ -328,6 +328,8 @@ export class Mage extends PlayerBase {
         // Projectile synchronisé avec le moment "fort" (à 30% de l'anim)
         setTimeout(() => {
             if (!Globals.camera) return;
+            // Le projectile partait encore si le mage mourait pendant l'incantation.
+            if (this.dead) return;
             STATE.raycaster.setFromCamera(STATE.mouse, Globals.camera);
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             const intersection = new THREE.Vector3();
@@ -410,6 +412,9 @@ export class Mage extends PlayerBase {
             if (extra > 0) shots.push(0);
             for (const i of shots) {
                 setTimeout(() => {
+                    // Les projectiles de la rafale partaient encore après la mort du mage.
+                    if (this.dead) return;
+
                     const d = targetDir.clone().applyAxisAngle(new THREE.Vector3(0,1,0), i*spread); 
                     const pGeo = new THREE.DodecahedronGeometry(isSuperCrit ? 0.45 : 0.3); 
                     const pMat = new THREE.MeshStandardMaterial({

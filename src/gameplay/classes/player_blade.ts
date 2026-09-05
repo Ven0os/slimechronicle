@@ -367,6 +367,9 @@ export class Blade extends PlayerBase {
         slashAnim();
 
         setTimeout(() => {
+            // Le coup était encore porté si le joueur mourait entre le geste et l'impact.
+            if (this.dead) return;
+
             const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
             dir.y = 0; dir.normalize();
 
@@ -548,9 +551,9 @@ export class Blade extends PlayerBase {
 
     triggerTsunamiImpact(dir, multiplier) {
         AudioSys.sfx.warrior.smash(); 
-        const originalY = Globals.camera.position.y;
-        Globals.camera.position.y -= 1.5;
-        setTimeout(() => Globals.camera.position.y = originalY, 150);
+        // La game loop réécrit camera.position à chaque frame : agir dessus directement
+        // n'avait aucun effet visible. On passe par le shake amorti partagé.
+        if (Globals.cameraShake) Globals.cameraShake.y -= 1.5;
 
         const wave = new THREE.Mesh(new THREE.CylinderGeometry(2, 15, 5, 16, 1, true), new THREE.MeshBasicMaterial({color:0x1abc9c, transparent:true, opacity:0.8, side:THREE.DoubleSide}));
         wave.position.copy(this.position);

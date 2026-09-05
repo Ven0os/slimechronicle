@@ -11,6 +11,7 @@ import { createCliffModel } from './environment/cliffModel';
 
 import * as THREE from 'three';
 import { BOSS_ZONE, getRegionAt, getGroundLevelAt } from './world/worldZones';
+import { disposeObject3D } from '../visual/meshMaterialUtils';
 
 const animatedObjects = []; 
 
@@ -80,9 +81,15 @@ export function createAltars() {
     Globals.menhirs.push(seal);
 }
 
+// Appelée à chaque frame par la game loop : on ne retouche le DOM que si l'état change,
+// au lieu de refaire un getElementById et une écriture de style 60 à 144 fois par seconde.
+let menhirHudHidden = false;
 export function updateMenhirVisuals() {
+    if (menhirHudHidden) return;
     const hud = document.getElementById('menhir-hud');
-    if(hud) hud.style.display = 'none';
+    if (!hud) return;
+    hud.style.display = 'none';
+    menhirHudHidden = true;
 }
 
 let skyParticles;
@@ -137,6 +144,10 @@ export function updateAnimatedSky(dt) {
 export function clearDecorations() {
     if (Globals.decoGroup) {
         Globals.scene.remove(Globals.decoGroup);
+        // Les décors représentent des centaines de meshes : sans libération, chaque
+        // reconstruction de carte (rejoindre une partie) laissait tout en mémoire GPU.
+        // disposeObject3D épargne les géométries/matériaux mis en cache (userData.keep).
+        disposeObject3D(Globals.decoGroup);
         Globals.decoGroup = null;
     }
     if(Globals.obstacles) {

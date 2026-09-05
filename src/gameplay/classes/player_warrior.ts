@@ -25,6 +25,8 @@ import { isInSafeZone } from '../world/worldZones';
 
 import { UI } from '../../visual/ui';
 
+import { dampFactor } from '../../core/smoothing';
+
 
 
 export class Warrior extends PlayerBase {
@@ -206,11 +208,17 @@ export class Warrior extends PlayerBase {
 
         if (this.animState.override) {
 
-            this.body.rotation.y = THREE.MathUtils.lerp(this.body.rotation.y, this.animState.torsoTwist, dt * 15);
+            // La courbe d'attaque est déjà lissée par son propre easing : la poursuivre trop
+            // mollement décalait le geste d'environ 70 ms et le coup partait avant que l'arme
+            // n'ait visuellement frappé. Un suivi plus serré resynchronise le visuel et l'impact
+            // sans changer ni la durée, ni la portée, ni les dégâts.
+            const swingLerp = dampFactor(30, dt);
 
-            this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, this.animState.armRightRot, dt * 15);
+            this.body.rotation.y = THREE.MathUtils.lerp(this.body.rotation.y, this.animState.torsoTwist, swingLerp);
 
-            this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, this.animState.armLeftRot, dt * 15);
+            this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, this.animState.armRightRot, swingLerp);
+
+            this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, this.animState.armLeftRot, swingLerp);
 
             if(this.weaponGroup) {
 
@@ -218,7 +226,7 @@ export class Warrior extends PlayerBase {
 
                 const targetRot = (Math.PI/2) + this.animState.weaponRot;
 
-                this.weaponGroup.rotation.x = THREE.MathUtils.lerp(currentRot, targetRot, dt * 15);
+                this.weaponGroup.rotation.x = THREE.MathUtils.lerp(currentRot, targetRot, swingLerp);
 
             }
 
@@ -226,7 +234,10 @@ export class Warrior extends PlayerBase {
 
         else {
 
-            this.body.rotation.y = THREE.MathUtils.lerp(this.body.rotation.y, 0, dt * 10);
+            const recoverLerp = dampFactor(10, dt);
+            const breatheLerp = dampFactor(5, dt);
+
+            this.body.rotation.y = THREE.MathUtils.lerp(this.body.rotation.y, 0, recoverLerp);
 
             if(this.isMoving) {
 
@@ -238,15 +249,15 @@ export class Warrior extends PlayerBase {
 
                 const breathe = Math.sin(Date.now() * 0.002);
 
-                this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, breathe * 0.05, dt * 5);
+                this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, breathe * 0.05, breatheLerp);
 
-                this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, breathe * 0.05, dt * 5);
+                this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, breathe * 0.05, breatheLerp);
 
             }
 
             if(this.weaponGroup) {
 
-                this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, Math.PI/2, dt * 10);
+                this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, Math.PI/2, recoverLerp);
 
             }
 
@@ -504,7 +515,9 @@ export class Warrior extends PlayerBase {
 
             const elapsed = Date.now() - startTime;
 
-            if(elapsed >= duration) { this.isAttacking = false; this.animState.override = false; this.animState.torsoTwist = 0; this.animState.armRightRot = 0; this.animState.armLeftRot = 0; this.animState.weaponRot = 0; return; }
+            // Mourir en pleine attaque laissait la boucle tourner et le personnage figé
+            // en position de frappe jusqu'à la fin de l'animation.
+            if(elapsed >= duration || this.dead) { this.isAttacking = false; this.animState.override = false; this.animState.torsoTwist = 0; this.animState.armRightRot = 0; this.animState.armLeftRot = 0; this.animState.weaponRot = 0; return; }
 
             const p = elapsed / duration;
 
@@ -554,6 +567,9 @@ export class Warrior extends PlayerBase {
 
         setTimeout(() => {
 
+            // Le coup était encore porté si le joueur mourait entre le début du geste et l'impact.
+            if (this.dead) return;
+
             const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
             dir.y = 0; dir.normalize();
 
@@ -569,6 +585,8 @@ export class Warrior extends PlayerBase {
             const dmg = ConstellationEngine.calcWarriorSkillDamage('primary');
 
             Globals.enemies.forEach(e => {
+
+                if(e.dead) return; // un cadavre ne doit plus encaisser de coups
 
                 if(e.position.distanceTo(this.position) < 4.5) { 
 
@@ -681,10 +699,10 @@ export class Warrior extends PlayerBase {
         createSkillVisual('shockwave', this.position, radius, 0x8e44ad);
         const bonusText = parryBonus > 0 ? `${label} +${Math.floor(parryBonus)}` : label;
         createDamageText(bonusText, this.position, '#ffffff');
-        if (this.isLocalPlayer() && Globals.camera) {
-            const originalY = Globals.camera.position.y;
-            Globals.camera.position.y -= 0.5;
-            setTimeout(() => { if (Globals.camera) Globals.camera.position.y = originalY; }, 100);
+        // La game loop réécrit camera.position à chaque frame : agir dessus directement
+        // n'avait aucun effet visible. On passe par le shake amorti partagé.
+        if (this.isLocalPlayer() && Globals.cameraShake) {
+            Globals.cameraShake.y -= 0.5;
         }
         Globals.enemies.forEach(e => {
             if (e.position.distanceTo(this.position) <= radius) {

@@ -168,6 +168,9 @@ export class WarlockSkills {
 
         spawnParticles(this.enemy.position, 0x00ffff, 10);
         setTimeout(() => {
+            // Un warlock tué pendant son incantation se téléportait quand même.
+            if (this.enemy.dead) return;
+
             const escapeDir = this.enemy.position.clone().sub(target.position).normalize();
             escapeDir.applyAxisAngle(new THREE.Vector3(0,1,0), (Math.random()-0.5));
             const newPos = this.enemy.position.clone().add(escapeDir.multiplyScalar(cfg.dist));
@@ -216,6 +219,10 @@ export class WarlockSkills {
             const dist = this.enemy.position.distanceTo(target.position);
             if (dist > 13.0) {
                 clearInterval(intervalId);
+                // Sans cette remise à l'état initial, le warlock restait bloqué en
+                // canalisation pour toujours dès que sa cible sortait de portée.
+                this.enemy.isChanneling = false;
+                if (!this.enemy.dead) this.enemy.animState = 'idle';
                 return;
             }
 

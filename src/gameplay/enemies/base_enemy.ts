@@ -18,8 +18,18 @@ import {
 } from './minions/mini_boss_combat';
 import { updateMiniBossUi } from './minions/mini_boss_ui';
 import { damagePlayer } from '../../multiplayer/net_combat';
+import { dampFactor } from '@/core/smoothing';
+import { disposeObject3D } from '../../visual/meshMaterialUtils';
 
 let enemyIdCounter = 0;
+
+// Vecteur de travail partagé : la séparation entre ennemis tourne en O(n²) par frame,
+// y allouer un Vector3 par contact saturait le GC pendant les gros combats.
+const _separationDir = new THREE.Vector3();
+
+// Cadence maximale de redessin d'une barre de vie (~30 Hz). Au-delà, le repaint canvas
+// et le réenvoi de texture se paient sur chaque ennemi touché sans différence visible.
+const HP_BAR_REDRAW_INTERVAL_MS = 33;
 
 export const ENEMY_AGGRO_RANGE = 18;
 
@@ -237,15 +247,25 @@ export class BaseEnemy extends THREE.Group {
                     this.hudGroup.position.y = targetY;
 
                     if (this.hpBarCanvas && (this.displayHp !== this.hp || (this.maxBarrierHp > 0 && this.displayBarrier !== this.barrierHp) || this.hpBarNeedsUpdate)) {
-                        this.displayHp = THREE.MathUtils.lerp(this.displayHp, this.hp, Math.min(1, dt * 7.0));
+                        const catchUp = dampFactor(7.0, dt);
+                        this.displayHp = THREE.MathUtils.lerp(this.displayHp, this.hp, catchUp);
                         if (Math.abs(this.displayHp - this.hp) < 0.2) this.displayHp = this.hp;
 
                         if (this.maxBarrierHp > 0) {
-                            this.displayBarrier = THREE.MathUtils.lerp(this.displayBarrier, this.barrierHp, Math.min(1, dt * 7.0));
+                            this.displayBarrier = THREE.MathUtils.lerp(this.displayBarrier, this.barrierHp, catchUp);
                             if (Math.abs(this.displayBarrier - this.barrierHp) < 0.2) this.displayBarrier = this.barrierHp;
                         }
 
-                        this.drawHealthBar();
+                        // La valeur affichée continue d'avancer à chaque frame, mais le repaint
+                        // est plafonné. L'état final est toujours dessiné (`settled`).
+                        const settled = this.displayHp === this.hp
+                            && (this.maxBarrierHp === 0 || this.displayBarrier === this.barrierHp);
+                        const nowMs = performance.now();
+                        if (this.hpBarNeedsUpdate || settled
+                            || nowMs - (this._lastHpBarDraw || 0) >= HP_BAR_REDRAW_INTERVAL_MS) {
+                            this._lastHpBarDraw = nowMs;
+                            this.drawHealthBar();
+                        }
                     }
                     this.hudGroup.lookAt(Globals.camera.position);
                 }
@@ -340,15 +360,16 @@ export class BaseEnemy extends THREE.Group {
         }
 
         if (!STATE.multiplayer.active || STATE.multiplayer.isHost) {
+            // resolveCollisions termine déjà par le recalage sur le sol.
             this.resolveCollisions();
             if(this.attackCooldown > 0) {
                 const atkSpd = this.isMiniBoss && this.miniBossStats ? this.miniBossStats.attackSpeedMult : 1;
                 this.attackCooldown -= dt * Math.max(0.5, atkSpd);
             }
+        } else {
+            // Côté client, la position vient du réseau : on se contente de coller au terrain.
+            this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
         }
-        
-        // Ensure position Y is updated
-        this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
     }
 
     updateAnim(dt) {
@@ -397,23 +418,29 @@ export class BaseEnemy extends THREE.Group {
                     this.position.x = islandClampX;
                     this.position.z = islandClampZ;
                 }
+                // Repositionnement horizontal brutal : on recale tout de suite l'altitude
+                // pour que la séparation ci-dessous travaille sur une distance correcte.
+                this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
             }
         }
-        this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
 
         if (Globals.enemies) {
             for (const other of Globals.enemies) {
                 if (other === this || other.dead) continue;
-                const dist = this.position.distanceTo(other.position);
                 const minDist = this.radius + (other.radius || 0.5); 
-                if (dist < minDist) {
-                    const pushDir = this.position.clone().sub(other.position).normalize();
-                    pushDir.y = 0;
-                    if (pushDir.length() === 0) pushDir.set(Math.random()-0.5, 0, Math.random()-0.5).normalize();
-                    this.position.add(pushDir.multiplyScalar((minDist - dist) * 0.1)); 
+                // Comparaison au carré : la racine n'est calculée que sur un contact réel.
+                const distSq = this.position.distanceToSquared(other.position);
+                if (distSq < minDist * minDist) {
+                    const dist = Math.sqrt(distSq);
+                    _separationDir.subVectors(this.position, other.position).normalize();
+                    _separationDir.y = 0;
+                    if (_separationDir.lengthSq() === 0) _separationDir.set(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+                    this.position.addScaledVector(_separationDir, (minDist - dist) * 0.1); 
                 }
             }
         }
+        // getGroundLevelAt combine plusieurs bruits trigonométriques : un seul appel en fin de
+        // résolution au lieu des trois qui étaient faits par ennemi et par frame.
         this.position.y = (this.airY || 0) + getGroundLevelAt(this.position);
     }
 
@@ -492,6 +519,9 @@ export class BaseEnemy extends THREE.Group {
     }
 
     applyStun(duration) {
+        // Choix assumé : aucun étourdissement n'est réellement appliqué aux ennemis,
+        // l'équilibrage actuel repose là-dessus. Seule la résistance des mini-boss est
+        // calculée, prête à servir si le contrôle des ennemis est activé un jour.
         if (this.isMiniBoss && this.miniBossStats?.ccResist > 0) {
             duration *= 1 - this.miniBossStats.ccResist;
             if (duration < 0.05) return;
@@ -509,13 +539,18 @@ export class BaseEnemy extends THREE.Group {
                 if(idx > -1) Globals.telegraphs.splice(idx, 1);
             }
             Globals.scene.remove(t);
-            if(t.geometry) t.geometry.dispose();
-            if(t.material) t.material.dispose();
+            // Les télégraphes sont des groupes (anneau + remplissage) : ne libérer que la
+            // racine laissait leurs enfants en mémoire GPU à chaque mort d'ennemi.
+            disposeObject3D(t);
         });
         this.activeTelegraphs = [];
     }
 
     takeDamage(amount, opts = {}) {
+        // Un ennemi déjà mort ou en animation de mort continuait d'encaisser des coups :
+        // chiffres de dégâts, sons et passifs se déclenchaient sur un cadavre.
+        if (this.dead || this.isDying) return;
+
         if (this.gnomeShieldTimer && this.gnomeShieldTimer > 0) {
             amount *= 0.5;
         }

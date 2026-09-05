@@ -4,13 +4,16 @@ import { AudioSys, TextureManager } from '@/core/ressources';
 import { Input } from '@/core/input';
 import { UI, UICompendium } from '@/visual/ui';
 import { Network } from '@/multiplayer/network';
-import { initScene } from '@/core/scene';
+import { initScene, updateSunShadow } from '@/core/scene';
+import { updateAtmosphere } from '@/visual/atmosphere';
 import { GameLogic, GameLauncher } from '@/gameplay/logic';
 import {
   createBoundaries,
   createAltars,
   updateMenhirVisuals,
   createAnimatedSky,
+  updateAnimatedSky,
+  updateEnvironmentAnimations,
   createDecorations,
   updateOcclusion,
 } from '@/gameplay/environment';
@@ -241,6 +244,9 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
+// Tolérance du limiteur de FPS : absorbe la gigue du vsync (~1 ms) sans relâcher la limite.
+const FRAME_TOLERANCE_MS = 2;
+
 let lastTime = performance.now();
 let lastFrameTime = 0;
 let enemySpawnTimer = 0;
@@ -252,15 +258,22 @@ function animate(): void {
   requestAnimationFrame(animate);
   const now = performance.now();
 
-  // Limiteur de FPS graphique
+  // Limiteur de FPS graphique.
+  // La marge d'une demi-frame évite de rejeter une frame arrivée juste avant l'échéance :
+  // sans elle, un écran 60 Hz limité à 60 FPS saute une frame sur deux et tombe à 30 FPS.
   const fpsLimit = STATE.gameOptions?.fpsLimit || 120;
   if (fpsLimit < 120) {
     const frameDelay = 1000 / fpsLimit;
-    if (now - lastFrameTime < frameDelay) {
+    if (now - lastFrameTime < frameDelay - FRAME_TOLERANCE_MS) {
       return;
     }
+    // On avance l'échéance d'un pas fixe plutôt que de la caler sur `now`, ce qui éviterait
+    // de dériver et de perdre progressivement des frames.
+    const overshoot = now - lastFrameTime - frameDelay;
+    lastFrameTime = overshoot > frameDelay ? now : now - Math.max(0, overshoot);
+  } else {
+    lastFrameTime = now;
   }
-  lastFrameTime = now;
 
   // Calcul des FPS réels
   frameCount++;
@@ -348,6 +361,10 @@ function animate(): void {
   }
   GameLogic.checkBossVictory();
   GameLogic.updateActiveCamps(dt);
+  // Ces deux systèmes existaient déjà mais n'étaient appelés nulle part : les particules
+  // du ciel restaient figées et le balancement des arbres au vent ne démarrait jamais.
+  updateAnimatedSky(dt);
+  updateEnvironmentAnimations(dt);
   updateTelegraphs(dt);
   updateSkillVisuals(dt);
   updateMenhirVisuals();
@@ -371,13 +388,18 @@ function animate(): void {
   }
   // Physique particules normalisée sur 60 FPS pour rester identique quel que soit le framerate.
   const particleStep = dt * 60;
+  // Ces trois facteurs sont les mêmes pour toutes les particules de la frame : les calculer
+  // une fois évite un Math.pow par particule (elles se comptent en centaines en combat).
+  const particleShrink = Math.pow(0.95, particleStep);
+  const particleGravity = 0.01 * particleStep;
+  const particleSpin = 0.1 * particleStep;
   for (let i = Globals.particles.length - 1; i >= 0; i--) {
     const p = Globals.particles[i];
     p.life -= dt;
     p.mesh.position.addScaledVector(p.vel, particleStep);
-    p.vel.y -= 0.01 * particleStep;
-    p.mesh.rotation.x += 0.1 * particleStep;
-    p.mesh.scale.multiplyScalar(Math.pow(0.95, particleStep));
+    p.vel.y -= particleGravity;
+    p.mesh.rotation.x += particleSpin;
+    p.mesh.scale.multiplyScalar(particleShrink);
     if (p.life <= 0) {
       Globals.scene.remove(p.mesh);
       Globals.particles.splice(i, 1);
@@ -417,6 +439,12 @@ function animate(): void {
     Globals.cameraShake.y *= shakeDecay;
     Globals.cameraShake.z *= shakeDecay;
   }
+
+  // Le soleil suit l'action plutôt que la caméra : le tremblement d'écran ne doit pas
+  // faire vibrer les ombres portées.
+  const shadowFocus = camTarget ? camTarget.position : Globals.camera.position;
+  updateSunShadow(shadowFocus.x, shadowFocus.z);
+  updateAtmosphere(dt, shadowFocus.x, shadowFocus.z);
 
   Globals.renderer.render(Globals.scene, Globals.camera);
 }

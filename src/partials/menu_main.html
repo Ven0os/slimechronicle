@@ -91,6 +91,18 @@
                 <input type="range" id="opt-graphics-water" class="option-slider" min="1" max="3" step="1" value="3" oninput="const labels=['Basse (Statique)', 'Moyenne (Simple)', 'Haute (Réaliste)']; document.getElementById('opt-val-graphics-water').innerText = labels[this.value - 1]; UI.onSliderChange(); UI.applyGraphicsSettings()">
             </div>
 
+            <!-- Ombres Portées -->
+            <div class="option-row-card">
+                <div class="option-header">
+                    <div class="option-label-wrap">
+                        <i class="fas fa-cloud-sun icon-hp" style="color: #9b59b6;"></i>
+                        <label for="opt-graphics-shadows">Ombres Portées</label>
+                    </div>
+                    <span id="opt-val-graphics-shadows" class="option-value-badge">Élevées</span>
+                </div>
+                <input type="range" id="opt-graphics-shadows" class="option-slider" min="1" max="3" step="1" value="3" oninput="const labels=['Désactivées', 'Douces (Rapide)', 'Élevées']; document.getElementById('opt-val-graphics-shadows').innerText = labels[this.value - 1]; UI.onSliderChange(); UI.applyGraphicsSettings()">
+            </div>
+
             <!-- Effets de Particules -->
             <div class="option-row-card">
                 <div class="option-header">

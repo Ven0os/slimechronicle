@@ -1,6 +1,7 @@
 // @ts-nocheck
 // /core/globals.js
 import { STATE } from './config';
+import { enableShadowCasting } from '../visual/meshMaterialUtils';
 
 // Conteneur pour les objets Three.js et les entités partagées
 export const Globals = {
@@ -19,6 +20,7 @@ export const Globals = {
     obstacles: [],
     safeHubMarker: null,
     water: null,
+    ground: null,
     cameraOverride: null,
     cameraShake: { x: 0, y: 0, z: 0 },
 };
@@ -33,8 +35,14 @@ export const GameActions = {
 };
 
 // Helpers
-export function setPlayer(p) { Globals.player = p; }
-export function addEnemy(e) { Globals.enemies.push(e); }
+export function setPlayer(p) {
+    Globals.player = p;
+    enableShadowCasting(p);
+}
+export function addEnemy(e) {
+    Globals.enemies.push(e);
+    enableShadowCasting(e);
+}
 export function removeEnemy(e) { 
     const idx = Globals.enemies.indexOf(e);
     if(idx > -1) Globals.enemies.splice(idx, 1);

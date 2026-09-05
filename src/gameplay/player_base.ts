@@ -14,6 +14,7 @@ import { ConstellationEngine } from '@/systems/constellationEngine';
 import { isInSafeZone, pushOutOfSafeZone, getGroundLevelAt, getPlayableRadiusAt, BOSS_ZONE } from './world/worldZones';
 import { CLASS_STATS_CONFIG, createDefaultSkillCdMods, createDefaultSkillMods } from '@/data/classStatsConfig';
 import { BuffBar } from '@/ui/buffBar'; 
+import { dampFactor } from '@/core/smoothing';
 
 // Scratch math objects to prevent GC pressure in hot game loops
 const _moveInput = new THREE.Vector3();
@@ -240,9 +241,11 @@ export class PlayerBase extends THREE.Group {
         }
 
         if (!this.isLocalPlayer()) {
-            const dist = this.position.distanceTo(this.lastRemotePos || this.position);
-            this.lastRemotePos = this.position.clone();
-            this.isMoving = dist > 0.01;
+            // Vector3 réutilisé : un clone par frame et par joueur distant partait au GC.
+            if (!this.lastRemotePos) this.lastRemotePos = this.position.clone();
+            const movedSq = this.position.distanceToSquared(this.lastRemotePos);
+            this.lastRemotePos.copy(this.position);
+            this.isMoving = movedSq > 0.0001;
             this.animateCharacter(dt);
             this.updateBuffs(dt);
             this.updateLocalVisuals(dt);
@@ -273,7 +276,7 @@ export class PlayerBase extends THREE.Group {
                 this.netRotation = targetAngle; 
                 
                 _targetQuat.setFromAxisAngle(_upAxis, targetAngle);
-                this.mesh.quaternion.slerp(_targetQuat, 15 * dt);
+                this.mesh.quaternion.slerp(_targetQuat, dampFactor(15, dt));
             }
         }
 
@@ -301,12 +304,9 @@ export class PlayerBase extends THREE.Group {
                     this.justRecalled = false;
                     AudioSys.play('king_land', 0.85);
                     spawnParticles(this.position.clone(), 0x00ffff, 30);
-                    // Secousse de caméra légère
-                    if (Globals.camera) {
-                        const origY = Globals.camera.position.y;
-                        Globals.camera.position.y -= 0.6;
-                        setTimeout(() => Globals.camera.position.y = origY, 150);
-                    }
+                    // Secousse de caméra légère. Écrire dans camera.position était sans effet :
+                    // la game loop la recalcule intégralement à chaque frame.
+                    if (Globals.cameraShake) Globals.cameraShake.y -= 0.6;
                 }
             }
         } else {
@@ -348,7 +348,8 @@ export class PlayerBase extends THREE.Group {
 
     updateCooldowns(dt) {
         const isLocal = this.isLocalPlayer();
-        Object.keys(this.cooldowns).forEach(k => {
+        // `for...in` évite le tableau + la closure alloués par Object.keys().forEach() à chaque frame.
+        for (const k in this.cooldowns) {
             if(this.cooldowns[k] > 0) {
                 this.cooldowns[k] -= dt;
                 if (isLocal) this.updateCooldownUI(k);
@@ -360,7 +361,7 @@ export class PlayerBase extends THREE.Group {
                     els.hidden = true;
                 }
             }
-        });
+        }
     }
 
     handleInputs(dt) {
@@ -436,7 +437,7 @@ export class PlayerBase extends THREE.Group {
                 id: STATE.multiplayer.id,
                 class: this.className,
                 pos: { x: this.position.x, y: this.position.y, z: this.position.z },
-                dir: { x: dir.x, y: dir.y, z: dir.z },
+                dir: { x: _scratchDir.x, y: _scratchDir.y, z: _scratchDir.z },
                 color: CONFIG.colors[this.className],
                 typeP: 'player'
             });
@@ -503,14 +504,15 @@ export class PlayerBase extends THREE.Group {
             if(this.mesh) this.mesh.position.y = Math.abs(Math.sin(this.animTime * 2)) * 0.1;
         } else {
             // Retour progressif des jambes au repos (évite le "pop" à l'arrêt du déplacement).
-            const restLerp = Math.min(1, dt * 10);
+            const restLerp = dampFactor(10, dt);
+            const settleLerp = dampFactor(5, dt);
             if(this.legL) this.legL.rotation.x = THREE.MathUtils.lerp(this.legL.rotation.x, 0, restLerp);
             if(this.legR) this.legR.rotation.x = THREE.MathUtils.lerp(this.legR.rotation.x, 0, restLerp);
             if(!this.isAttacking && this.weaponGroup) {
-                this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, 0, dt * 5);
-                if(this.armL) this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, 0, dt * 5);
+                this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, 0, settleLerp);
+                if(this.armL) this.armL.rotation.x = THREE.MathUtils.lerp(this.armL.rotation.x, 0, settleLerp);
             }
-            if(this.mesh) this.mesh.position.y = THREE.MathUtils.lerp(this.mesh.position.y, 0, dt * 5);
+            if(this.mesh) this.mesh.position.y = THREE.MathUtils.lerp(this.mesh.position.y, 0, settleLerp);
         }
     }
 
@@ -600,15 +602,14 @@ export class PlayerBase extends THREE.Group {
             }
         }
 
+        // Le test au carré évite une racine carrée par obstacle/ennemi et par frame :
+        // seuls les cas réellement en contact la paient.
         if (Globals.obstacles) {
             for (const obs of Globals.obstacles) {
-                const dist = this.position.distanceTo(obs.position);
                 const minDist = this.radius + obs.radius;
-                if (dist < minDist) {
-                    const pushDir = this.position.clone().sub(obs.position).normalize();
-                    if (pushDir.length() === 0) pushDir.set(1, 0, 0); 
-                    const overlap = minDist - dist;
-                    this.position.add(pushDir.multiplyScalar(overlap));
+                const distSq = this.position.distanceToSquared(obs.position);
+                if (distSq < minDist * minDist) {
+                    this.separateFrom(obs.position, minDist, Math.sqrt(distSq));
                 }
             }
         }
@@ -616,17 +617,21 @@ export class PlayerBase extends THREE.Group {
         if (Globals.enemies) {
             for (const enemy of Globals.enemies) {
                 if (enemy.dead || enemy.isBoss || enemy.radius === 0) continue;
-                const dist = this.position.distanceTo(enemy.position);
                 const enemyRadius = enemy.radius !== undefined ? enemy.radius : 0.5; 
                 const minDist = this.radius + enemyRadius;
-                if (dist < minDist) {
-                    const pushDir = this.position.clone().sub(enemy.position).normalize();
-                    if (pushDir.length() === 0) pushDir.set(1, 0, 0);
-                    const overlap = minDist - dist;
-                    this.position.add(pushDir.multiplyScalar(overlap));
+                const distSq = this.position.distanceToSquared(enemy.position);
+                if (distSq < minDist * minDist) {
+                    this.separateFrom(enemy.position, minDist, Math.sqrt(distSq));
                 }
             }
         }
+    }
+
+    // Repousse le joueur hors d'un cercle bloquant, sans allouer de Vector3.
+    separateFrom(otherPos, minDist, dist) {
+        _pushDir.subVectors(this.position, otherPos).normalize();
+        if (_pushDir.lengthSq() === 0) _pushDir.set(1, 0, 0);
+        this.position.addScaledVector(_pushDir, minDist - dist);
     }
 
     takeDamage(amount) {
@@ -664,13 +669,14 @@ export class PlayerBase extends THREE.Group {
                 const reflectDmg = amount * 0.15;
                 if(reflectDmg >= 1) {
                     let closest = null;
-                    let minD = 999;
-                    Globals.enemies.forEach(e => {
-                        const d = this.position.distanceTo(e.position);
-                        if(d < minD) { minD = d; closest = e; }
-                    });
+                    let minDSq = Infinity;
+                    for (const e of Globals.enemies) {
+                        if (e.dead) continue; // ne pas renvoyer les dégâts sur un cadavre
+                        const dSq = this.position.distanceToSquared(e.position);
+                        if(dSq < minDSq) { minDSq = dSq; closest = e; }
+                    }
                     
-                    if (closest && minD < 5 && isServerAuthority()) {
+                    if (closest && minDSq < 25 && isServerAuthority()) {
                         dealDamageToEnemy(closest, reflectDmg, { pos: closest.position, noCrit: true, maxRange: 6 });
                         createDamageText("RETOUR: " + Math.floor(reflectDmg), closest.position, "#aaaaaa");
                     }
@@ -700,6 +706,7 @@ export class PlayerBase extends THREE.Group {
         if(this.dead) return;
         this.dead = true;
         this.visible = false; 
+        this.clearFlash();
         createDamageText("MORT", this.position, '#8a0b0b');
         AudioSys.sfx.hit(); 
         if (this.isLocalPlayer()) {
@@ -731,6 +738,15 @@ export class PlayerBase extends THREE.Group {
         STATE.leftSafeZone = false;
         this.isStunned = false; 
         this.verticalVelocity = 0;
+        // Sans ces remises à zéro, mourir pendant une attaque ou un cast laissait le
+        // personnage bloqué hors de l'état idle après la réapparition.
+        this.isAttacking = false;
+        this.isCasting = false;
+        this.attackCooldown = 0;
+        this.isIntangible = false;
+        this.intangibleTimer = 0;
+        this.knockback.set(0, 0, 0);
+        if (this.animState) this.animState.override = false;
         if(this.stunVisualGroup) this.stunVisualGroup.visible = false;
         
         if (this.isLocalPlayer()) {
@@ -769,7 +785,6 @@ export class PlayerBase extends THREE.Group {
             this.debuffs[i].timer -= dt;
             if (this.debuffs[i].timer <= 0) this.debuffs.splice(i, 1);
         }
-        if (this.isLocalPlayer()) this.updateBuffUI();
     }
 
     updateBuffs(dt) {
@@ -778,6 +793,7 @@ export class PlayerBase extends THREE.Group {
             if(this.buffs[i].timer <= 0) this.buffs.splice(i, 1);
         }
         this.updateDebuffs(dt);
+        // Un seul rafraîchissement par frame : updateDebuffs en déclenchait un second.
         if (this.isLocalPlayer()) this.updateBuffUI();
     }
 
@@ -787,6 +803,12 @@ export class PlayerBase extends THREE.Group {
     }
 
     flashColor(obj, colorHex) {
+        if (!obj) return;
+        // Un seul timer pour tout le personnage : la version précédente armait un setTimeout
+        // par mesh, soit plusieurs dizaines de timers à chaque coup reçu.
+        if (!this._flashedMeshes) this._flashedMeshes = new Set();
+        const flashed = this._flashedMeshes;
+
         obj.traverse((child) => {
             if (child.isMesh && child.material && child.material.emissive) {
                 if (child.userData.baseEmissive === undefined) {
@@ -795,15 +817,26 @@ export class PlayerBase extends THREE.Group {
                     else child.userData.baseEmissive = current;
                 }
                 child.material.emissive.setHex(colorHex);
-                if(child.userData.flashTimeout) clearTimeout(child.userData.flashTimeout);
-                child.userData.flashTimeout = setTimeout(() => {
-                    if(child.material && child.userData.baseEmissive !== undefined) {
-                        child.material.emissive.setHex(child.userData.baseEmissive);
-                    }
-                    child.userData.flashTimeout = null;
-                }, 100);
+                flashed.add(child);
             }
         });
+
+        if (this._flashTimeout) clearTimeout(this._flashTimeout);
+        this._flashTimeout = setTimeout(() => {
+            this._flashTimeout = null;
+            this.clearFlash();
+        }, 100);
+    }
+
+    clearFlash() {
+        if (this._flashTimeout) { clearTimeout(this._flashTimeout); this._flashTimeout = null; }
+        if (!this._flashedMeshes) return;
+        for (const child of this._flashedMeshes) {
+            if (child.material && child.userData.baseEmissive !== undefined) {
+                child.material.emissive.setHex(child.userData.baseEmissive);
+            }
+        }
+        this._flashedMeshes.clear();
     }
 
     addLocalVisual(mesh, duration, updateFn) {
